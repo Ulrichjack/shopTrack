@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
-// TODO 1: Import de ton auth_provider.dart
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -15,8 +14,10 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+
 
   @override
   void dispose() {
@@ -28,7 +29,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // TODO 2: Écoute de l'état de chargement (true/false) du provider
     // ref.watch dit à Flutter : "Dès que l'état de authProvider change, redessine ce build()"
     final isLoading = ref.watch(authProvider);
 
@@ -37,11 +37,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
+            child:Form(
+              key: _formKey,
+              child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-
                 const Icon(
                   Icons.storefront, // Une icône de boutique
                   size: 100,
@@ -76,6 +77,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     prefixIcon: Icon(Icons.phone),
                     border: OutlineInputBorder(),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Le numéro est obligatoire';
+                    }
+                    // Regex : Commence par 6 ou 2, suivi de 8 chiffres (total 9)
+                    final phoneRegex = RegExp(r'^[26]\d{8}$');
+                    if (!phoneRegex.hasMatch(value.replaceAll(' ', ''))) {
+                      return 'Entrez un numéro camerounais valide (9 chiffres)';
+                    }
+                    return null; // null veut dire "C'est valide !"
+                  },
                 ),
                 const SizedBox(height: 16),
 
@@ -87,23 +99,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     prefixIcon: Icon(Icons.lock),
                     border: OutlineInputBorder(),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Le mot de passe est obligatoire';
+                    }
+                    if (value.length < 6) {
+                      return 'Le mot de passe doit faire au moins 6 caractères';
+                    }
+                    return null;
+                  },
                 ),
+
                 const SizedBox(height: 32),
 
                 ElevatedButton(
                   onPressed: isLoading
                       ? null
                       : () async { // <-- Ajoute async ici
-                    // 1. On attend que le login se termine
-                    await ref.read(authProvider.notifier).login(
-                      _phoneController.text,
-                      _passwordController.text,
-                    );
 
-                    // 2. Si l'écran est toujours affiché (bonne pratique Flutter)
-                    if (context.mounted) {
-                      // 3. On navigue vers le Dashboard !
-                      context.go('/home');
+                    if (_formKey.currentState!.validate()) {
+
+                      try {
+                        // 1. On attend que le login se termine
+                        await ref.read(authProvider.notifier).login(
+                          _phoneController.text,
+                          _passwordController.text,
+                        );
+
+                        // 2. Si l'écran est toujours affiché (bonne pratique Flutter)
+                        if (context.mounted) {
+                          // 3. On navigue vers le Dashboard !
+                          context.go('/home');
+                        }
+                      }  catch (e) {
+                        // Afficher l'erreur (comme on l'a vu précédemment)
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString().replaceAll('Exception: ', '')),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      }
+
+
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -126,9 +166,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
+                TextButton(
+                  onPressed: () => context.push('/register'), // push permet de revenir en arrière
+                  child: const Text(
+                    "Je n'ai pas de compte ? Créer ma boutique",
+                    style: TextStyle(color: AppColors.primary),
+                  ),
+                ),
               ],
             ),
+            ),
           ),
+
         ),
       ),
     );
