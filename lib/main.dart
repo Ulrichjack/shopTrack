@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // 1. Ajoute cet import
+import 'package:shoptrack/features/auth/presentation/screens/login_screen.dart';
 import 'core/theme/app_theme.dart';
 
 void main() {
-  runApp(const ShopTrackApp());
+  // 2. Enveloppe ton app dans le ProviderScope
+  runApp(const ProviderScope(child: ShopTrackApp()));
 }
 
 class ShopTrackApp extends StatelessWidget {
@@ -11,11 +13,10 @@ class ShopTrackApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return  MaterialApp(
-      home: Scaffold(
-        body: Center(child: Text('Bienvenue dans ShopTrack')),
-      ),
-      theme:AppTheme.lightTheme,
+    return MaterialApp(
+      debugShowCheckedModeBanner: false, // Bonus : ça enlève le moche bandeau "DEBUG" en haut à droite
+      home: const LoginScreen(),
+      theme: AppTheme.lightTheme,
     );
   }
 }
