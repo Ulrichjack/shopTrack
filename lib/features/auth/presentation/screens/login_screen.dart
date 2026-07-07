@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 // TODO 1: Import de ton auth_provider.dart
 import '../providers/auth_provider.dart';
@@ -90,15 +91,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 32),
 
                 ElevatedButton(
-                  // TODO 3: Si isLoading est true, on met onPressed à null, ce qui désactive le bouton gris automatiquement
                   onPressed: isLoading
                       ? null
-                      : () {
-                    // ref.read (sans watch) pour déclencher l'action unique du login au clic
-                    ref.read(authProvider.notifier).login(
+                      : () async { // <-- Ajoute async ici
+                    // 1. On attend que le login se termine
+                    await ref.read(authProvider.notifier).login(
                       _phoneController.text,
                       _passwordController.text,
                     );
+
+                    // 2. Si l'écran est toujours affiché (bonne pratique Flutter)
+                    if (context.mounted) {
+                      // 3. On navigue vers le Dashboard !
+                      context.go('/home');
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // 1. Ajoute cet import
 import 'package:shoptrack/features/auth/presentation/screens/login_screen.dart';
+import 'package:shoptrack/router.dart';
 import 'core/theme/app_theme.dart';
 
 void main() {
@@ -13,10 +14,10 @@ class ShopTrackApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false, // Bonus : ça enlève le moche bandeau "DEBUG" en haut à droite
-      home: const LoginScreen(),
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      routerConfig: goRouter,
     );
   }
 }
