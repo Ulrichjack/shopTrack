@@ -28,7 +28,7 @@ class AuthNotifier extends Notifier<bool> {
       }
     } on AuthException catch (e){
       state = false;
-      print('Erreur supabe: ${e.message}');
+      print('Erreur supabase: ${e.message}');
       throw Exception('Erreur de connexion');
     } catch (e){
       state = false;

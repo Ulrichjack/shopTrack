@@ -4,6 +4,13 @@ import 'package:supabase_flutter/supabase_flutter.dart'; // <-- N'oublie pas cet
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/register_screen.dart';
 import 'features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'features/products/domain/entities/product_entity.dart';
+import 'features/products/presentation/screens/add_product_screen.dart';
+import 'features/products/presentation/screens/barcode_scanner_screen.dart';
+import 'features/products/presentation/screens/product_detail_screen.dart';
+import 'features/products/presentation/screens/product_list_screen.dart';
+import 'features/sales/presentation/screens/new_sale_screen.dart';
+import 'features/sales/presentation/screens/sale_confirmation_screen.dart';
 
 final goRouter = GoRouter(
   initialLocation: '/login',
@@ -33,11 +40,35 @@ final goRouter = GoRouter(
     ),
     GoRoute(
       path: '/home',
-      builder: (context, state) => const DashboardScreen(),
+      builder: (context, state) => const ProductListScreen(),
     ),
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
     ),
+    GoRoute(
+      path: '/add-product',
+      builder: (context, state) => const NewSaleScreen(),
+    ),
+    GoRoute(
+      path: '/scanner',
+      builder: (context, state) => const BarcodeScannerScreen(),
+    ),
+    GoRoute(
+      path: '/product-detail',
+      builder: (context, state) {
+        final product = state.extra as ProductEntity;
+        return ProductDetailScreen(product: product);
+      },
+    ),
+    GoRoute(
+      path: '/sales/new',
+      builder: (context, state) => const NewSaleScreen(),
+    ),
+    GoRoute(
+      path: '/sale-confirm',
+      builder: (context, state) => const SaleConfirmationScreen(),
+    ),
+
   ],
 );
