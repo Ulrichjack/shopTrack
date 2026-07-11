@@ -16,16 +16,22 @@ class SaleModel extends SaleEntity {
   });
 
   factory SaleModel.fromJson(Map<String, dynamic> json) {
+    // On gère la liste des items de manière sécurisée
+    List<SaleItemModel> parsedItems = [];
+    if (json['sale_items'] != null) {
+      final List<dynamic> itemsList = json['sale_items'] as List<dynamic>;
+      parsedItems = itemsList.map((itemJson) => SaleItemModel.fromJson(itemJson as Map<String, dynamic>)).toList();
+    }
+
     return SaleModel(
-        id:json['id'],
-        shopId:json ['shop_id'],
-        userId:json ['user_id'],
-        totalAmount:(json['total_amount'] as num).toDouble(),
-        totalProfit: (json['total_profit'] as num).toDouble(),
-        createdAt: DateTime(json['created_at']),
-        items: (json['sale_items'] as List<dynamic>?)
-          ?.map((itemJson) => SaleItemModel.fromJson(itemJson))
-          .toList() ?? [],
+      id: json['id'].toString(),
+      shopId: json['shop_id'].toString(),
+      userId: json['user_id'].toString(),
+      // On force la conversion en double
+      totalAmount: double.parse(json['total_amount'].toString()),
+      totalProfit: double.parse(json['total_profit'].toString()),
+      createdAt: DateTime.parse(json['created_at'].toString()),
+      items: parsedItems,
     );
   }
 

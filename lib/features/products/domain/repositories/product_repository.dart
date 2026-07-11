@@ -9,5 +9,7 @@ abstract class ProductRepository {
   Future<void> createProduct(ProductEntity product);
 
   Future<ProductEntity?> getProductByBarCode(String barcode, String shopId);
+
+  Future<void> updateProduct(ProductEntity product);
   
 }

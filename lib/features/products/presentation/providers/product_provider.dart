@@ -119,7 +119,70 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
       rethrow;
     }
   }
+
+  // Fonction pour modifier un produit
+  Future<void> updateProduct({
+    required String id,
+    required String name,
+    required double buyPrice,
+    required double sellPrice,
+    required int quantity,
+    required int minQuantity,
+    String? barcode,
+    String? existingPhotoUrl,
+    import_io.File? newImageFile,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      final memberResponse = await Supabase.instance.client
+          .from('shop_members')
+          .select('shop_id')
+          .eq('user_id', userId!)
+          .single();
+      final shopId = memberResponse['shop_id'] as String;
+
+      String? finalPhotoUrl = existingPhotoUrl;
+
+      // Si l'utilisateur a choisi une NOUVELLE image, on l'upload
+      if (newImageFile != null) {
+        final fileName = '${shopId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        await Supabase.instance.client.storage
+            .from('product-photos')
+            .upload(fileName, newImageFile);
+        finalPhotoUrl = Supabase.instance.client.storage
+            .from('product-photos')
+            .getPublicUrl(fileName);
+      }
+
+      final String finalBarcode = (barcode == null || barcode.trim().isEmpty)
+          ? 'QR-${DateTime.now().millisecondsSinceEpoch}'
+          : barcode.trim();
+
+      final repository = ref.read(productRepositoryProvider);
+
+      final updatedProduct = ProductEntity(
+        id: id,
+        shopId: shopId,
+        name: name,
+        buyPrice: buyPrice,
+        sellPrice: sellPrice,
+        quantity: quantity,
+        minQuantity: minQuantity,
+        barcode: finalBarcode,
+        photoUrl: finalPhotoUrl,
+      );
+
+      await repository.updateProduct(updatedProduct);
+      state = AsyncValue.data(await _fetchProducts());
+    } catch (e) {
+      state = AsyncValue.data(await _fetchProducts());
+      rethrow;
+    }
+  }
+
 }
+
 // 3. Le Provider final que l'écran va écouter
 final productProvider = AsyncNotifierProvider<ProductNotifier, List<ProductEntity>>(() {
   return ProductNotifier();

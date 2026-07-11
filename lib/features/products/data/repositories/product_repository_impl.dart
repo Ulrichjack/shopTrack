@@ -35,4 +35,21 @@ class ProductRepositoryImpl implements ProductRepository {
   Future<ProductEntity?> getProductByBarCode(String barcode, String shopId) async {
     return remoteDataSource.getProductByBarCode(barcode, shopId);
   }
+
+  @override
+  Future<void> updateProduct(ProductEntity product) async {
+    final productModel = ProductModel(
+      id: product.id,
+      shopId: product.shopId,
+      name: product.name,
+      buyPrice: product.buyPrice,
+      sellPrice: product.sellPrice,
+      quantity: product.quantity,
+      minQuantity: product.minQuantity,
+      barcode: product.barcode,
+      photoUrl: product.photoUrl,
+    );
+    await remoteDataSource.updateProduct(productModel);
+  }
+
 }

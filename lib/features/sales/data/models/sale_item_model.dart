@@ -16,14 +16,14 @@ class SaleItemModel extends SaleItemEntity {
 
   factory SaleItemModel.fromJson(Map<String, dynamic> json) {
     return SaleItemModel(
-      id: json['id'],
-      saleId: json['sale_id'],
-      productId: json['product_id'],
-      productName: json['product_name'],
-      quantity: json['quantity'] as int,
-      sellPrice: (json['sell_price'] as num).toDouble(),
-      buyPrice: (json['buy_price'] as num).toDouble(),
-      profit: (json['profit'] as num).toDouble(),
+      id: json['id'].toString(),
+      saleId: json['sale_id'].toString(),
+      productId: json['product_id'].toString(),
+      productName: json['product_name'].toString(),
+      quantity: int.parse(json['quantity'].toString()),
+      sellPrice: double.parse(json['sell_price'].toString()),
+      buyPrice: double.parse(json['buy_price'].toString()),
+      profit: double.parse(json['profit'].toString()),
     );
   }
 

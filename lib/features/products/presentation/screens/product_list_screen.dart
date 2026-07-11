@@ -1,10 +1,9 @@
-// lib/features/products/presentation/screens/product_list_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../domain/entities/product_entity.dart';
 import '../providers/product_provider.dart';
 
 class ProductListScreen extends ConsumerStatefulWidget {
@@ -18,6 +17,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   String _searchQuery = '';
   String _selectedFilter = 'Tous'; // Peut être 'Tous', 'Stock bas', ou 'Rupture'
 
+  // Calcule la valeur totale du stock (Prix d'achat * Quantité)
+  double _calculateTotalStockValue(List<ProductEntity> products) {
+    return products.fold(0, (total, product) => total + (product.buyPrice * product.quantity));
+  }
+
   @override
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(productProvider);
@@ -30,12 +34,47 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
       ),
       body: Column(
         children: [
-          // 1. Zone de Recherche et Filtres (En-tête)
+          // 1. Zone de Recherche, Filtres et Valeur du stock (En-tête)
           Container(
             color: AppColors.primary,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // 👇 AFFICHAGE DE LA VALEUR DU STOCK CORRIGÉ 👇
+                productsAsync.when(
+                  data: (products) {
+                    final totalValue = _calculateTotalStockValue(products);
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16.0),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryDark.withOpacity(0.5), // Fond légèrement plus sombre pour faire ressortir
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Valeur totale du stock :',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          Text(
+                            CurrencyFormatter.format(totalValue),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+
                 // Barre de recherche
                 TextField(
                   onChanged: (value) {
@@ -58,14 +97,17 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                 const SizedBox(height: 16),
 
                 // Filtres (Tous / Stock bas / Rupture)
-                Row(
-                  children: [
-                    _buildFilterChip('Tous'),
-                    const SizedBox(width: 10),
-                    _buildFilterChip('Stock bas'),
-                    const SizedBox(width: 10),
-                    _buildFilterChip('Rupture'),
-                  ],
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('Tous'),
+                      const SizedBox(width: 10),
+                      _buildFilterChip('Stock bas'),
+                      const SizedBox(width: 10),
+                      _buildFilterChip('Rupture'),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -79,7 +121,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               data: (allProducts) {
 
                 // 👇 LOGIQUE DE FILTRAGE 👇
-                final filteredProducts = allProducts.where((product) {
+                var filteredProducts = allProducts.where((product) {
                   // Filtre par recherche texte
                   final matchesSearch = product.name.toLowerCase().contains(_searchQuery.toLowerCase());
 
@@ -88,11 +130,21 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   if (_selectedFilter == 'Stock bas') {
                     matchesFilter = product.quantity <= product.minQuantity && product.quantity > 0;
                   } else if (_selectedFilter == 'Rupture') {
-                    matchesFilter = product.quantity == 0;
+                    matchesFilter = product.quantity <= 0;
                   }
 
                   return matchesSearch && matchesFilter;
                 }).toList();
+
+                // 👇 NOUVEAU : TRI POUR METTRE LES RUPTURES EN BAS 👇
+                filteredProducts.sort((a, b) {
+                  // Si 'a' est en rupture (<=0) et 'b' a du stock, 'a' va en bas
+                  if (a.quantity <= 0 && b.quantity > 0) return 1;
+                  // Si 'b' est en rupture et 'a' a du stock, 'b' va en bas
+                  if (b.quantity <= 0 && a.quantity > 0) return -1;
+                  // Sinon, on trie par ordre alphabétique
+                  return a.name.compareTo(b.name);
+                });
 
                 if (filteredProducts.isEmpty) {
                   return const Center(
@@ -107,7 +159,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final product = filteredProducts[index];
-                    final bool isOutOfStock = product.quantity == 0;
+                    final bool isOutOfStock = product.quantity <= 0;
                     final bool isLowStock = product.quantity <= product.minQuantity && !isOutOfStock;
 
                     return GestureDetector(
@@ -153,27 +205,31 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 children: [
                                   Text(
                                     product.name,
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        // Si c're en rupture, on grise un peu le nom
+                                        color: isOutOfStock ? Colors.grey : AppColors.textPrimary
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 8),
                                   // Badge
-                                  // Badge
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: product.quantity <= 0 ? Colors.red.shade50 : (isLowStock ? Colors.orange.shade50 : Colors.green.shade50),
+                                      color: isOutOfStock ? Colors.red.shade50 : (isLowStock ? Colors.orange.shade50 : Colors.green.shade50),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
-                                      product.quantity <= 0
+                                      isOutOfStock
                                           ? 'Rupture : 0'
                                           : (isLowStock ? 'Stock bas : ${product.quantity}' : 'En stock : ${product.quantity}'),
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: product.quantity <= 0 ? Colors.red.shade700 : (isLowStock ? Colors.orange.shade800 : Colors.green.shade700),
+                                        color: isOutOfStock ? Colors.red.shade700 : (isLowStock ? Colors.orange.shade800 : Colors.green.shade700),
                                       ),
                                     ),
                                   ),
@@ -187,7 +243,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                               children: [
                                 Text(
                                   CurrencyFormatter.format(product.sellPrice),
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: isOutOfStock ? Colors.grey : AppColors.primary
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 const Text('vente', style: TextStyle(fontSize: 12, color: Colors.grey)),
@@ -205,10 +265,14 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         ],
       ),
 
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         onPressed: () => context.push('/add-product'),
-        child: const Icon(Icons.add, color: Colors.white),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Ajouter un article',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }

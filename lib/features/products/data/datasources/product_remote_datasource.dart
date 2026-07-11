@@ -33,5 +33,13 @@ class ProductRemoteDataSource {
     return ProductModel.fromJson(response);
   }
 
+  // Mettre à jour un produit existant
+  Future<void> updateProduct(ProductModel product) async {
+    await supabase
+        .from('products')
+        .update(product.toJson())
+        .eq('id', product.id);
+  }
+
 
 }
