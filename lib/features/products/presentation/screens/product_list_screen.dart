@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -192,7 +193,14 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                               child: product.photoUrl != null
                                   ? ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.network(product.photoUrl!, fit: BoxFit.cover),
+                                child: CachedNetworkImage(
+                                  imageUrl:product.photoUrl!,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                                  errorWidget: (context, url, error) => const Center(
+                                    child: Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
+                                  ),
+                                ),
                               )
                                   : const Icon(Icons.image, color: Colors.grey),
                             ),

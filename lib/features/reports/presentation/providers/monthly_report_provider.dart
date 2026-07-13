@@ -1,14 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:drift/drift.dart' hide Column;
+import '../../../../core/sync/sync_service.dart';
 import '../../../dashboard/domain/entities/daily_closing_entity.dart';
 
-// Modèle pour stocker les résultats du mois
 class MonthlyReportState {
   final double totalSales;
   final double totalNetProfit;
   final double totalWithdrawals;
-  final double totalCashGap; // L'écart total (s'il y a eu des trous dans la caisse)
+  final double totalCashGap;
   final List<DailyClosingEntity> dailyClosings;
 
   MonthlyReportState({
@@ -20,30 +19,42 @@ class MonthlyReportState {
   });
 }
 
-// On utilise un FamilyProvider pour pouvoir lui passer le mois et l'année en paramètre
+// 👇 NOUVEAU : Lecture 100% Locale (Drift) 👇
 final monthlyReportProvider = FutureProvider.family<MonthlyReportState, DateTime>((ref, date) async {
-  final userId = Supabase.instance.client.auth.currentUser?.id;
-  if (userId == null) throw Exception('Non connecté');
+  final db = ref.read(localDbProvider);
 
-  final memberResponse = await Supabase.instance.client
-      .from('shop_members')
-      .select('shop_id')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
-  final shopId = memberResponse['shop_id'] as String;
+  // Définir le 1er et le dernier jour du mois
+  final startDate = DateTime(date.year, date.month, 1);
+  final endDate = DateTime(date.year, date.month + 1, 0, 23, 59, 59);
 
-  final closingRepo = ref.read(closingRepositoryProvider);
+  // Lire les clôtures locales de ce mois
+  final localClosings = await (db.select(db.localDailyClosings)
+    ..where((t) => t.closingDate.isBetweenValues(startDate, endDate))
+    ..orderBy([(t) => OrderingTerm(expression: t.closingDate)]))
+      .get();
 
-  // On récupère toutes les clôtures du mois demandé
-  final closings = await closingRepo.getClosingsForMonth(shopId, date.year, date.month);
+  final closings = localClosings.map((c) => DailyClosingEntity(
+    id: c.id,
+    shopId: c.shopId,
+    userId: c.userId,
+    closingDate: c.closingDate,
+    morningBalance: c.morningBalance,
+    totalSales: c.totalSales,
+    totalWithdrawals: c.totalWithdrawals,
+    calculatedCash: c.calculatedCash,
+    grossProfit: c.grossProfit,
+    netProfit: c.netProfit,
+    physicalCash: c.physicalCash,
+    cashGap: c.cashGap,
+    isClosed: c.isClosed,
+    note: c.note,
+  )).toList();
 
   double totalSales = 0;
   double totalNetProfit = 0;
   double totalWithdrawals = 0;
   double totalCashGap = 0;
 
-  // On additionne tout !
   for (var closing in closings) {
     totalSales += closing.totalSales;
     totalNetProfit += closing.netProfit;

@@ -1,32 +1,43 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+import 'package:drift/drift.dart' hide Column;
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/sync/sync_service.dart';
+import '../../../../shared/widgets/network_error_widget.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../products/presentation/providers/product_provider.dart';
 import '../../domain/entities/cash_movement_entity.dart';
 
-// 👇 NOUVEAU : Provider pour lister uniquement les sorties du jour
 final todayWithdrawalsProvider = FutureProvider<List<CashMovementEntity>>((ref) async {
-  final userId = Supabase.instance.client.auth.currentUser?.id;
-  final memberResponse = await Supabase.instance.client
-      .from('shop_members')
-      .select('shop_id')
-      .eq('user_id', userId!)
-      .single();
-  final shopId = memberResponse['shop_id'] as String;
+  final db = ref.read(localDbProvider);
 
-  final cashRepo = ref.read(cashRepositoryProvider);
-  final movements = await cashRepo.getTodayMovements(shopId, DateTime.now());
+  final now = DateTime.now();
+  final startOfDay = DateTime(now.year, now.month, now.day);
+  final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
-  // On ne garde que les sorties (withdrawal)
-  final withdrawals = movements.where((m) => m.type == 'withdrawal').toList();
+  final localMovements = await (db.select(db.localCashMovements)
+    ..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay) & t.type.equals('withdrawal')))
+      .get();
 
-  // On trie du plus récent au plus ancien
+  final withdrawals = localMovements.map((m) => CashMovementEntity(
+    id: m.id,
+    shopId: m.shopId,
+    userId: m.userId,
+    amount: m.amount,
+    type: m.type,
+    category: m.category,
+    note: m.note,
+    createdAt: m.createdAt,
+  )).toList();
+
   withdrawals.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
   return withdrawals;
 });
 
@@ -59,31 +70,49 @@ class _CashScreenState extends ConsumerState<CashScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      final memberResponse = await Supabase.instance.client
-          .from('shop_members')
-          .select('shop_id')
-          .eq('user_id', userId!)
-          .single();
-      final shopId = memberResponse['shop_id'] as String;
+      // 👇 CORRECTION : ON UTILISE LA BASE LOCALE (DRIFT) 👇
+      final db = ref.read(localDbProvider);
+      final userId = Supabase.instance.client.auth.currentUser?.id ?? 'offline_user';
 
-      final cashRepo = ref.read(cashRepositoryProvider);
+      final products = ref.read(productProvider).value;
+      if (products == null || products.isEmpty) {
+        throw Exception('Impossible d\'enregistrer une sortie sans produits synchronisés.');
+      }
+      final shopId = products.first.shopId;
 
-      // 1. On enregistre la sortie
-      await cashRepo.addMovement(
-        CashMovementEntity(
-          id: '',
+      final movementId = const Uuid().v4();
+      final now = DateTime.now();
+      final amount = double.parse(_amountController.text);
+
+      // 1. On enregistre la sortie en LOCAL
+      await db.into(db.localCashMovements).insert(
+        LocalCashMovement(
+          id: movementId,
           shopId: shopId,
           userId: userId,
-          amount: double.parse(_amountController.text),
+          amount: amount,
           type: 'withdrawal',
           category: _selectedCategory,
           note: _noteController.text.isEmpty ? null : _noteController.text,
-          createdAt: DateTime.now(),
+          createdAt: now,
         ),
       );
 
-      // 2. On met à jour le Dashboard ET la liste en bas de l'écran
+      // 2. On met dans la SALLE D'ATTENTE pour Supabase
+      final payload = {
+        'id': movementId,
+        'shop_id': shopId,
+        'user_id': userId,
+        'amount': amount,
+        'type': 'withdrawal',
+        'category': _selectedCategory,
+        'note': _noteController.text.isEmpty ? null : _noteController.text,
+        'created_at': now.toIso8601String(),
+      };
+      await db.addToQueue('ADD_CASH_MOVEMENT', jsonEncode(payload));
+      ref.read(syncServiceProvider).processQueue();
+
+      // 3. On met à jour le Dashboard ET la liste en bas de l'écran
       ref.invalidate(dashboardProvider);
       ref.invalidate(todayWithdrawalsProvider);
 
@@ -91,7 +120,6 @@ class _CashScreenState extends ConsumerState<CashScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Sortie de caisse enregistrée'), backgroundColor: AppColors.primary),
         );
-        // On vide les champs pour une éventuelle autre saisie
         _amountController.clear();
         _noteController.clear();
       }
@@ -114,14 +142,13 @@ class _CashScreenState extends ConsumerState<CashScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Sortie de caisse'),
-        backgroundColor: Colors.red.shade600, // Rouge pour indiquer une dépense
+        backgroundColor: Colors.red.shade600,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // --- 1. FORMULAIRE DE SAISIE ---
             Form(
               key: _formKey,
               child: Column(
@@ -205,13 +232,16 @@ class _CashScreenState extends ConsumerState<CashScreen> {
             const Divider(thickness: 2),
             const SizedBox(height: 20),
 
-            // --- 2. LISTE DES SORTIES DU JOUR ---
             const Text('SORTIES DU JOUR', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
             const SizedBox(height: 16),
 
             withdrawalsAsync.when(
+              skipError: true,
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Text('Erreur : $err'),
+              error: (err, stack) => NetworkErrorWidget(
+                error: err.toString(),
+                onRetry: () => ref.invalidate(todayWithdrawalsProvider),
+              ),
               data: (withdrawals) {
                 if (withdrawals.isEmpty) {
                   return Container(
@@ -223,12 +253,10 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                   );
                 }
 
-                // Calcul du total des sorties du jour
                 final totalSorties = withdrawals.fold(0.0, (sum, item) => sum + item.amount);
 
                 return Column(
                   children: [
-                    // Petit résumé du total
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -249,7 +277,6 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // La liste
                     ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),

@@ -47,3 +47,4 @@ app.*.map.json
 .env
 # Supabase config
 lib/supabase_config.dart.env
+lib/supabase_config.dart

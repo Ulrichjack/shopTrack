@@ -1,25 +1,22 @@
-// lib/features/sales/presentation/screens/sales_history_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/network_error_widget.dart';
-import '../../../dashboard/presentation/providers/dashboard_provider.dart';
-import '../../../sales/presentation/providers/sale_provider.dart';
+import '../../../../core/sync/sync_service.dart'; // Pour accéder à localDbProvider
+import 'package:drift/drift.dart' hide Column;
 
-/// Modèle pour mélanger Ventes et Sorties dans l'ordre chronologique
+// --- 1. MODÈLE DE DONNÉES ---
 class TransactionItem {
   final String id;
   final String title;
   final String subtitle;
   final double amount;
   final DateTime time;
-  final bool isIncome; // vrai pour les ventes, faux pour les sorties/dépenses
+  final bool isIncome;
   final String? note;
-  final List<String>? details; // Liste des articles vendus
+  final List<String>? details;
 
   TransactionItem({
     required this.id,
@@ -33,32 +30,25 @@ class TransactionItem {
   });
 }
 
-/// PROVIDER CORRIGÉ : Indépendant du Dashboard pour éviter les rechargements inutiles
+// --- 2. PROVIDER 100% LOCAL (Drift) ---
 final dailyTransactionsProvider = FutureProvider.family<List<TransactionItem>, DateTime>((ref, date) async {
-  final userId = Supabase.instance.client.auth.currentUser?.id;
-  if (userId == null) throw Exception('Non connecté');
-
-  final memberResponse = await Supabase.instance.client
-      .from('shop_members')
-      .select('shop_id')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
-  final shopId = memberResponse['shop_id'] as String;
-
-  final saleRepo = ref.read(saleRepositoryProvider);
-  final cashRepo = ref.read(cashRepositoryProvider);
-
-  // On récupère les ventes et les mouvements de caisse pour la date demandée
-  final sales = await saleRepo.getDailySales(shopId, date);
-  final cashMovements = await cashRepo.getTodayMovements(shopId, date);
-
+  final db = ref.read(localDbProvider);
   final List<TransactionItem> list = [];
 
-  // On transforme les ventes en transactions avec leurs détails
-  for (var sale in sales) {
-    // On extrait le nom, la quantité ET LE PRIX TOTAL de chaque produit vendu
-    final productList = sale.items.map((item) {
+  // On définit le début et la fin de la journée sélectionnée
+  final startOfDay = DateTime(date.year, date.month, date.day);
+  final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+  // 1. Récupérer les VENTES locales de la journée
+  final localSales = await (db.select(db.localSales)
+    ..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay)))
+      .get();
+
+  for (var sale in localSales) {
+    // Récupérer les articles de cette vente spécifique
+    final items = await (db.select(db.localSaleItems)..where((t) => t.saleId.equals(sale.id))).get();
+
+    final productList = items.map((item) {
       final totalLigne = item.quantity * item.sellPrice;
       return '${item.quantity} x ${item.productName}  (${CurrencyFormatter.format(totalLigne)})';
     }).toList();
@@ -67,7 +57,7 @@ final dailyTransactionsProvider = FutureProvider.family<List<TransactionItem>, D
       TransactionItem(
         id: sale.id,
         title: 'Vente',
-        subtitle: '${sale.items.length} article(s)',
+        subtitle: '${items.length} article(s)',
         amount: sale.totalAmount,
         time: sale.createdAt,
         isIncome: true,
@@ -76,28 +66,35 @@ final dailyTransactionsProvider = FutureProvider.family<List<TransactionItem>, D
     );
   }
 
-  // On transforme les mouvements de caisse en transactions
-  for (var movement in cashMovements) {
-    if (movement.type == 'morning_balance') continue; // On ignore le solde du matin
+  // 2. Récupérer les SORTIES DE CAISSE locales de la journée
+  final localCashMovements = await (db.select(db.localCashMovements)
+    ..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay)))
+      .get();
+
+  for (var movement in localCashMovements) {
 
     list.add(
       TransactionItem(
         id: movement.id,
-        title: movement.type == 'withdrawal' ? 'Sortie : ${movement.category}' : 'Entrée caisse',
+        title: movement.type == 'morning_balance'
+            ? 'Solde Matin' // 👈 On gère le titre
+            : (movement.type == 'withdrawal' ? 'Sortie : ${movement.category}' : 'Entrée caisse'),
         subtitle: movement.note ?? 'Aucun détail',
         amount: movement.amount,
         time: movement.createdAt,
-        isIncome: false,
+        isIncome: movement.type == 'morning_balance', // 👈 Le solde matin est une entrée
         note: movement.note,
       ),
     );
   }
 
-  // On trie tout du plus récent au plus ancien
+
+  // 3. Trier du plus récent au plus ancien
   list.sort((a, b) => b.time.compareTo(a.time));
   return list;
 });
 
+// --- 3. L'ÉCRAN (UI) ---
 class SalesHistoryScreen extends ConsumerStatefulWidget {
   const SalesHistoryScreen({super.key});
 
@@ -125,13 +122,12 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
     return date.year == now.year && date.month == now.month && date.day == now.day;
   }
 
-  // Fonction pour ouvrir le calendrier natif
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime(2023), // L'année de création de l'app
-      lastDate: DateTime.now(),  // On bloque les dates futures
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now(),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -169,7 +165,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
       ),
       body: Column(
         children: [
-          // 1. SÉLECTEUR DE DATE EN HAUT
+          // SÉLECTEUR DE DATE
           Container(
             color: AppColors.primary,
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -180,7 +176,6 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                   icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 18),
                   onPressed: _previousDay,
                 ),
-                // La date est maintenant cliquable pour ouvrir le calendrier
                 GestureDetector(
                   onTap: _pickDate,
                   child: Row(
@@ -203,16 +198,26 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
             ),
           ),
 
-          // 2. BANDEAU DE RÉSUMÉ DE LA JOURNÉE
+          // BANDEAU DE RÉSUMÉ
+          // BANDEAU DE RÉSUMÉ
           transactionsAsync.maybeWhen(
             data: (transactions) {
               if (transactions.isEmpty) return const SizedBox.shrink();
 
-              double totalEntrees = 0;
+              double soldeMatin = 0;
+              double totalVentes = 0;
               double totalSorties = 0;
+              bool soldeMatinTrouve = false; // 👈 AJOUT : Pour ne prendre que le premier
+
               for (var t in transactions) {
-                if (t.isIncome) {
-                  totalEntrees += t.amount;
+                if (t.title == 'Solde Matin') {
+                  // 👈 CORRECTION : On prend le premier (le plus récent) et on ignore les autres
+                  if (!soldeMatinTrouve) {
+                    soldeMatin = t.amount;
+                    soldeMatinTrouve = true;
+                  }
+                } else if (t.isIncome) {
+                  totalVentes += t.amount;
                 } else {
                   totalSorties += t.amount;
                 }
@@ -226,10 +231,20 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                   children: [
                     Column(
                       children: [
-                        const Text('Entrées', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        const Text('Solde Matin', style: TextStyle(color: Colors.grey, fontSize: 12)),
                         Text(
-                          CurrencyFormatter.format(totalEntrees),
-                          style: const TextStyle(color: Color(0xFF27500A), fontWeight: FontWeight.bold, fontSize: 16),
+                          CurrencyFormatter.format(soldeMatin),
+                          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                    Container(height: 30, width: 1, color: Colors.grey.shade300),
+                    Column(
+                      children: [
+                        const Text('Ventes', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        Text(
+                          CurrencyFormatter.format(totalVentes),
+                          style: const TextStyle(color: Color(0xFF27500A), fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                       ],
                     ),
@@ -239,7 +254,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                         const Text('Sorties', style: TextStyle(color: Colors.grey, fontSize: 12)),
                         Text(
                           CurrencyFormatter.format(totalSorties),
-                          style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold, fontSize: 16),
+                          style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                       ],
                     ),
@@ -249,13 +264,12 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
             },
             orElse: () => const SizedBox.shrink(),
           ),
-
-          // 3. LISTE DES TRANSACTIONS
+          // LISTE DES TRANSACTIONS
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async => ref.invalidate(dailyTransactionsProvider(_selectedDate)),
               child: transactionsAsync.when(
-                skipError: true, // 👈 On ajoute ça
+                skipError: true,
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, stack) => NetworkErrorWidget(
                   error: err.toString(),
@@ -340,7 +354,6 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                               ],
                             ),
 
-                            // AFFICHAGE DU REÇU DÉTAILLÉ DE LA VENTE
                             if (tx.isIncome && tx.details != null && tx.details!.isNotEmpty) ...[
                               const SizedBox(height: 12),
                               Container(
@@ -376,7 +389,6 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                               ),
                             ],
 
-                            // AFFICHAGE DE LA NOTE DE LA DÉPENSE
                             if (!tx.isIncome && tx.note != null && tx.note!.isNotEmpty) ...[
                               const SizedBox(height: 12),
                               Container(

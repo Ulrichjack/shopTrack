@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/network_error_widget.dart';
 import '../../../products/presentation/providers/product_provider.dart';
@@ -15,38 +17,128 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  // 👇 1. LA VARIABLE MANQUANTE EST ICI
+  bool _isDialogOpen = false;
 
-  // Cette fonction s'exécute juste après que l'écran soit dessiné
   @override
   void initState() {
     super.initState();
-    // On attend un tout petit peu que Riverpod charge les données
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkMorningBalance();
+      _checkAlerts();
     });
   }
 
-  // Vérifie si on doit afficher la popup du solde du matin
-  void _checkMorningBalance() {
+  void _checkAlerts() {
+    // 👇 2. SÉCURITÉ : Si une boîte est déjà ouverte, on ne fait rien
+    if (_isDialogOpen) return;
+
     final state = ref.read(dashboardProvider);
     state.whenData((data) {
-      // Si la journée n'est pas clôturée ET que le solde du matin est à 0
-      if (!data.isClosed && data.morningBalance == 0) {
+      if (data.needsPreviousDayClosing && data.dateToClose != null) {
+        setState(() => _isDialogOpen = true);
+        _showForceClosingDialog(data.dateToClose!);
+      } else if (!data.isClosed && data.morningBalance == 0) {
+        setState(() => _isDialogOpen = true);
         _showMorningBalanceDialog();
       }
     });
   }
 
-  // La fameuse popup du matin (maintenant modifiable)
+  void _showForceClosingDialog(DateTime dateToClose) {
+    final dateStr = DateFormat('dd/MM/yyyy').format(dateToClose);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false,
+        child: AlertDialog(
+          backgroundColor: Colors.white,
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 32),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text(
+                      'Clôture manquante !',
+                      style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold)
+                  )
+              ),
+            ],
+          ),
+          content: Text(
+            'Tu as oublié de clôturer la caisse pour la journée du $dateStr.\n\n'
+                'Tu dois absolument faire le comptage de cette journée avant de pouvoir enregistrer de nouvelles ventes.',
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showQuickClosingDialog(dateToClose);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              child: const Text('Clôturer maintenant', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showQuickClosingDialog(DateTime dateToClose) {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false,
+        child: AlertDialog(
+          title: const Text('Comptage Physique'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Combien d\'argent y avait-il dans la caisse à la fin du ${DateFormat('dd/MM').format(dateToClose)} ?'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Montant compté (FCFA)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () async {
+                final amount = double.tryParse(controller.text);
+                if (amount != null) {
+                  Navigator.pop(context);
+                  setState(() => _isDialogOpen = false); // Libère le verrou
+                  await ref.read(dashboardProvider.notifier).closeDay(amount, 'Clôture en retard', specificDate: dateToClose);
+                  _checkAlerts();
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Valider', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showMorningBalanceDialog({double currentBalance = 0}) {
-    // Si on a déjà un solde, on le pré-remplit dans le champ
     final controller = TextEditingController(
       text: currentBalance > 0 ? currentBalance.toInt().toString() : '',
     );
 
     showDialog(
       context: context,
-      barrierDismissible: currentBalance > 0, // On peut fermer en cliquant à côté SEULEMENT si on a déjà un solde
+      barrierDismissible: currentBalance > 0,
       builder: (context) => AlertDialog(
         title: const Text('Solde de la caisse', textAlign: TextAlign.center),
         content: Column(
@@ -66,19 +158,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         actions: [
-          // Bouton Annuler (visible uniquement si on modifie un solde existant)
           if (currentBalance > 0)
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() => _isDialogOpen = false); // Libère le verrou
+              },
               child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
             ),
-
           ElevatedButton(
             onPressed: () {
-              final amount = double.tryParse(controller.text);
+              final cleanText = controller.text.replaceAll(' ', '');
+              final amount = double.tryParse(cleanText);
+
               if (amount != null) {
                 ref.read(dashboardProvider.notifier).saveMorningBalance(amount);
                 Navigator.pop(context);
+                setState(() => _isDialogOpen = false); // Libère le verrou
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
@@ -89,7 +185,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // Petit widget pour dessiner les cartes
   Widget _buildStatCard(String title, String amount, IconData icon, Color color, {bool isLarge = false}) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -118,6 +213,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final dashboardAsync = ref.watch(dashboardProvider);
+    final isBossMode = ref.watch(appModeProvider).value ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -125,13 +221,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: const Text('ShopTrack', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.person), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () => context.push('/profile'),
+          ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dashboardProvider),
         child: dashboardAsync.when(
-          skipError: true, // 👈 LA MAGIE EST ICI : Si on a déjà les données, on ignore l'erreur réseau !
+          skipError: true,
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => NetworkErrorWidget(
             error: err.toString(),
@@ -145,7 +244,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
 
-                  // ... (Garde ton code existant pour le bandeau rouge "Journée clôturée") ...
                   if (data.isClosed)
                     Container(
                       margin: const EdgeInsets.only(bottom: 20),
@@ -173,9 +271,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text("Aujourd'hui", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                      // Petit badge gris pour le solde du matin (CLIQUABLE)
                       GestureDetector(
-                        onTap: data.isClosed ? null : () => _showMorningBalanceDialog(currentBalance: data.morningBalance),
+                        onTap: data.isClosed ? null : () {
+                          setState(() => _isDialogOpen = true);
+                          _showMorningBalanceDialog(currentBalance: data.morningBalance);
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
@@ -198,7 +298,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Grande carte : CAISSE CALCULÉE
                   _buildStatCard(
                     'Caisse Actuelle (Calculée)',
                     CurrencyFormatter.format(data.calculatedCash),
@@ -208,18 +307,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Deux petites cartes : Bénéfice net et Sorties
                   Row(
                     children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          'Bénéfice Net',
-                          CurrencyFormatter.format(data.netProfit),
-                          Icons.trending_up,
-                          AppColors.primaryDark,
+                      if (isBossMode)
+                        Expanded(
+                          child: _buildStatCard(
+                            'Bénéfice Net',
+                            CurrencyFormatter.format(data.netProfit),
+                            Icons.trending_up,
+                            AppColors.primaryDark,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
+                      if (isBossMode) const SizedBox(width: 16),
+
                       Expanded(
                         child: GestureDetector(
                           onTap: data.isClosed ? null : () => context.push('/cash-out'),
@@ -236,7 +336,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                   const SizedBox(height: 40),
 
-                  // Bouton Nouvelle Vente
                   ElevatedButton.icon(
                     onPressed: data.isClosed ? null : () => context.push('/sales/new'),
                     style: ElevatedButton.styleFrom(
@@ -250,7 +349,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Bouton Gérer le stock
                   OutlinedButton.icon(
                     onPressed: () => context.push('/products'),
                     style: OutlinedButton.styleFrom(
@@ -264,17 +362,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                   const SizedBox(height: 40),
 
-                  // 👇 NOUVEAU : SECTION ALERTES STOCK BAS 👇
                   Consumer(
                     builder: (context, ref, child) {
                       final productsAsync = ref.watch(productProvider);
 
                       return productsAsync.when(
                         data: (products) {
-                          // On filtre les produits en alerte (quantité <= minQuantity)
                           final lowStockProducts = products.where((p) => p.quantity <= p.minQuantity).toList();
-
-                          if (lowStockProducts.isEmpty) return const SizedBox.shrink(); // Rien à afficher si tout va bien
+                          if (lowStockProducts.isEmpty) return const SizedBox.shrink();
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,10 +379,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2),
                               ),
                               const SizedBox(height: 12),
-
-                              // Liste des alertes
                               ListView.separated(
-                                shrinkWrap: true, // Important pour mettre une ListView dans une ScrollView
+                                shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: lowStockProducts.length,
                                 separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -336,16 +429,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       );
                     },
                   ),
-                  // 👆 FIN SECTION ALERTES 👆
 
                   const SizedBox(height: 40),
 
-                  // Bouton Clôturer la journée
-                  if (!data.isClosed)
+                  if (!data.isClosed && isBossMode)
                     ElevatedButton.icon(
                       onPressed: () => context.push('/closing'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueGrey.shade800, // Couleur sérieuse
+                        backgroundColor: Colors.blueGrey.shade800,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),

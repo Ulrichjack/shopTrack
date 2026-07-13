@@ -1990,6 +1990,1242 @@ class LocalCashMovementsCompanion extends UpdateCompanion<LocalCashMovement> {
   }
 }
 
+class $LocalStockMovementsTable extends LocalStockMovements
+    with TableInfo<$LocalStockMovementsTable, LocalStockMovement> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalStockMovementsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _shopIdMeta = const VerificationMeta('shopId');
+  @override
+  late final GeneratedColumn<String> shopId = GeneratedColumn<String>(
+    'shop_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    shopId,
+    productId,
+    quantity,
+    type,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_stock_movements';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalStockMovement> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('shop_id')) {
+      context.handle(
+        _shopIdMeta,
+        shopId.isAcceptableOrUnknown(data['shop_id']!, _shopIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_shopIdMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalStockMovement map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalStockMovement(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      shopId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shop_id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalStockMovementsTable createAlias(String alias) {
+    return $LocalStockMovementsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalStockMovement extends DataClass
+    implements Insertable<LocalStockMovement> {
+  final String id;
+  final String shopId;
+  final String productId;
+  final int quantity;
+  final String type;
+  final DateTime createdAt;
+  const LocalStockMovement({
+    required this.id,
+    required this.shopId,
+    required this.productId,
+    required this.quantity,
+    required this.type,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['shop_id'] = Variable<String>(shopId);
+    map['product_id'] = Variable<String>(productId);
+    map['quantity'] = Variable<int>(quantity);
+    map['type'] = Variable<String>(type);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  LocalStockMovementsCompanion toCompanion(bool nullToAbsent) {
+    return LocalStockMovementsCompanion(
+      id: Value(id),
+      shopId: Value(shopId),
+      productId: Value(productId),
+      quantity: Value(quantity),
+      type: Value(type),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory LocalStockMovement.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalStockMovement(
+      id: serializer.fromJson<String>(json['id']),
+      shopId: serializer.fromJson<String>(json['shopId']),
+      productId: serializer.fromJson<String>(json['productId']),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      type: serializer.fromJson<String>(json['type']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'shopId': serializer.toJson<String>(shopId),
+      'productId': serializer.toJson<String>(productId),
+      'quantity': serializer.toJson<int>(quantity),
+      'type': serializer.toJson<String>(type),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  LocalStockMovement copyWith({
+    String? id,
+    String? shopId,
+    String? productId,
+    int? quantity,
+    String? type,
+    DateTime? createdAt,
+  }) => LocalStockMovement(
+    id: id ?? this.id,
+    shopId: shopId ?? this.shopId,
+    productId: productId ?? this.productId,
+    quantity: quantity ?? this.quantity,
+    type: type ?? this.type,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  LocalStockMovement copyWithCompanion(LocalStockMovementsCompanion data) {
+    return LocalStockMovement(
+      id: data.id.present ? data.id.value : this.id,
+      shopId: data.shopId.present ? data.shopId.value : this.shopId,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      type: data.type.present ? data.type.value : this.type,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalStockMovement(')
+          ..write('id: $id, ')
+          ..write('shopId: $shopId, ')
+          ..write('productId: $productId, ')
+          ..write('quantity: $quantity, ')
+          ..write('type: $type, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, shopId, productId, quantity, type, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalStockMovement &&
+          other.id == this.id &&
+          other.shopId == this.shopId &&
+          other.productId == this.productId &&
+          other.quantity == this.quantity &&
+          other.type == this.type &&
+          other.createdAt == this.createdAt);
+}
+
+class LocalStockMovementsCompanion extends UpdateCompanion<LocalStockMovement> {
+  final Value<String> id;
+  final Value<String> shopId;
+  final Value<String> productId;
+  final Value<int> quantity;
+  final Value<String> type;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const LocalStockMovementsCompanion({
+    this.id = const Value.absent(),
+    this.shopId = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.type = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalStockMovementsCompanion.insert({
+    required String id,
+    required String shopId,
+    required String productId,
+    required int quantity,
+    required String type,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       shopId = Value(shopId),
+       productId = Value(productId),
+       quantity = Value(quantity),
+       type = Value(type),
+       createdAt = Value(createdAt);
+  static Insertable<LocalStockMovement> custom({
+    Expression<String>? id,
+    Expression<String>? shopId,
+    Expression<String>? productId,
+    Expression<int>? quantity,
+    Expression<String>? type,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (shopId != null) 'shop_id': shopId,
+      if (productId != null) 'product_id': productId,
+      if (quantity != null) 'quantity': quantity,
+      if (type != null) 'type': type,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalStockMovementsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? shopId,
+    Value<String>? productId,
+    Value<int>? quantity,
+    Value<String>? type,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return LocalStockMovementsCompanion(
+      id: id ?? this.id,
+      shopId: shopId ?? this.shopId,
+      productId: productId ?? this.productId,
+      quantity: quantity ?? this.quantity,
+      type: type ?? this.type,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (shopId.present) {
+      map['shop_id'] = Variable<String>(shopId.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalStockMovementsCompanion(')
+          ..write('id: $id, ')
+          ..write('shopId: $shopId, ')
+          ..write('productId: $productId, ')
+          ..write('quantity: $quantity, ')
+          ..write('type: $type, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalDailyClosingsTable extends LocalDailyClosings
+    with TableInfo<$LocalDailyClosingsTable, LocalDailyClosing> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalDailyClosingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _shopIdMeta = const VerificationMeta('shopId');
+  @override
+  late final GeneratedColumn<String> shopId = GeneratedColumn<String>(
+    'shop_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _closingDateMeta = const VerificationMeta(
+    'closingDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> closingDate = GeneratedColumn<DateTime>(
+    'closing_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _morningBalanceMeta = const VerificationMeta(
+    'morningBalance',
+  );
+  @override
+  late final GeneratedColumn<double> morningBalance = GeneratedColumn<double>(
+    'morning_balance',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalSalesMeta = const VerificationMeta(
+    'totalSales',
+  );
+  @override
+  late final GeneratedColumn<double> totalSales = GeneratedColumn<double>(
+    'total_sales',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalWithdrawalsMeta = const VerificationMeta(
+    'totalWithdrawals',
+  );
+  @override
+  late final GeneratedColumn<double> totalWithdrawals = GeneratedColumn<double>(
+    'total_withdrawals',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _calculatedCashMeta = const VerificationMeta(
+    'calculatedCash',
+  );
+  @override
+  late final GeneratedColumn<double> calculatedCash = GeneratedColumn<double>(
+    'calculated_cash',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _grossProfitMeta = const VerificationMeta(
+    'grossProfit',
+  );
+  @override
+  late final GeneratedColumn<double> grossProfit = GeneratedColumn<double>(
+    'gross_profit',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _netProfitMeta = const VerificationMeta(
+    'netProfit',
+  );
+  @override
+  late final GeneratedColumn<double> netProfit = GeneratedColumn<double>(
+    'net_profit',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _physicalCashMeta = const VerificationMeta(
+    'physicalCash',
+  );
+  @override
+  late final GeneratedColumn<double> physicalCash = GeneratedColumn<double>(
+    'physical_cash',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cashGapMeta = const VerificationMeta(
+    'cashGap',
+  );
+  @override
+  late final GeneratedColumn<double> cashGap = GeneratedColumn<double>(
+    'cash_gap',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isClosedMeta = const VerificationMeta(
+    'isClosed',
+  );
+  @override
+  late final GeneratedColumn<bool> isClosed = GeneratedColumn<bool>(
+    'is_closed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_closed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    shopId,
+    userId,
+    closingDate,
+    morningBalance,
+    totalSales,
+    totalWithdrawals,
+    calculatedCash,
+    grossProfit,
+    netProfit,
+    physicalCash,
+    cashGap,
+    isClosed,
+    note,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_daily_closings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalDailyClosing> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('shop_id')) {
+      context.handle(
+        _shopIdMeta,
+        shopId.isAcceptableOrUnknown(data['shop_id']!, _shopIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_shopIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('closing_date')) {
+      context.handle(
+        _closingDateMeta,
+        closingDate.isAcceptableOrUnknown(
+          data['closing_date']!,
+          _closingDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_closingDateMeta);
+    }
+    if (data.containsKey('morning_balance')) {
+      context.handle(
+        _morningBalanceMeta,
+        morningBalance.isAcceptableOrUnknown(
+          data['morning_balance']!,
+          _morningBalanceMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_morningBalanceMeta);
+    }
+    if (data.containsKey('total_sales')) {
+      context.handle(
+        _totalSalesMeta,
+        totalSales.isAcceptableOrUnknown(data['total_sales']!, _totalSalesMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_totalSalesMeta);
+    }
+    if (data.containsKey('total_withdrawals')) {
+      context.handle(
+        _totalWithdrawalsMeta,
+        totalWithdrawals.isAcceptableOrUnknown(
+          data['total_withdrawals']!,
+          _totalWithdrawalsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalWithdrawalsMeta);
+    }
+    if (data.containsKey('calculated_cash')) {
+      context.handle(
+        _calculatedCashMeta,
+        calculatedCash.isAcceptableOrUnknown(
+          data['calculated_cash']!,
+          _calculatedCashMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_calculatedCashMeta);
+    }
+    if (data.containsKey('gross_profit')) {
+      context.handle(
+        _grossProfitMeta,
+        grossProfit.isAcceptableOrUnknown(
+          data['gross_profit']!,
+          _grossProfitMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_grossProfitMeta);
+    }
+    if (data.containsKey('net_profit')) {
+      context.handle(
+        _netProfitMeta,
+        netProfit.isAcceptableOrUnknown(data['net_profit']!, _netProfitMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_netProfitMeta);
+    }
+    if (data.containsKey('physical_cash')) {
+      context.handle(
+        _physicalCashMeta,
+        physicalCash.isAcceptableOrUnknown(
+          data['physical_cash']!,
+          _physicalCashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cash_gap')) {
+      context.handle(
+        _cashGapMeta,
+        cashGap.isAcceptableOrUnknown(data['cash_gap']!, _cashGapMeta),
+      );
+    }
+    if (data.containsKey('is_closed')) {
+      context.handle(
+        _isClosedMeta,
+        isClosed.isAcceptableOrUnknown(data['is_closed']!, _isClosedMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalDailyClosing map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalDailyClosing(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      shopId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shop_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      closingDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}closing_date'],
+      )!,
+      morningBalance: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}morning_balance'],
+      )!,
+      totalSales: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}total_sales'],
+      )!,
+      totalWithdrawals: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}total_withdrawals'],
+      )!,
+      calculatedCash: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}calculated_cash'],
+      )!,
+      grossProfit: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}gross_profit'],
+      )!,
+      netProfit: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}net_profit'],
+      )!,
+      physicalCash: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}physical_cash'],
+      ),
+      cashGap: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cash_gap'],
+      ),
+      isClosed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_closed'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+    );
+  }
+
+  @override
+  $LocalDailyClosingsTable createAlias(String alias) {
+    return $LocalDailyClosingsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalDailyClosing extends DataClass
+    implements Insertable<LocalDailyClosing> {
+  final String id;
+  final String shopId;
+  final String userId;
+  final DateTime closingDate;
+  final double morningBalance;
+  final double totalSales;
+  final double totalWithdrawals;
+  final double calculatedCash;
+  final double grossProfit;
+  final double netProfit;
+  final double? physicalCash;
+  final double? cashGap;
+  final bool isClosed;
+  final String? note;
+  const LocalDailyClosing({
+    required this.id,
+    required this.shopId,
+    required this.userId,
+    required this.closingDate,
+    required this.morningBalance,
+    required this.totalSales,
+    required this.totalWithdrawals,
+    required this.calculatedCash,
+    required this.grossProfit,
+    required this.netProfit,
+    this.physicalCash,
+    this.cashGap,
+    required this.isClosed,
+    this.note,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['shop_id'] = Variable<String>(shopId);
+    map['user_id'] = Variable<String>(userId);
+    map['closing_date'] = Variable<DateTime>(closingDate);
+    map['morning_balance'] = Variable<double>(morningBalance);
+    map['total_sales'] = Variable<double>(totalSales);
+    map['total_withdrawals'] = Variable<double>(totalWithdrawals);
+    map['calculated_cash'] = Variable<double>(calculatedCash);
+    map['gross_profit'] = Variable<double>(grossProfit);
+    map['net_profit'] = Variable<double>(netProfit);
+    if (!nullToAbsent || physicalCash != null) {
+      map['physical_cash'] = Variable<double>(physicalCash);
+    }
+    if (!nullToAbsent || cashGap != null) {
+      map['cash_gap'] = Variable<double>(cashGap);
+    }
+    map['is_closed'] = Variable<bool>(isClosed);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    return map;
+  }
+
+  LocalDailyClosingsCompanion toCompanion(bool nullToAbsent) {
+    return LocalDailyClosingsCompanion(
+      id: Value(id),
+      shopId: Value(shopId),
+      userId: Value(userId),
+      closingDate: Value(closingDate),
+      morningBalance: Value(morningBalance),
+      totalSales: Value(totalSales),
+      totalWithdrawals: Value(totalWithdrawals),
+      calculatedCash: Value(calculatedCash),
+      grossProfit: Value(grossProfit),
+      netProfit: Value(netProfit),
+      physicalCash: physicalCash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(physicalCash),
+      cashGap: cashGap == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cashGap),
+      isClosed: Value(isClosed),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+    );
+  }
+
+  factory LocalDailyClosing.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalDailyClosing(
+      id: serializer.fromJson<String>(json['id']),
+      shopId: serializer.fromJson<String>(json['shopId']),
+      userId: serializer.fromJson<String>(json['userId']),
+      closingDate: serializer.fromJson<DateTime>(json['closingDate']),
+      morningBalance: serializer.fromJson<double>(json['morningBalance']),
+      totalSales: serializer.fromJson<double>(json['totalSales']),
+      totalWithdrawals: serializer.fromJson<double>(json['totalWithdrawals']),
+      calculatedCash: serializer.fromJson<double>(json['calculatedCash']),
+      grossProfit: serializer.fromJson<double>(json['grossProfit']),
+      netProfit: serializer.fromJson<double>(json['netProfit']),
+      physicalCash: serializer.fromJson<double?>(json['physicalCash']),
+      cashGap: serializer.fromJson<double?>(json['cashGap']),
+      isClosed: serializer.fromJson<bool>(json['isClosed']),
+      note: serializer.fromJson<String?>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'shopId': serializer.toJson<String>(shopId),
+      'userId': serializer.toJson<String>(userId),
+      'closingDate': serializer.toJson<DateTime>(closingDate),
+      'morningBalance': serializer.toJson<double>(morningBalance),
+      'totalSales': serializer.toJson<double>(totalSales),
+      'totalWithdrawals': serializer.toJson<double>(totalWithdrawals),
+      'calculatedCash': serializer.toJson<double>(calculatedCash),
+      'grossProfit': serializer.toJson<double>(grossProfit),
+      'netProfit': serializer.toJson<double>(netProfit),
+      'physicalCash': serializer.toJson<double?>(physicalCash),
+      'cashGap': serializer.toJson<double?>(cashGap),
+      'isClosed': serializer.toJson<bool>(isClosed),
+      'note': serializer.toJson<String?>(note),
+    };
+  }
+
+  LocalDailyClosing copyWith({
+    String? id,
+    String? shopId,
+    String? userId,
+    DateTime? closingDate,
+    double? morningBalance,
+    double? totalSales,
+    double? totalWithdrawals,
+    double? calculatedCash,
+    double? grossProfit,
+    double? netProfit,
+    Value<double?> physicalCash = const Value.absent(),
+    Value<double?> cashGap = const Value.absent(),
+    bool? isClosed,
+    Value<String?> note = const Value.absent(),
+  }) => LocalDailyClosing(
+    id: id ?? this.id,
+    shopId: shopId ?? this.shopId,
+    userId: userId ?? this.userId,
+    closingDate: closingDate ?? this.closingDate,
+    morningBalance: morningBalance ?? this.morningBalance,
+    totalSales: totalSales ?? this.totalSales,
+    totalWithdrawals: totalWithdrawals ?? this.totalWithdrawals,
+    calculatedCash: calculatedCash ?? this.calculatedCash,
+    grossProfit: grossProfit ?? this.grossProfit,
+    netProfit: netProfit ?? this.netProfit,
+    physicalCash: physicalCash.present ? physicalCash.value : this.physicalCash,
+    cashGap: cashGap.present ? cashGap.value : this.cashGap,
+    isClosed: isClosed ?? this.isClosed,
+    note: note.present ? note.value : this.note,
+  );
+  LocalDailyClosing copyWithCompanion(LocalDailyClosingsCompanion data) {
+    return LocalDailyClosing(
+      id: data.id.present ? data.id.value : this.id,
+      shopId: data.shopId.present ? data.shopId.value : this.shopId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      closingDate: data.closingDate.present
+          ? data.closingDate.value
+          : this.closingDate,
+      morningBalance: data.morningBalance.present
+          ? data.morningBalance.value
+          : this.morningBalance,
+      totalSales: data.totalSales.present
+          ? data.totalSales.value
+          : this.totalSales,
+      totalWithdrawals: data.totalWithdrawals.present
+          ? data.totalWithdrawals.value
+          : this.totalWithdrawals,
+      calculatedCash: data.calculatedCash.present
+          ? data.calculatedCash.value
+          : this.calculatedCash,
+      grossProfit: data.grossProfit.present
+          ? data.grossProfit.value
+          : this.grossProfit,
+      netProfit: data.netProfit.present ? data.netProfit.value : this.netProfit,
+      physicalCash: data.physicalCash.present
+          ? data.physicalCash.value
+          : this.physicalCash,
+      cashGap: data.cashGap.present ? data.cashGap.value : this.cashGap,
+      isClosed: data.isClosed.present ? data.isClosed.value : this.isClosed,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalDailyClosing(')
+          ..write('id: $id, ')
+          ..write('shopId: $shopId, ')
+          ..write('userId: $userId, ')
+          ..write('closingDate: $closingDate, ')
+          ..write('morningBalance: $morningBalance, ')
+          ..write('totalSales: $totalSales, ')
+          ..write('totalWithdrawals: $totalWithdrawals, ')
+          ..write('calculatedCash: $calculatedCash, ')
+          ..write('grossProfit: $grossProfit, ')
+          ..write('netProfit: $netProfit, ')
+          ..write('physicalCash: $physicalCash, ')
+          ..write('cashGap: $cashGap, ')
+          ..write('isClosed: $isClosed, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    shopId,
+    userId,
+    closingDate,
+    morningBalance,
+    totalSales,
+    totalWithdrawals,
+    calculatedCash,
+    grossProfit,
+    netProfit,
+    physicalCash,
+    cashGap,
+    isClosed,
+    note,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalDailyClosing &&
+          other.id == this.id &&
+          other.shopId == this.shopId &&
+          other.userId == this.userId &&
+          other.closingDate == this.closingDate &&
+          other.morningBalance == this.morningBalance &&
+          other.totalSales == this.totalSales &&
+          other.totalWithdrawals == this.totalWithdrawals &&
+          other.calculatedCash == this.calculatedCash &&
+          other.grossProfit == this.grossProfit &&
+          other.netProfit == this.netProfit &&
+          other.physicalCash == this.physicalCash &&
+          other.cashGap == this.cashGap &&
+          other.isClosed == this.isClosed &&
+          other.note == this.note);
+}
+
+class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
+  final Value<String> id;
+  final Value<String> shopId;
+  final Value<String> userId;
+  final Value<DateTime> closingDate;
+  final Value<double> morningBalance;
+  final Value<double> totalSales;
+  final Value<double> totalWithdrawals;
+  final Value<double> calculatedCash;
+  final Value<double> grossProfit;
+  final Value<double> netProfit;
+  final Value<double?> physicalCash;
+  final Value<double?> cashGap;
+  final Value<bool> isClosed;
+  final Value<String?> note;
+  final Value<int> rowid;
+  const LocalDailyClosingsCompanion({
+    this.id = const Value.absent(),
+    this.shopId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.closingDate = const Value.absent(),
+    this.morningBalance = const Value.absent(),
+    this.totalSales = const Value.absent(),
+    this.totalWithdrawals = const Value.absent(),
+    this.calculatedCash = const Value.absent(),
+    this.grossProfit = const Value.absent(),
+    this.netProfit = const Value.absent(),
+    this.physicalCash = const Value.absent(),
+    this.cashGap = const Value.absent(),
+    this.isClosed = const Value.absent(),
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalDailyClosingsCompanion.insert({
+    required String id,
+    required String shopId,
+    required String userId,
+    required DateTime closingDate,
+    required double morningBalance,
+    required double totalSales,
+    required double totalWithdrawals,
+    required double calculatedCash,
+    required double grossProfit,
+    required double netProfit,
+    this.physicalCash = const Value.absent(),
+    this.cashGap = const Value.absent(),
+    this.isClosed = const Value.absent(),
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       shopId = Value(shopId),
+       userId = Value(userId),
+       closingDate = Value(closingDate),
+       morningBalance = Value(morningBalance),
+       totalSales = Value(totalSales),
+       totalWithdrawals = Value(totalWithdrawals),
+       calculatedCash = Value(calculatedCash),
+       grossProfit = Value(grossProfit),
+       netProfit = Value(netProfit);
+  static Insertable<LocalDailyClosing> custom({
+    Expression<String>? id,
+    Expression<String>? shopId,
+    Expression<String>? userId,
+    Expression<DateTime>? closingDate,
+    Expression<double>? morningBalance,
+    Expression<double>? totalSales,
+    Expression<double>? totalWithdrawals,
+    Expression<double>? calculatedCash,
+    Expression<double>? grossProfit,
+    Expression<double>? netProfit,
+    Expression<double>? physicalCash,
+    Expression<double>? cashGap,
+    Expression<bool>? isClosed,
+    Expression<String>? note,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (shopId != null) 'shop_id': shopId,
+      if (userId != null) 'user_id': userId,
+      if (closingDate != null) 'closing_date': closingDate,
+      if (morningBalance != null) 'morning_balance': morningBalance,
+      if (totalSales != null) 'total_sales': totalSales,
+      if (totalWithdrawals != null) 'total_withdrawals': totalWithdrawals,
+      if (calculatedCash != null) 'calculated_cash': calculatedCash,
+      if (grossProfit != null) 'gross_profit': grossProfit,
+      if (netProfit != null) 'net_profit': netProfit,
+      if (physicalCash != null) 'physical_cash': physicalCash,
+      if (cashGap != null) 'cash_gap': cashGap,
+      if (isClosed != null) 'is_closed': isClosed,
+      if (note != null) 'note': note,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalDailyClosingsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? shopId,
+    Value<String>? userId,
+    Value<DateTime>? closingDate,
+    Value<double>? morningBalance,
+    Value<double>? totalSales,
+    Value<double>? totalWithdrawals,
+    Value<double>? calculatedCash,
+    Value<double>? grossProfit,
+    Value<double>? netProfit,
+    Value<double?>? physicalCash,
+    Value<double?>? cashGap,
+    Value<bool>? isClosed,
+    Value<String?>? note,
+    Value<int>? rowid,
+  }) {
+    return LocalDailyClosingsCompanion(
+      id: id ?? this.id,
+      shopId: shopId ?? this.shopId,
+      userId: userId ?? this.userId,
+      closingDate: closingDate ?? this.closingDate,
+      morningBalance: morningBalance ?? this.morningBalance,
+      totalSales: totalSales ?? this.totalSales,
+      totalWithdrawals: totalWithdrawals ?? this.totalWithdrawals,
+      calculatedCash: calculatedCash ?? this.calculatedCash,
+      grossProfit: grossProfit ?? this.grossProfit,
+      netProfit: netProfit ?? this.netProfit,
+      physicalCash: physicalCash ?? this.physicalCash,
+      cashGap: cashGap ?? this.cashGap,
+      isClosed: isClosed ?? this.isClosed,
+      note: note ?? this.note,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (shopId.present) {
+      map['shop_id'] = Variable<String>(shopId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (closingDate.present) {
+      map['closing_date'] = Variable<DateTime>(closingDate.value);
+    }
+    if (morningBalance.present) {
+      map['morning_balance'] = Variable<double>(morningBalance.value);
+    }
+    if (totalSales.present) {
+      map['total_sales'] = Variable<double>(totalSales.value);
+    }
+    if (totalWithdrawals.present) {
+      map['total_withdrawals'] = Variable<double>(totalWithdrawals.value);
+    }
+    if (calculatedCash.present) {
+      map['calculated_cash'] = Variable<double>(calculatedCash.value);
+    }
+    if (grossProfit.present) {
+      map['gross_profit'] = Variable<double>(grossProfit.value);
+    }
+    if (netProfit.present) {
+      map['net_profit'] = Variable<double>(netProfit.value);
+    }
+    if (physicalCash.present) {
+      map['physical_cash'] = Variable<double>(physicalCash.value);
+    }
+    if (cashGap.present) {
+      map['cash_gap'] = Variable<double>(cashGap.value);
+    }
+    if (isClosed.present) {
+      map['is_closed'] = Variable<bool>(isClosed.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalDailyClosingsCompanion(')
+          ..write('id: $id, ')
+          ..write('shopId: $shopId, ')
+          ..write('userId: $userId, ')
+          ..write('closingDate: $closingDate, ')
+          ..write('morningBalance: $morningBalance, ')
+          ..write('totalSales: $totalSales, ')
+          ..write('totalWithdrawals: $totalWithdrawals, ')
+          ..write('calculatedCash: $calculatedCash, ')
+          ..write('grossProfit: $grossProfit, ')
+          ..write('netProfit: $netProfit, ')
+          ..write('physicalCash: $physicalCash, ')
+          ..write('cashGap: $cashGap, ')
+          ..write('isClosed: $isClosed, ')
+          ..write('note: $note, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncQueueItemsTable extends SyncQueueItems
     with TableInfo<$SyncQueueItemsTable, SyncQueueItem> {
   @override
@@ -2294,6 +3530,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $LocalSaleItemsTable localSaleItems = $LocalSaleItemsTable(this);
   late final $LocalCashMovementsTable localCashMovements =
       $LocalCashMovementsTable(this);
+  late final $LocalStockMovementsTable localStockMovements =
+      $LocalStockMovementsTable(this);
+  late final $LocalDailyClosingsTable localDailyClosings =
+      $LocalDailyClosingsTable(this);
   late final $SyncQueueItemsTable syncQueueItems = $SyncQueueItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -2304,6 +3544,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     localSales,
     localSaleItems,
     localCashMovements,
+    localStockMovements,
+    localDailyClosings,
     syncQueueItems,
   ];
 }
@@ -3337,6 +4579,639 @@ typedef $$LocalCashMovementsTableProcessedTableManager =
       LocalCashMovement,
       PrefetchHooks Function()
     >;
+typedef $$LocalStockMovementsTableCreateCompanionBuilder =
+    LocalStockMovementsCompanion Function({
+      required String id,
+      required String shopId,
+      required String productId,
+      required int quantity,
+      required String type,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$LocalStockMovementsTableUpdateCompanionBuilder =
+    LocalStockMovementsCompanion Function({
+      Value<String> id,
+      Value<String> shopId,
+      Value<String> productId,
+      Value<int> quantity,
+      Value<String> type,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$LocalStockMovementsTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalStockMovementsTable> {
+  $$LocalStockMovementsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalStockMovementsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalStockMovementsTable> {
+  $$LocalStockMovementsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalStockMovementsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalStockMovementsTable> {
+  $$LocalStockMovementsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get shopId =>
+      $composableBuilder(column: $table.shopId, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$LocalStockMovementsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalStockMovementsTable,
+          LocalStockMovement,
+          $$LocalStockMovementsTableFilterComposer,
+          $$LocalStockMovementsTableOrderingComposer,
+          $$LocalStockMovementsTableAnnotationComposer,
+          $$LocalStockMovementsTableCreateCompanionBuilder,
+          $$LocalStockMovementsTableUpdateCompanionBuilder,
+          (
+            LocalStockMovement,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalStockMovementsTable,
+              LocalStockMovement
+            >,
+          ),
+          LocalStockMovement,
+          PrefetchHooks Function()
+        > {
+  $$LocalStockMovementsTableTableManager(
+    _$AppDatabase db,
+    $LocalStockMovementsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalStockMovementsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalStockMovementsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$LocalStockMovementsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> shopId = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalStockMovementsCompanion(
+                id: id,
+                shopId: shopId,
+                productId: productId,
+                quantity: quantity,
+                type: type,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String shopId,
+                required String productId,
+                required int quantity,
+                required String type,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => LocalStockMovementsCompanion.insert(
+                id: id,
+                shopId: shopId,
+                productId: productId,
+                quantity: quantity,
+                type: type,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalStockMovementsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalStockMovementsTable,
+      LocalStockMovement,
+      $$LocalStockMovementsTableFilterComposer,
+      $$LocalStockMovementsTableOrderingComposer,
+      $$LocalStockMovementsTableAnnotationComposer,
+      $$LocalStockMovementsTableCreateCompanionBuilder,
+      $$LocalStockMovementsTableUpdateCompanionBuilder,
+      (
+        LocalStockMovement,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalStockMovementsTable,
+          LocalStockMovement
+        >,
+      ),
+      LocalStockMovement,
+      PrefetchHooks Function()
+    >;
+typedef $$LocalDailyClosingsTableCreateCompanionBuilder =
+    LocalDailyClosingsCompanion Function({
+      required String id,
+      required String shopId,
+      required String userId,
+      required DateTime closingDate,
+      required double morningBalance,
+      required double totalSales,
+      required double totalWithdrawals,
+      required double calculatedCash,
+      required double grossProfit,
+      required double netProfit,
+      Value<double?> physicalCash,
+      Value<double?> cashGap,
+      Value<bool> isClosed,
+      Value<String?> note,
+      Value<int> rowid,
+    });
+typedef $$LocalDailyClosingsTableUpdateCompanionBuilder =
+    LocalDailyClosingsCompanion Function({
+      Value<String> id,
+      Value<String> shopId,
+      Value<String> userId,
+      Value<DateTime> closingDate,
+      Value<double> morningBalance,
+      Value<double> totalSales,
+      Value<double> totalWithdrawals,
+      Value<double> calculatedCash,
+      Value<double> grossProfit,
+      Value<double> netProfit,
+      Value<double?> physicalCash,
+      Value<double?> cashGap,
+      Value<bool> isClosed,
+      Value<String?> note,
+      Value<int> rowid,
+    });
+
+class $$LocalDailyClosingsTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalDailyClosingsTable> {
+  $$LocalDailyClosingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get closingDate => $composableBuilder(
+    column: $table.closingDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get morningBalance => $composableBuilder(
+    column: $table.morningBalance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get totalSales => $composableBuilder(
+    column: $table.totalSales,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get totalWithdrawals => $composableBuilder(
+    column: $table.totalWithdrawals,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get calculatedCash => $composableBuilder(
+    column: $table.calculatedCash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get grossProfit => $composableBuilder(
+    column: $table.grossProfit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get netProfit => $composableBuilder(
+    column: $table.netProfit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get physicalCash => $composableBuilder(
+    column: $table.physicalCash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get cashGap => $composableBuilder(
+    column: $table.cashGap,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isClosed => $composableBuilder(
+    column: $table.isClosed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalDailyClosingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalDailyClosingsTable> {
+  $$LocalDailyClosingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get closingDate => $composableBuilder(
+    column: $table.closingDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get morningBalance => $composableBuilder(
+    column: $table.morningBalance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get totalSales => $composableBuilder(
+    column: $table.totalSales,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get totalWithdrawals => $composableBuilder(
+    column: $table.totalWithdrawals,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get calculatedCash => $composableBuilder(
+    column: $table.calculatedCash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get grossProfit => $composableBuilder(
+    column: $table.grossProfit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get netProfit => $composableBuilder(
+    column: $table.netProfit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get physicalCash => $composableBuilder(
+    column: $table.physicalCash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get cashGap => $composableBuilder(
+    column: $table.cashGap,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isClosed => $composableBuilder(
+    column: $table.isClosed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalDailyClosingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalDailyClosingsTable> {
+  $$LocalDailyClosingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get shopId =>
+      $composableBuilder(column: $table.shopId, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get closingDate => $composableBuilder(
+    column: $table.closingDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get morningBalance => $composableBuilder(
+    column: $table.morningBalance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get totalSales => $composableBuilder(
+    column: $table.totalSales,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get totalWithdrawals => $composableBuilder(
+    column: $table.totalWithdrawals,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get calculatedCash => $composableBuilder(
+    column: $table.calculatedCash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get grossProfit => $composableBuilder(
+    column: $table.grossProfit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get netProfit =>
+      $composableBuilder(column: $table.netProfit, builder: (column) => column);
+
+  GeneratedColumn<double> get physicalCash => $composableBuilder(
+    column: $table.physicalCash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get cashGap =>
+      $composableBuilder(column: $table.cashGap, builder: (column) => column);
+
+  GeneratedColumn<bool> get isClosed =>
+      $composableBuilder(column: $table.isClosed, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+}
+
+class $$LocalDailyClosingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalDailyClosingsTable,
+          LocalDailyClosing,
+          $$LocalDailyClosingsTableFilterComposer,
+          $$LocalDailyClosingsTableOrderingComposer,
+          $$LocalDailyClosingsTableAnnotationComposer,
+          $$LocalDailyClosingsTableCreateCompanionBuilder,
+          $$LocalDailyClosingsTableUpdateCompanionBuilder,
+          (
+            LocalDailyClosing,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalDailyClosingsTable,
+              LocalDailyClosing
+            >,
+          ),
+          LocalDailyClosing,
+          PrefetchHooks Function()
+        > {
+  $$LocalDailyClosingsTableTableManager(
+    _$AppDatabase db,
+    $LocalDailyClosingsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalDailyClosingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalDailyClosingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalDailyClosingsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> shopId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<DateTime> closingDate = const Value.absent(),
+                Value<double> morningBalance = const Value.absent(),
+                Value<double> totalSales = const Value.absent(),
+                Value<double> totalWithdrawals = const Value.absent(),
+                Value<double> calculatedCash = const Value.absent(),
+                Value<double> grossProfit = const Value.absent(),
+                Value<double> netProfit = const Value.absent(),
+                Value<double?> physicalCash = const Value.absent(),
+                Value<double?> cashGap = const Value.absent(),
+                Value<bool> isClosed = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalDailyClosingsCompanion(
+                id: id,
+                shopId: shopId,
+                userId: userId,
+                closingDate: closingDate,
+                morningBalance: morningBalance,
+                totalSales: totalSales,
+                totalWithdrawals: totalWithdrawals,
+                calculatedCash: calculatedCash,
+                grossProfit: grossProfit,
+                netProfit: netProfit,
+                physicalCash: physicalCash,
+                cashGap: cashGap,
+                isClosed: isClosed,
+                note: note,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String shopId,
+                required String userId,
+                required DateTime closingDate,
+                required double morningBalance,
+                required double totalSales,
+                required double totalWithdrawals,
+                required double calculatedCash,
+                required double grossProfit,
+                required double netProfit,
+                Value<double?> physicalCash = const Value.absent(),
+                Value<double?> cashGap = const Value.absent(),
+                Value<bool> isClosed = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalDailyClosingsCompanion.insert(
+                id: id,
+                shopId: shopId,
+                userId: userId,
+                closingDate: closingDate,
+                morningBalance: morningBalance,
+                totalSales: totalSales,
+                totalWithdrawals: totalWithdrawals,
+                calculatedCash: calculatedCash,
+                grossProfit: grossProfit,
+                netProfit: netProfit,
+                physicalCash: physicalCash,
+                cashGap: cashGap,
+                isClosed: isClosed,
+                note: note,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalDailyClosingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalDailyClosingsTable,
+      LocalDailyClosing,
+      $$LocalDailyClosingsTableFilterComposer,
+      $$LocalDailyClosingsTableOrderingComposer,
+      $$LocalDailyClosingsTableAnnotationComposer,
+      $$LocalDailyClosingsTableCreateCompanionBuilder,
+      $$LocalDailyClosingsTableUpdateCompanionBuilder,
+      (
+        LocalDailyClosing,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalDailyClosingsTable,
+          LocalDailyClosing
+        >,
+      ),
+      LocalDailyClosing,
+      PrefetchHooks Function()
+    >;
 typedef $$SyncQueueItemsTableCreateCompanionBuilder =
     SyncQueueItemsCompanion Function({
       Value<int> id,
@@ -3526,6 +5401,10 @@ class $AppDatabaseManager {
       $$LocalSaleItemsTableTableManager(_db, _db.localSaleItems);
   $$LocalCashMovementsTableTableManager get localCashMovements =>
       $$LocalCashMovementsTableTableManager(_db, _db.localCashMovements);
+  $$LocalStockMovementsTableTableManager get localStockMovements =>
+      $$LocalStockMovementsTableTableManager(_db, _db.localStockMovements);
+  $$LocalDailyClosingsTableTableManager get localDailyClosings =>
+      $$LocalDailyClosingsTableTableManager(_db, _db.localDailyClosings);
   $$SyncQueueItemsTableTableManager get syncQueueItems =>
       $$SyncQueueItemsTableTableManager(_db, _db.syncQueueItems);
 }

@@ -67,6 +67,41 @@ class LocalCashMovements extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// Table des Mouvements de Stock (Recharges)
+class LocalStockMovements extends Table {
+  TextColumn get id => text()();
+  TextColumn get shopId => text()();
+  TextColumn get productId => text()();
+  IntColumn get quantity => integer()();
+  TextColumn get type => text()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// Table des Clôtures Journalières
+class LocalDailyClosings extends Table {
+  TextColumn get id => text()();
+  TextColumn get shopId => text()();
+  TextColumn get userId => text()();
+  DateTimeColumn get closingDate => dateTime()();
+  RealColumn get morningBalance => real()();
+  RealColumn get totalSales => real()();
+  RealColumn get totalWithdrawals => real()();
+  RealColumn get calculatedCash => real()();
+  RealColumn get grossProfit => real()();
+  RealColumn get netProfit => real()();
+  RealColumn get physicalCash => real().nullable()();
+  RealColumn get cashGap => real().nullable()();
+  BoolColumn get isClosed => boolean().withDefault(const Constant(false))();
+  TextColumn get note => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+
 // Table de la Salle d'attente (Sync Queue)
 class SyncQueueItems extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -76,6 +111,7 @@ class SyncQueueItems extends Table {
 }
 
 
+
 // --- 2. CONFIGURATION DE LA BASE DE DONNÉES ---
 
 @DriftDatabase(tables: [
@@ -83,6 +119,8 @@ class SyncQueueItems extends Table {
   LocalSales,
   LocalSaleItems,
   LocalCashMovements,
+  LocalStockMovements,
+  LocalDailyClosings,
   SyncQueueItems,
 ])
 class AppDatabase extends _$AppDatabase {
@@ -115,6 +153,7 @@ class AppDatabase extends _$AppDatabase {
     await delete(localSales).go();
     await delete(localSaleItems).go();
     await delete(localCashMovements).go();
+    await delete(localDailyClosings).go();
     await delete(syncQueueItems).go();
   }
 }

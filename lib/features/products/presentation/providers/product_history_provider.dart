@@ -1,12 +1,14 @@
+// lib/features/products/presentation/providers/product_history_provider.dart
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/sync/sync_service.dart';
 
 class ProductHistoryItem {
   final String id;
   final DateTime date;
   final String type; // 'recharge' ou 'vente'
   final int quantity;
-  final double? totalAmount; // Uniquement pour les ventes
+  final double? totalAmount;
 
   ProductHistoryItem({
     required this.id,
@@ -17,43 +19,35 @@ class ProductHistoryItem {
   });
 }
 
-// Ce provider prend l'ID du produit en paramètre et renvoie son historique
 final productHistoryProvider = FutureProvider.family<List<ProductHistoryItem>, String>((ref, productId) async {
-  final supabase = Supabase.instance.client;
+  final db = ref.read(localDbProvider);
   final List<ProductHistoryItem> history = [];
 
-  // 1. Récupérer les recharges de stock
-  final recharges = await supabase
-      .from('stock_movements')
-      .select()
-      .eq('product_id', productId)
-      .order('created_at', ascending: false);
-
+  // 1. Récupérer les recharges locales
+  final recharges = await (db.select(db.localStockMovements)..where((t) => t.productId.equals(productId))).get();
   for (var r in recharges) {
     history.add(ProductHistoryItem(
-      id: r['id'],
-      date: DateTime.parse(r['created_at']),
+      id: r.id,
+      date: r.createdAt,
       type: 'recharge',
-      quantity: r['quantity'],
+      quantity: r.quantity,
     ));
   }
 
-  // 2. Récupérer les ventes de ce produit
-  final sales = await supabase
-      .from('sale_items')
-      .select('id, quantity, sell_price, sales(created_at)')
-      .eq('product_id', productId);
-
-  for (var s in sales) {
-    // Supabase renvoie la date de la vente imbriquée
-    final saleData = s['sales'] as Map<String, dynamic>;
-    history.add(ProductHistoryItem(
-      id: s['id'],
-      date: DateTime.parse(saleData['created_at']),
-      type: 'vente',
-      quantity: s['quantity'],
-      totalAmount: (s['quantity'] as int) * double.parse(s['sell_price'].toString()),
-    ));
+  // 2. Récupérer les ventes locales de ce produit
+  final saleItems = await (db.select(db.localSaleItems)..where((t) => t.productId.equals(productId))).get();
+  for (var item in saleItems) {
+    // On cherche la vente parente pour avoir la date
+    final sale = await (db.select(db.localSales)..where((t) => t.id.equals(item.saleId))).getSingleOrNull();
+    if (sale != null) {
+      history.add(ProductHistoryItem(
+        id: item.id,
+        date: sale.createdAt,
+        type: 'vente',
+        quantity: item.quantity,
+        totalAmount: item.quantity * item.sellPrice,
+      ));
+    }
   }
 
   // 3. Trier du plus récent au plus ancien

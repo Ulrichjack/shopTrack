@@ -9,6 +9,7 @@ import 'package:printing/printing.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/network_error_widget.dart';
+import '../../../../core/sync/sync_service.dart'; // 👈 AJOUT POUR LA SYNCHRO
 import '../providers/monthly_report_provider.dart';
 
 class MonthlyReportScreen extends ConsumerStatefulWidget {
@@ -44,7 +45,6 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
   }
 
   Widget _buildWeekBar(String label, double amount, double maxAmount) {
-    // Calcul du pourcentage pour la barre (évite la division par zéro)
     final double percent = maxAmount > 0 ? (amount / maxAmount) : 0.0;
 
     return Padding(
@@ -62,9 +62,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
           const SizedBox(height: 6),
           Stack(
             children: [
-              // Fond gris
               Container(height: 8, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(4))),
-              // Barre verte proportionnelle
               FractionallySizedBox(
                 widthFactor: percent,
                 child: Container(height: 8, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(4))),
@@ -88,13 +86,11 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // En-tête
               pw.Text('ShopTrack - Récapitulatif des Ventes', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 8),
               pw.Text('Période : $monthName', style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
               pw.SizedBox(height: 24),
 
-              // Résumé
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
@@ -105,15 +101,14 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
               ),
               pw.SizedBox(height: 32),
 
-              // Tableau détaillé
               pw.Text('Détail par jour', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 12),
               pw.TableHelper.fromTextArray(
                 headers: ['Date', 'Montant Achat', 'Vente Réal.', 'Dépenses', 'Marge Nette'],
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF1D9E75)), // Vert ShopTrack
+                headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF1D9E75)),
                 cellAlignment: pw.Alignment.centerRight,
-                cellAlignments: {0: pw.Alignment.centerLeft}, // La date à gauche
+                cellAlignments: {0: pw.Alignment.centerLeft},
                 data: report.dailyClosings.map((closing) {
                   final dateStr = DateFormat('dd/MM/yyyy').format(closing.closingDate);
                   final coutAchat = closing.totalSales - closing.grossProfit;
@@ -132,7 +127,6 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       ),
     );
 
-    // Ouvre l'aperçu PDF et permet d'imprimer ou partager
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
       name: 'Bilan_ShopTrack_$monthName.pdf',
@@ -175,7 +169,6 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
         title: Text('Bilan — $capitalizedMonth', style: const TextStyle(fontSize: 18)),
         elevation: 0,
         actions: [
-          // Bouton PDF
           reportAsync.maybeWhen(
             data: (report) => IconButton(
               icon: const Icon(Icons.picture_as_pdf),
@@ -204,109 +197,125 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
             ),
           ),
 
-          // Contenu
+          // Contenu avec RefreshIndicator
           Expanded(
-            child: reportAsync.when(
-              skipError: true, // 👈 On ajoute ça
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => NetworkErrorWidget(
-                error: err.toString(),
-                onRetry: () => ref.invalidate(monthlyReportProvider(_selectedMonth)),
-              ),
-              data: (report) {
-                if (report.dailyClosings.isEmpty) {
-                  return const Center(child: Text('Aucune donnée pour ce mois.', style: TextStyle(color: Colors.grey)));
-                }
+            child: RefreshIndicator(
+              onRefresh: () async {
+                // 1. Force le téléchargement depuis Supabase (au cas où)
+                await ref.read(syncServiceProvider).pullDataFromSupabase();
+                // 2. Rafraîchit l'affichage local
+                ref.invalidate(monthlyReportProvider(_selectedMonth));
+              },
+              child: reportAsync.when(
+                skipLoadingOnReload: true,
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => ListView( // 👈 ListView permet de "tirer" même s'il y a une erreur
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      child: Center(child: Text('Erreur: $err')),
+                    ),
+                  ],
+                ),
+                data: (report) {
+                  if (report.dailyClosings.isEmpty) {
+                    return ListView( // 👈 ListView permet de "tirer" même si c'est vide !
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          child: const Center(child: Text('Aucune donnée pour ce mois.', style: TextStyle(color: Colors.grey))),
+                        ),
+                      ],
+                    );
+                  }
 
-                // --- Calcul des Ventes par Semaine ---
-                List<double> weeklySales = [0, 0, 0, 0];
-                for (var closing in report.dailyClosings) {
-                  int day = closing.closingDate.day;
-                  if (day <= 7) weeklySales[0] += closing.totalSales;
-                  else if (day <= 14) weeklySales[1] += closing.totalSales;
-                  else if (day <= 21) weeklySales[2] += closing.totalSales;
-                  else weeklySales[3] += closing.totalSales;
-                }
-                double maxWeekSale = weeklySales.reduce(max);
+                  // --- Calcul des Ventes par Semaine ---
+                  List<double> weeklySales = [0, 0, 0, 0];
+                  for (var closing in report.dailyClosings) {
+                    int day = closing.closingDate.day;
+                    if (day <= 7) weeklySales[0] += closing.totalSales;
+                    else if (day <= 14) weeklySales[1] += closing.totalSales;
+                    else if (day <= 21) weeklySales[2] += closing.totalSales;
+                    else weeklySales[3] += closing.totalSales;
+                  }
+                  double maxWeekSale = weeklySales.reduce(max);
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // 1. Les deux grosses cartes
-                      Row(
-                        children: [
-                          _buildTopCard('Encaissé', report.totalSales, AppColors.primaryLight, AppColors.primaryDark),
-                          const SizedBox(width: 12),
-                          _buildTopCard('Bénéfice net', report.totalNetProfit, AppColors.success, AppColors.successDark),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // 2. Carte des sorties de caisse
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.red.shade100)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  return SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(), // 👈 Obligatoire pour le RefreshIndicator
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
                           children: [
-                            const Text('Sorties de caisse ce mois', style: TextStyle(color: Colors.grey, fontSize: 14)),
-                            const SizedBox(height: 8),
-                            Text('- ${CurrencyFormatter.format(report.totalWithdrawals)}', style: TextStyle(color: Colors.red.shade700, fontSize: 24, fontWeight: FontWeight.bold)),
+                            _buildTopCard('Encaissé', report.totalSales, AppColors.primaryLight, AppColors.primaryDark),
+                            const SizedBox(width: 12),
+                            _buildTopCard('Bénéfice net', report.totalNetProfit, AppColors.success, AppColors.successDark),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 30),
+                        const SizedBox(height: 16),
 
-                      // 3. VENTES PAR SEMAINE (Barres de progression)
-                      const Text('VENTES PAR SEMAINE', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
-                      const SizedBox(height: 16),
-                      _buildWeekBar('Sem. 1 (1-7)', weeklySales[0], maxWeekSale),
-                      _buildWeekBar('Sem. 2 (8-14)', weeklySales[1], maxWeekSale),
-                      _buildWeekBar('Sem. 3 (15-21)', weeklySales[2], maxWeekSale),
-                      _buildWeekBar('Sem. 4 (22-Fin)', weeklySales[3], maxWeekSale),
-                      const SizedBox(height: 30),
-
-                      // 4. Le tableau détaillé
-                      const Text('DÉTAIL PAR JOUR', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
-                      const SizedBox(height: 12),
-
-                      Container(
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable(
-                            headingRowColor: MaterialStateProperty.all(Colors.grey.shade100),
-                            columnSpacing: 20,
-                            columns: const [
-                              DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Achat', style: TextStyle(fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Vente Réal.', style: TextStyle(fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Dépenses', style: TextStyle(fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Marge Nette', style: TextStyle(fontWeight: FontWeight.bold))),
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.red.shade100)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Sorties de caisse ce mois', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                              const SizedBox(height: 8),
+                              Text('- ${CurrencyFormatter.format(report.totalWithdrawals)}', style: TextStyle(color: Colors.red.shade700, fontSize: 24, fontWeight: FontWeight.bold)),
                             ],
-                            rows: report.dailyClosings.map((closing) {
-                              final dateStr = DateFormat('dd/MM').format(closing.closingDate);
-                              final coutAchat = closing.totalSales - closing.grossProfit;
-
-                              return DataRow(
-                                cells: [
-                                  DataCell(Text(dateStr, style: const TextStyle(fontWeight: FontWeight.bold))),
-                                  DataCell(Text(CurrencyFormatter.format(coutAchat))),
-                                  DataCell(Text(CurrencyFormatter.format(closing.totalSales))),
-                                  DataCell(Text(CurrencyFormatter.format(closing.totalWithdrawals), style: TextStyle(color: closing.totalWithdrawals > 0 ? Colors.red : Colors.black))),
-                                  DataCell(Text(CurrencyFormatter.format(closing.netProfit), style: TextStyle(color: closing.netProfit > 0 ? Colors.green.shade700 : Colors.black, fontWeight: FontWeight.bold))),
-                                ],
-                              );
-                            }).toList(),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                        const SizedBox(height: 30),
+
+                        const Text('VENTES PAR SEMAINE', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                        const SizedBox(height: 16),
+                        _buildWeekBar('Sem. 1 (1-7)', weeklySales[0], maxWeekSale),
+                        _buildWeekBar('Sem. 2 (8-14)', weeklySales[1], maxWeekSale),
+                        _buildWeekBar('Sem. 3 (15-21)', weeklySales[2], maxWeekSale),
+                        _buildWeekBar('Sem. 4 (22-Fin)', weeklySales[3], maxWeekSale),
+                        const SizedBox(height: 30),
+
+                        const Text('DÉTAIL PAR JOUR', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                        const SizedBox(height: 12),
+
+                        Container(
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              headingRowColor: WidgetStateProperty.all(Colors.grey.shade100), // 👈 Correction du MaterialStateProperty
+                              columnSpacing: 20,
+                              columns: const [
+                                DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text('Achat', style: TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text('Vente Réal.', style: TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text('Dépenses', style: TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text('Marge Nette', style: TextStyle(fontWeight: FontWeight.bold))),
+                              ],
+                              rows: report.dailyClosings.map((closing) {
+                                final dateStr = DateFormat('dd/MM').format(closing.closingDate);
+                                final coutAchat = closing.totalSales - closing.grossProfit;
+
+                                return DataRow(
+                                  cells: [
+                                    DataCell(Text(dateStr, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                    DataCell(Text(CurrencyFormatter.format(coutAchat))),
+                                    DataCell(Text(CurrencyFormatter.format(closing.totalSales))),
+                                    DataCell(Text(CurrencyFormatter.format(closing.totalWithdrawals), style: TextStyle(color: closing.totalWithdrawals > 0 ? Colors.red : Colors.black))),
+                                    DataCell(Text(CurrencyFormatter.format(closing.netProfit), style: TextStyle(color: closing.netProfit > 0 ? Colors.green.shade700 : Colors.black, fontWeight: FontWeight.bold))),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ],

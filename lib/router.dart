@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'features/auth/presentation/screens/profile_screen.dart';
 import 'features/cash/presentation/screens/cash_screen.dart';
 import 'features/products/presentation/screens/edit_product_screen.dart';
 import 'features/reports/presentation/screens/monthly_report_screen.dart';
@@ -46,6 +47,10 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
+    ),
+    GoRoute(
+      path: '/profile',
+      builder: (context, state) => const ProfileScreen(),
     ),
     GoRoute(
       path: '/closing',

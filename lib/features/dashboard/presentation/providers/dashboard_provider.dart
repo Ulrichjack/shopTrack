@@ -1,24 +1,19 @@
+import 'dart:convert';
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../cash/domain/entities/cash_movement_entity.dart';
-import '../../../sales/presentation/providers/sale_provider.dart';
-import '../../../cash/data/datasources/cash_remote_datasource.dart';
-import '../../../cash/data/repositories/cash_repository_impl.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../../../core/database/app_database.dart';
+import '../../../../core/network/connectivity_provider.dart';
+import '../../../../core/sync/sync_service.dart';
+import '../../../products/presentation/providers/product_provider.dart';
+import '../../domain/entities/daily_closing_entity.dart';
 import '../../data/datasources/closing_remote_datasource.dart';
 import '../../data/repositories/closing_repository_impl.dart';
-import '../../domain/entities/daily_closing_entity.dart';
 
-// --- 1. INITIALISATION DES REPOSITORIES ---
-
-final cashRemoteDataSourceProvider = Provider((ref) {
-  return CashRemoteDataSource(Supabase.instance.client);
-});
-
-final cashRepositoryProvider = Provider((ref) {
-  final remoteDataSource = ref.read(cashRemoteDataSourceProvider);
-  return CashRepositoryImpl(remoteDataSource);
-});
-
+// --- 1. REPOSITORIES POUR LA CLÔTURE (Supabase) ---
 final closingRemoteDataSourceProvider = Provider((ref) {
   return ClosingRemoteDataSource(Supabase.instance.client);
 });
@@ -29,7 +24,6 @@ final closingRepositoryProvider = Provider((ref) {
 });
 
 // --- 2. MODÈLE DE DONNÉES DU DASHBOARD ---
-
 class DashboardState {
   final double morningBalance;
   final double totalSales;
@@ -38,8 +32,12 @@ class DashboardState {
   final double grossProfit;
   final double netProfit;
   final int salesCount;
-  final bool isClosed; // Vrai si la journée est clôturée
-  final DailyClosingEntity? closingData; // Les données de clôture si ça a été fait
+  final bool isClosed;
+  final DailyClosingEntity? closingData;
+
+  // NOUVEAU : Gestion de l'oubli de clôture
+  final bool needsPreviousDayClosing;
+  final DateTime? dateToClose;
 
   DashboardState({
     required this.morningBalance,
@@ -51,11 +49,12 @@ class DashboardState {
     required this.salesCount,
     required this.isClosed,
     this.closingData,
+    this.needsPreviousDayClosing = false,
+    this.dateToClose,
   });
 }
 
-// --- 3. LE PROVIDER PRINCIPAL (LE CERVEAU) ---
-
+// --- 3. LE PROVIDER PRINCIPAL (100% LOCAL avec cache SharedPreferences) ---
 final dashboardProvider = AsyncNotifierProvider<DashboardNotifier, DashboardState>(() {
   return DashboardNotifier();
 });
@@ -66,166 +65,254 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     return _fetchDashboardData();
   }
 
-  Future<DashboardState> _fetchDashboardData() async {
+  // 👇 SYNCHRO AMÉLIORÉE (Récupère aussi le nom de la boutique)
+  Future<void> _runBackgroundSync() async {
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) throw Exception('Non connecté');
+      final prefs = await SharedPreferences.getInstance();
+      final currentUser = Supabase.instance.client.auth.currentUser;
 
-      final memberResponse = await Supabase.instance.client
-          .from('shop_members')
-          .select('shop_id')
-          .eq('user_id', userId)
-          .limit(1)
-          .single();
-      final shopId = memberResponse['shop_id'] as String;
+      if (currentUser != null) {
+        await prefs.setString('cached_user_id', currentUser.id);
 
-      final today = DateTime.now();
+        // On récupère le shop_id ET le nom de la boutique via une jointure Supabase
+        final memberResponse = await Supabase.instance.client
+            .from('shop_members')
+            .select('shop_id, shops(name)')
+            .eq('user_id', currentUser.id)
+            .single();
 
-      // 1. Vérifier si la journée est déjà clôturée
-      final closingRepo = ref.read(closingRepositoryProvider);
-      final closing = await closingRepo.getClosingForDate(shopId, today);
-
-      if (closing != null && closing.isClosed) {
-        return DashboardState(
-          morningBalance: closing.morningBalance,
-          totalSales: closing.totalSales,
-          totalWithdrawals: closing.totalWithdrawals,
-          calculatedCash: closing.calculatedCash,
-          grossProfit: closing.grossProfit,
-          netProfit: closing.netProfit,
-          salesCount: 0,
-          isClosed: true,
-          closingData: closing,
-        );
+        await prefs.setString('cached_shop_id', memberResponse['shop_id'] as String);
+        // On sauvegarde le nom de la boutique
+        final shopData = memberResponse['shops'] as Map<String, dynamic>;
+        await prefs.setString('cached_shop_name', shopData['name'] as String);
       }
 
-      // 2. Si non clôturé, on calcule tout en temps réel !
-      final saleRepo = ref.read(saleRepositoryProvider);
-      final cashRepo = ref.read(cashRepositoryProvider);
-
-      // Récupération des données du jour
-      final todaySales = await saleRepo.getDailySales(shopId, today);
-      final todayCashMovements = await cashRepo.getTodayMovements(shopId, today);
-
-      // Variables pour les calculs
-      double morningBalance = 0;
-      double totalWithdrawals = 0;
-      double totalSales = 0;
-      double grossProfit = 0;
-
-      // Calcul des mouvements de caisse
-      for (var movement in todayCashMovements) {
-        if (movement.type == 'morning_balance') {
-          morningBalance = movement.amount;
-        } else if (movement.type == 'withdrawal') {
-          totalWithdrawals += movement.amount;
-        }
-      }
-
-      // Calcul des ventes
-      for (var sale in todaySales) {
-        totalSales += sale.totalAmount;
-        grossProfit += sale.totalProfit;
-      }
-
-      final calculatedCash = morningBalance + totalSales - totalWithdrawals;
-      final netProfit = grossProfit - totalWithdrawals;
-
-      return DashboardState(
-        morningBalance: morningBalance,
-        totalSales: totalSales,
-        totalWithdrawals: totalWithdrawals,
-        calculatedCash: calculatedCash,
-        grossProfit: grossProfit,
-        netProfit: netProfit,
-        salesCount: todaySales.length,
-        isClosed: false,
-      );
-    } catch (e, stackTrace) {
-      // 👇 LE PRINT MAGIQUE EST ICI 👇
-      print('🔴 ERREUR DANS DASHBOARD PROVIDER : $e');
-      print('🔴 TRACE DE L\'ERREUR : $stackTrace');
-      rethrow; // On relance l'erreur pour que l'UI l'affiche
+      await ref.read(syncServiceProvider).pullDataFromSupabase();
+    } catch (e) {
+      print('Erreur réseau en arrière-plan : $e');
     }
   }
 
-  // --- 4. ACTIONS DU DASHBOARD ---
+  Future<DashboardState> _fetchDashboardData() async {
+    final db = ref.read(localDbProvider);
+    final isOnline = ref.read(connectivityProvider).value ?? true;
+    final prefs = await SharedPreferences.getInstance();
 
-  // Action pour enregistrer le solde du matin
+    String shopId = prefs.getString('cached_shop_id') ?? '';
+
+    // 1. SI C'EST LA TOUTE PREMIÈRE CONNEXION
+    final localProducts = await db.select(db.localProducts).get();
+    final isFirstLoad = localProducts.isEmpty;
+
+    if (isOnline) {
+      try {
+        if (isFirstLoad) {
+          await _runBackgroundSync();
+          ref.invalidate(productProvider);
+        } else {
+          _runBackgroundSync();
+        }
+      } catch (e) {
+        print('⚠️ Synchro échouée, mais on charge quand même le cache local : $e');
+      }
+    }
+
+    if (shopId.isEmpty && isFirstLoad) {
+      throw Exception('Boutique introuvable. Connectez-vous à internet.');
+    }
+
+    final today = DateTime.now();
+    final startOfDay = DateTime(today.year, today.month, today.day);
+    final endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59);
+
+    // ==========================================
+    // 2. VÉRIFICATION DE LA CLÔTURE DE LA VEILLE
+    // ==========================================
+    final lastSale = await (db.select(db.localSales)
+      ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt, mode: drift.OrderingMode.desc)])
+      ..limit(1)).getSingleOrNull();
+
+    if (lastSale != null) {
+      final lastSaleDate = DateTime(lastSale.createdAt.year, lastSale.createdAt.month, lastSale.createdAt.day);
+
+      if (lastSaleDate.isBefore(startOfDay)) {
+        final startOfSaleDay = DateTime(lastSaleDate.year, lastSaleDate.month, lastSaleDate.day);
+        final endOfSaleDay = DateTime(lastSaleDate.year, lastSaleDate.month, lastSaleDate.day, 23, 59, 59);
+
+        final existingClosing = await (db.select(db.localDailyClosings)
+          ..where((t) => t.closingDate.isBetweenValues(startOfSaleDay, endOfSaleDay))
+        ).getSingleOrNull();
+
+        if (existingClosing == null) {
+          return DashboardState(
+            morningBalance: 0, totalSales: 0, totalWithdrawals: 0,
+            calculatedCash: 0, grossProfit: 0, netProfit: 0, salesCount: 0,
+            isClosed: false,
+            needsPreviousDayClosing: true,
+            dateToClose: lastSaleDate,
+          );
+        }
+      }
+    }
+
+    // ==========================================
+    // 3. LECTURE LOCALE DE LA JOURNÉE ACTUELLE
+    // ==========================================
+    // ✅ FIX : Utilisation de isBetweenValues au lieu de .year.equals()
+    final todayClosing = await (db.select(db.localDailyClosings)
+      ..where((t) => t.closingDate.isBetweenValues(startOfDay, endOfDay))
+    ).getSingleOrNull();
+
+    if (todayClosing != null && todayClosing.isClosed) {
+      return DashboardState(
+        morningBalance: todayClosing.morningBalance,
+        totalSales: todayClosing.totalSales,
+        totalWithdrawals: todayClosing.totalWithdrawals,
+        calculatedCash: todayClosing.calculatedCash,
+        grossProfit: todayClosing.grossProfit,
+        netProfit: todayClosing.netProfit,
+        salesCount: 0,
+        isClosed: true,
+      );
+    }
+
+    final localSales = await (db.select(db.localSales)
+      ..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))
+    ).get();
+
+    // ✅ FIX : On trie par date décroissante pour prendre le solde le plus récent
+    final localCashMovements = await (db.select(db.localCashMovements)
+      ..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))
+      ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt, mode: drift.OrderingMode.desc)])
+    ).get();
+
+    double morningBalance = 0;
+    double totalWithdrawals = 0;
+    double totalSales = 0;
+    double grossProfit = 0;
+    bool morningBalanceFound = false;
+
+    for (var movement in localCashMovements) {
+      if (movement.type == 'morning_balance') {
+        // ✅ FIX : On assigne (=) au lieu d'additionner (+=) et on prend juste le premier (le plus récent)
+        if (!morningBalanceFound) {
+          morningBalance = movement.amount;
+          morningBalanceFound = true;
+        }
+      } else if (movement.type == 'withdrawal') {
+        totalWithdrawals += movement.amount;
+      }
+    }
+
+    for (var sale in localSales) {
+      totalSales += sale.totalAmount;
+      grossProfit += sale.totalProfit;
+    }
+
+    final calculatedCash = morningBalance + totalSales - totalWithdrawals;
+    final netProfit = grossProfit - totalWithdrawals;
+
+    return DashboardState(
+      morningBalance: morningBalance,
+      totalSales: totalSales,
+      totalWithdrawals: totalWithdrawals,
+      calculatedCash: calculatedCash,
+      grossProfit: grossProfit,
+      netProfit: netProfit,
+      salesCount: localSales.length,
+      isClosed: false,
+    );
+  }
+
+  // --- ACTIONS DU DASHBOARD ---
+
   Future<void> saveMorningBalance(double amount) async {
     state = const AsyncValue.loading();
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      final memberResponse = await Supabase.instance.client
-          .from('shop_members')
-          .select('shop_id')
-          .eq('user_id', userId!)
-          .limit(1)
-          .single();
-      final shopId = memberResponse['shop_id'] as String;
+      final db = ref.read(localDbProvider);
+      final prefs = await SharedPreferences.getInstance();
 
-      final cashRepo = ref.read(cashRepositoryProvider);
+      final shopId = prefs.getString('cached_shop_id');
+      final userId = prefs.getString('cached_user_id') ?? 'offline_user';
 
-      // On crée le mouvement "Solde Matin"
-      await cashRepo.addMovement(
-        CashMovementEntity(
-          id: '',
-          shopId: shopId,
-          userId: userId!,
-          amount: amount,
-          type: 'morning_balance',
-          createdAt: DateTime.now(),
-        ),
+      if (shopId == null) throw Exception('Boutique introuvable.');
+
+      final movementId = const Uuid().v4();
+      final now = DateTime.now();
+
+      await db.into(db.localCashMovements).insert(
+          LocalCashMovement(
+            id: movementId, shopId: shopId, userId: userId,
+            amount: amount, type: 'morning_balance', createdAt: now,
+          )
       );
 
-      // On rafraîchit le dashboard
+      final payload = {
+        'id': movementId, 'shop_id': shopId, 'user_id': userId,
+        'amount': amount, 'type': 'morning_balance', 'created_at': now.toIso8601String(),
+      };
+      await db.addToQueue('ADD_CASH_MOVEMENT', jsonEncode(payload));
+      ref.read(syncServiceProvider).processQueue();
+
       state = AsyncValue.data(await _fetchDashboardData());
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
     }
   }
 
-  // Action pour clôturer la journée
-  Future<void> closeDay(double physicalCash, String? note) async {
+  Future<void> closeDay(double physicalCash, String? note, {DateTime? specificDate}) async {
     state = const AsyncValue.loading();
     try {
-      final currentState = await _fetchDashboardData();
+      final db = ref.read(localDbProvider);
+      final prefs = await SharedPreferences.getInstance();
 
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      final memberResponse = await Supabase.instance.client
-          .from('shop_members')
-          .select('shop_id')
-          .eq('user_id', userId!)
-          .limit(1)
-          .single();
-      final shopId = memberResponse['shop_id'] as String;
+      final shopId = prefs.getString('cached_shop_id');
+      final userId = prefs.getString('cached_user_id') ?? 'offline_user';
 
-      // 👇 FORMULE 2 : L'ÉCART DE CAISSE 👇
-      final cashGap = physicalCash - currentState.calculatedCash;
+      if (shopId == null) throw Exception('Boutique introuvable.');
 
-      final closingRepo = ref.read(closingRepositoryProvider);
+      final dateToClose = specificDate ?? DateTime.now();
+      final startOfDay = DateTime(dateToClose.year, dateToClose.month, dateToClose.day);
+      final endOfDay = DateTime(dateToClose.year, dateToClose.month, dateToClose.day, 23, 59, 59);
 
-      // On sauvegarde la clôture
-      await closingRepo.saveClosing(
-        DailyClosingEntity(
-          id: '',
-          shopId: shopId,
-          userId: userId!,
-          closingDate: DateTime.now(),
-          morningBalance: currentState.morningBalance,
-          totalSales: currentState.totalSales,
-          totalWithdrawals: currentState.totalWithdrawals,
-          calculatedCash: currentState.calculatedCash,
-          grossProfit: currentState.grossProfit,
-          netProfit: currentState.netProfit,
-          physicalCash: physicalCash,
-          cashGap: cashGap,
-          isClosed: true,
-          note: note,
-        ),
+      final localSales = await (db.select(db.localSales)..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+      final localCashMovements = await (db.select(db.localCashMovements)..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+
+      double mBalance = 0, tSales = 0, tWithdrawals = 0, gProfit = 0;
+      for (var m in localCashMovements) {
+        if (m.type == 'morning_balance') mBalance += m.amount;
+        else if (m.type == 'withdrawal') tWithdrawals += m.amount;
+      }
+      for (var s in localSales) {
+        tSales += s.totalAmount;
+        gProfit += s.totalProfit;
+      }
+
+      final cCash = mBalance + tSales - tWithdrawals;
+      final nProfit = gProfit - tWithdrawals;
+      final cashGap = physicalCash - cCash;
+      final closingId = const Uuid().v4();
+
+      await db.into(db.localDailyClosings).insert(
+          LocalDailyClosing(
+            id: closingId, shopId: shopId, userId: userId,
+            closingDate: dateToClose, morningBalance: mBalance, totalSales: tSales,
+            totalWithdrawals: tWithdrawals, calculatedCash: cCash, grossProfit: gProfit,
+            netProfit: nProfit, physicalCash: physicalCash, cashGap: cashGap,
+            isClosed: true, note: note,
+          )
       );
 
-      // On rafraîchit le dashboard (qui va maintenant afficher l'état clôturé)
+      final payload = {
+        'id': closingId, 'shop_id': shopId, 'user_id': userId,
+        'closing_date': "${dateToClose.year}-${dateToClose.month.toString().padLeft(2, '0')}-${dateToClose.day.toString().padLeft(2, '0')}",
+        'morning_balance': mBalance, 'total_sales': tSales, 'total_withdrawals': tWithdrawals,
+        'calculated_cash': cCash, 'gross_profit': gProfit, 'net_profit': nProfit,
+        'physical_cash': physicalCash, 'cash_gap': cashGap, 'is_closed': true, 'note': note,
+      };
+      await db.addToQueue('ADD_CLOSING', jsonEncode(payload));
+      ref.read(syncServiceProvider).processQueue();
+
       state = AsyncValue.data(await _fetchDashboardData());
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);

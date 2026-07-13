@@ -1,54 +1,39 @@
-import 'dart:io' as import_io;
+// lib/features/products/presentation/providers/product_provider.dart
 
+import 'dart:convert';
+import 'dart:io' as import_io;
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/sync/sync_service.dart';
+import '../../../../core/network/connectivity_provider.dart';
 import '../../domain/entities/product_entity.dart';
-import '../../data/datasources/product_remote_datasource.dart';
-import '../../data/repositories/product_repository_impl.dart';
 
-// 1. On crée les instances de nos classes (DataSource et Repository)
-final productRemoteDataSourceProvider = Provider((ref) {
-  return ProductRemoteDataSource(Supabase.instance.client);
-});
-
-final productRepositoryProvider = Provider((ref) {
-  final remoteDataSource = ref.read(productRemoteDataSourceProvider);
-  return ProductRepositoryImpl(remoteDataSource);
-});
-
-// 2. Le Notifier qui va gérer l'état de la liste des produits (Loading, Error, Data)
 class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
-
-  // Cette méthode est appelée automatiquement au démarrage pour charger la liste
   @override
   Future<List<ProductEntity>> build() async {
     return _fetchProducts();
   }
 
-  // Fonction privée pour récupérer les produits
   Future<List<ProductEntity>> _fetchProducts() async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) throw Exception('Utilisateur non connecté');
+    final db = ref.read(localDbProvider);
+    final localProducts = await db.select(db.localProducts).get();
 
-    // 👇 CORRECTION : On va chercher la boutique dont l'utilisateur est membre
-    final memberResponse = await Supabase.instance.client
-        .from('shop_members')
-        .select('shop_id')
-        .eq('user_id', userId)
-        .limit(1)
-        .maybeSingle();
-
-    if (memberResponse == null) {
-      throw Exception('Aucune boutique trouvée pour cet utilisateur');
-    }
-
-    final shopId = memberResponse['shop_id'] as String;
-
-    final repository = ref.read(productRepositoryProvider);
-    return repository.getProduct(shopId);
+    return localProducts.map((p) => ProductEntity(
+      id: p.id,
+      shopId: p.shopId,
+      name: p.name,
+      buyPrice: p.buyPrice,
+      sellPrice: p.sellPrice,
+      quantity: p.quantity,
+      minQuantity: p.minQuantity,
+      barcode: p.barcode,
+      photoUrl: p.photoUrl,
+    )).toList();
   }
 
-  // Fonction pour ajouter un produit
   Future<void> addProduct({
     required String name,
     required double buyPrice,
@@ -56,71 +41,76 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     required int quantity,
     required int minQuantity,
     String? barcode,
-    // 👇 1. On accepte le fichier image
     import_io.File? imageFile,
   }) async {
     state = const AsyncValue.loading();
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) throw Exception('Utilisateur non connecté');
+      final isOnline = ref.read(connectivityProvider).value ?? true;
+      final db = ref.read(localDbProvider);
 
-      final memberResponse = await Supabase.instance.client
-          .from('shop_members')
-          .select('shop_id')
-          .eq('user_id', userId)
-          .limit(1)
-          .single();
-      final shopId = memberResponse['shop_id'] as String;
+      String shopId = '';
+
+      if (isOnline) {
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        final memberResponse = await Supabase.instance.client.from('shop_members').select('shop_id').eq('user_id', userId!).single();
+        shopId = memberResponse['shop_id'] as String;
+      } else {
+        final currentProducts = state.value ?? [];
+        if (currentProducts.isEmpty) {
+          throw Exception('Connectez-vous à internet au moins une fois pour synchroniser votre boutique.');
+        }
+        shopId = currentProducts.first.shopId;
+      }
 
       String? photoUrl;
 
-      // 👇 2. LA MAGIE DE L'UPLOAD EST ICI 👇
-      if (imageFile != null) {
-        // On crée un nom unique pour l'image
-        final fileName = '${shopId}_${DateTime
-            .now()
-            .millisecondsSinceEpoch}.jpg';
-
-        // On l'envoie dans le "Storage" de Supabase (dossier 'product-photos')
-        await Supabase.instance.client.storage
-            .from('product-photos')
-            .upload(fileName, imageFile);
-
-        // On récupère le lien public de l'image pour l'afficher plus tard
-        photoUrl = Supabase.instance.client.storage
-            .from('product-photos')
-            .getPublicUrl(fileName);
+      if (isOnline && imageFile != null) {
+        final fileName = '${shopId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        await Supabase.instance.client.storage.from('product-photos').upload(fileName, imageFile);
+        photoUrl = Supabase.instance.client.storage.from('product-photos').getPublicUrl(fileName);
       }
 
       final String finalBarcode = (barcode == null || barcode.trim().isEmpty)
           ? 'QR-${DateTime.now().millisecondsSinceEpoch}'
           : barcode.trim();
 
+      final newId = const Uuid().v4();
 
-      final repository = ref.read(productRepositoryProvider);
+      final productData = {
+        'id': newId,
+        'shop_id': shopId,
+        'name': name,
+        'buy_price': buyPrice,
+        'sell_price': sellPrice,
+        'quantity': quantity,
+        'min_quantity': minQuantity,
+        'barcode': finalBarcode,
+        'photo_url': photoUrl,
+      };
 
-      final newProduct = ProductEntity(
-        id: '',
-        shopId: shopId,
-        name: name,
-        buyPrice: buyPrice,
-        sellPrice: sellPrice,
-        quantity: quantity,
-        minQuantity: minQuantity,
-        barcode: finalBarcode,
-        photoUrl: photoUrl, // 👇 3. On sauvegarde l'URL dans la base de données
+      await db.into(db.localProducts).insert(
+        LocalProduct(
+          id: newId,
+          shopId: shopId,
+          name: name,
+          buyPrice: buyPrice,
+          sellPrice: sellPrice,
+          quantity: quantity,
+          minQuantity: minQuantity,
+          barcode: finalBarcode,
+          photoUrl: photoUrl,
+        ),
       );
 
-      await repository.createProduct(newProduct);
+      await db.addToQueue('ADD_PRODUCT', jsonEncode(productData));
+      ref.read(syncServiceProvider).processQueue();
       state = AsyncValue.data(await _fetchProducts());
     } catch (e) {
-      // 👇 Correction de la double erreur signalée par Claude
       state = AsyncValue.data(await _fetchProducts());
       rethrow;
     }
   }
 
-  // Fonction pour modifier un produit
   Future<void> updateProduct({
     required String id,
     required String name,
@@ -134,46 +124,51 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
   }) async {
     state = const AsyncValue.loading();
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      final memberResponse = await Supabase.instance.client
-          .from('shop_members')
-          .select('shop_id')
-          .eq('user_id', userId!)
-          .single();
-      final shopId = memberResponse['shop_id'] as String;
+      final isOnline = ref.read(connectivityProvider).value ?? true;
+      final db = ref.read(localDbProvider);
+
+      final currentProducts = state.value ?? [];
+      final shopId = currentProducts.first.shopId;
 
       String? finalPhotoUrl = existingPhotoUrl;
 
-      // Si l'utilisateur a choisi une NOUVELLE image, on l'upload
-      if (newImageFile != null) {
+      if (isOnline && newImageFile != null) {
         final fileName = '${shopId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        await Supabase.instance.client.storage
-            .from('product-photos')
-            .upload(fileName, newImageFile);
-        finalPhotoUrl = Supabase.instance.client.storage
-            .from('product-photos')
-            .getPublicUrl(fileName);
+        await Supabase.instance.client.storage.from('product-photos').upload(fileName, newImageFile);
+        finalPhotoUrl = Supabase.instance.client.storage.from('product-photos').getPublicUrl(fileName);
       }
 
       final String finalBarcode = (barcode == null || barcode.trim().isEmpty)
           ? 'QR-${DateTime.now().millisecondsSinceEpoch}'
           : barcode.trim();
 
-      final repository = ref.read(productRepositoryProvider);
+      final productData = {
+        'id': id,
+        'shop_id': shopId,
+        'name': name,
+        'buy_price': buyPrice,
+        'sell_price': sellPrice,
+        'quantity': quantity,
+        'min_quantity': minQuantity,
+        'barcode': finalBarcode,
+        'photo_url': finalPhotoUrl,
+      };
 
-      final updatedProduct = ProductEntity(
-        id: id,
-        shopId: shopId,
-        name: name,
-        buyPrice: buyPrice,
-        sellPrice: sellPrice,
-        quantity: quantity,
-        minQuantity: minQuantity,
-        barcode: finalBarcode,
-        photoUrl: finalPhotoUrl,
+      await (db.update(db.localProducts)..where((t) => t.id.equals(id))).write(
+        LocalProductsCompanion(
+          name: drift.Value(name),
+          buyPrice: drift.Value(buyPrice),
+          sellPrice: drift.Value(sellPrice),
+          quantity: drift.Value(quantity),
+          minQuantity: drift.Value(minQuantity),
+          barcode: drift.Value(finalBarcode),
+          photoUrl: drift.Value(finalPhotoUrl),
+        ),
       );
 
-      await repository.updateProduct(updatedProduct);
+      await db.addToQueue('UPDATE_PRODUCT', jsonEncode(productData));
+      ref.read(syncServiceProvider).processQueue();
+
       state = AsyncValue.data(await _fetchProducts());
     } catch (e) {
       state = AsyncValue.data(await _fetchProducts());
@@ -181,9 +176,50 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     }
   }
 
+  // 👇 NOUVEAU : Fonction pour ajouter du stock (100% Local + File d'attente)
+  Future<void> addStock(ProductEntity product, int addedQuantity) async {
+    try {
+      final db = ref.read(localDbProvider);
+      final newQty = product.quantity + addedQuantity;
+
+      // 1. Mettre à jour la quantité en local
+      await (db.update(db.localProducts)..where((t) => t.id.equals(product.id))).write(
+        LocalProductsCompanion(quantity: drift.Value(newQty)),
+      );
+
+      // 2. Ajouter l'historique de recharge en local
+      final movementId = const Uuid().v4();
+      await db.into(db.localStockMovements).insert(
+        LocalStockMovement(
+          id: movementId,
+          shopId: product.shopId,
+          productId: product.id,
+          quantity: addedQuantity,
+          type: 'recharge',
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      // 3. Mettre dans la salle d'attente pour Supabase
+      final payload = {
+        'product_id': product.id,
+        'shop_id': product.shopId,
+        'quantity': addedQuantity,
+        'type': 'recharge',
+        'new_total_quantity': newQty,
+      };
+      await db.addToQueue('ADD_STOCK', jsonEncode(payload));
+      ref.read(syncServiceProvider).processQueue();
+
+
+      // 4. Rafraîchir l'écran
+      state = AsyncValue.data(await _fetchProducts());
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 
-// 3. Le Provider final que l'écran va écouter
 final productProvider = AsyncNotifierProvider<ProductNotifier, List<ProductEntity>>(() {
   return ProductNotifier();
 });

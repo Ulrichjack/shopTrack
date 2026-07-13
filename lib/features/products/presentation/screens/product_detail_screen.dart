@@ -1,9 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/product_entity.dart';
@@ -65,27 +65,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         setModalState(() => isSaving = true);
 
                         try {
-                          final supabase = Supabase.instance.client;
-
-                          final newQty = currentProduct.quantity + qty;
-                          await supabase.from('products').update({'quantity': newQty}).eq('id', currentProduct.id);
-
-                          await supabase.from('stock_movements').insert({
-                            'shop_id': currentProduct.shopId,
-                            'product_id': currentProduct.id,
-                            'quantity': qty,
-                            'type': 'recharge',
-                          });
-
-                          ref.invalidate(productProvider);
+                          // 👇 APPEL AU PROVIDER (100% Local) 👇
+                          await ref.read(productProvider.notifier).addStock(currentProduct, qty);
                           ref.invalidate(productHistoryProvider(currentProduct.id));
 
                           if (context.mounted) {
-                            Navigator.pop(context); // 👈 On ferme JUSTE le BottomSheet
+                            Navigator.pop(context); // On ferme juste le BottomSheet
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Stock ajouté avec succès !'), backgroundColor: AppColors.primary),
                             );
-                            // On a enlevé le 2ème context.pop() ! On reste sur la page.
                           }
                         } catch (e) {
                           setModalState(() => isSaving = false);
@@ -138,15 +126,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 👇 LA MAGIE EST ICI 👇
-    // On écoute la liste globale des produits. Si le produit est modifié ailleurs,
-    // cet écran va se mettre à jour tout seul avec les nouvelles infos !
+    // On écoute la liste globale des produits pour se mettre à jour en temps réel
     final productsList = ref.watch(productProvider).value ?? [];
-
-    // On initialise avec le produit passé en paramètre
     ProductEntity currentProduct = widget.product;
 
-    // On cherche manuellement dans la liste pour éviter l'erreur de type stricte de Dart
     for (var p in productsList) {
       if (p.id == widget.product.id) {
         currentProduct = p;
@@ -184,13 +167,68 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 border: Border.all(color: Colors.grey.shade300),
               ),
               child: currentProduct.photoUrl != null
-                  ? ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.network(currentProduct.photoUrl!, fit: BoxFit.cover))
+                  ? ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: CachedNetworkImage(
+                    imageUrl:currentProduct.photoUrl!,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                    errorWidget: (context, url, error) => const Center(
+                      child: Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
+                    ),
+                  ),
+              )
                   : const Icon(Icons.image, size: 80, color: Colors.grey),
             ),
             const SizedBox(height: 20),
 
-            Text(currentProduct.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-            const SizedBox(height: 4),
+// 👇 NOUVEAU : Le nom du produit avec le bouton QR Code à droite 👇
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    currentProduct.name,
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                ),
+                if (currentProduct.barcode != null)
+                  IconButton(
+                    icon: const Icon(Icons.qr_code_2, color: AppColors.primaryDark, size: 36),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(currentProduct.name, textAlign: TextAlign.center),
+                          content: SizedBox(
+                            width: 250,
+                            height: 250,
+                            child: Center(
+                              child: QrImageView(
+                                data: currentProduct.barcode!,
+                                version: QrVersions.auto,
+                                size: 200.0,
+                              ),
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Fermer', style: TextStyle(color: AppColors.primary)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+            // 👆 FIN DU BLOC QR CODE 👆
+            // const SizedBox(height: 4),
+
+
+
             Text(currentProduct.barcode != null ? 'Code : ${currentProduct.barcode}' : 'Aucun code scanné', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
             const SizedBox(height: 24),
 
@@ -257,7 +295,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 return ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: history.length > 15 ? 15 : history.length, // On affiche les 15 derniers
+                  itemCount: history.length > 15 ? 15 : history.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final item = history[index];
