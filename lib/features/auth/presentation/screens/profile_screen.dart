@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../../core/backup/backup_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -39,7 +40,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Déconnexion'),
-        content: const Text('Voulez-vous vraiment vous déconnecter ? Assurez-vous d\'avoir internet pour ne pas perdre vos données non synchronisées.'),
+        content: const Text(
+          'Voulez-vous vraiment vous déconnecter ? Assurez-vous d\'avoir internet pour ne pas perdre vos données non synchronisées.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -48,7 +51,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Se déconnecter', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Se déconnecter',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -58,6 +64,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     try {
       final db = ref.read(localDbProvider);
+      if (await db.getPendingCount() > 0) {
+        await ref.read(syncServiceProvider).processQueue();
+        final remaining = await db.getPendingCount();
+        if (remaining > 0) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Déconnexion annulée : $remaining opération(s) ne sont '
+                  'pas encore synchronisées.',
+                ),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          return;
+        }
+      }
+      await ref.read(backupServiceProvider).createBackup();
       await db.clearAllData();
 
       // On vide aussi les SharedPreferences
@@ -69,7 +94,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Erreur : $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -85,7 +113,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Ce code bloquera l\'accès au Bilan et aux Bénéfices pour vos vendeurs.'),
+            const Text(
+              'Ce code bloquera l\'accès au Bilan et aux Bénéfices pour vos vendeurs.',
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: pinController,
@@ -100,21 +130,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (pinController.text.length == 4) {
-                await ref.read(appModeProvider.notifier).setPin(pinController.text);
+                await ref
+                    .read(appModeProvider.notifier)
+                    .setPin(pinController.text);
                 if (mounted) {
+                  setState(() {
+                    _hasPinFuture = Future.value(true);
+                  });
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Code PIN créé. Mode Vendeur activé !'), backgroundColor: AppColors.primary),
+                    const SnackBar(
+                      content: Text('Code PIN créé. Mode Vendeur activé !'),
+                      backgroundColor: AppColors.primary,
+                    ),
                   );
                 }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Enregistrer', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Enregistrer',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -146,19 +190,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
           ElevatedButton(
             onPressed: () async {
-              final success = await ref.read(appModeProvider.notifier).unlockBossMode(pinController.text);
+              final success = await ref
+                  .read(appModeProvider.notifier)
+                  .unlockBossMode(pinController.text);
               if (mounted) {
                 Navigator.pop(context);
                 if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Mode Patron activé !'), backgroundColor: AppColors.primary),
+                    const SnackBar(
+                      content: Text('Mode Patron activé !'),
+                      backgroundColor: AppColors.primary,
+                    ),
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Code PIN incorrect'), backgroundColor: AppColors.error),
+                    const SnackBar(
+                      content: Text('Code PIN incorrect'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }
@@ -177,21 +232,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Supprimer la protection'),
-        content: const Text('Voulez-vous vraiment supprimer le code PIN ? L\'application ne sera plus protégée.'),
+        content: const Text(
+          'Voulez-vous vraiment supprimer le code PIN ? L\'application ne sera plus protégée.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
           ElevatedButton(
             onPressed: () async {
               await ref.read(appModeProvider.notifier).removePin();
               if (mounted) {
+                setState(() {
+                  _hasPinFuture = Future.value(false);
+                });
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Protection supprimée.'), backgroundColor: Colors.orange),
+                  const SnackBar(
+                    content: Text('Protection supprimée.'),
+                    backgroundColor: Colors.orange,
+                  ),
                 );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Supprimer',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -207,10 +276,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Mon Profil'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Mon Profil'), elevation: 0),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -222,32 +288,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: isBossMode ? AppColors.primaryLight : Colors.orange.shade100,
+                    backgroundColor: isBossMode
+                        ? AppColors.primaryLight
+                        : Colors.orange.shade100,
                     child: Icon(
-                        isBossMode ? Icons.admin_panel_settings : Icons.storefront,
-                        size: 50,
-                        color: isBossMode ? AppColors.primaryDark : Colors.orange.shade800
+                      isBossMode
+                          ? Icons.admin_panel_settings
+                          : Icons.storefront,
+                      size: 50,
+                      color: isBossMode
+                          ? AppColors.primaryDark
+                          : Colors.orange.shade800,
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     _shopName, // 👈 Le vrai nom de la boutique s'affiche ici !
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     isBossMode ? 'Mode Patron' : 'Mode Vendeur',
                     style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isBossMode ? AppColors.primaryDark : Colors.orange.shade800
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isBossMode
+                          ? AppColors.primaryDark
+                          : Colors.orange.shade800,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(20)),
-                    child: Text('+237 $phone', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '+237 $phone',
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -255,7 +346,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 40),
 
             // --- SECTION SÉCURITÉ ---
-            const Text('SÉCURITÉ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+            const Text(
+              'SÉCURITÉ',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+                letterSpacing: 1.2,
+              ),
+            ),
             const SizedBox(height: 12),
 
             // 👇 CORRECTION DE L'ERREUR FLUTTER (Utilisation de Material) 👇
@@ -277,39 +376,90 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       children: [
                         if (!hasPin)
                           ListTile(
-                            leading: const Icon(Icons.lock_outline, color: AppColors.primary),
-                            title: const Text('Protéger l\'application', style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: const Text('Créer un code PIN pour les vendeurs'),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                            leading: const Icon(
+                              Icons.lock_outline,
+                              color: AppColors.primary,
+                            ),
+                            title: const Text(
+                              'Protéger l\'application',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: const Text(
+                              'Créer un code PIN pour les vendeurs',
+                            ),
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
                             onTap: _showCreatePinDialog,
                           ),
 
                         if (hasPin && !isBossMode)
                           ListTile(
-                            leading: const Icon(Icons.lock_open, color: AppColors.primary),
-                            title: const Text('Déverrouiller (Patron)', style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: const Text('Entrez le code pour voir les bénéfices'),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                            leading: const Icon(
+                              Icons.lock_open,
+                              color: AppColors.primary,
+                            ),
+                            title: const Text(
+                              'Déverrouiller (Patron)',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: const Text(
+                              'Entrez le code pour voir les bénéfices',
+                            ),
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
                             onTap: _showUnlockDialog,
                           ),
 
                         if (hasPin && isBossMode) ...[
                           ListTile(
-                            leading: const Icon(Icons.lock, color: Colors.orange),
-                            title: const Text('Verrouiller l\'application', style: TextStyle(fontWeight: FontWeight.bold)),
+                            leading: const Icon(
+                              Icons.lock,
+                              color: Colors.orange,
+                            ),
+                            title: const Text(
+                              'Verrouiller l\'application',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                             subtitle: const Text('Passer en mode vendeur'),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                            onTap: () {
-                              ref.read(appModeProvider.notifier).lockApp();
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            onTap: () async {
+                              await ref
+                                  .read(appModeProvider.notifier)
+                                  .lockApp();
+                              if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Application verrouillée. Mode Vendeur actif.'), backgroundColor: Colors.orange),
+                                const SnackBar(
+                                  content: Text(
+                                    'Application verrouillée. Mode Vendeur actif.',
+                                  ),
+                                  backgroundColor: Colors.orange,
+                                ),
                               );
                             },
                           ),
                           const Divider(height: 1),
                           ListTile(
-                            leading: const Icon(Icons.delete_outline, color: Colors.red),
-                            title: const Text('Supprimer le code PIN', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                            leading: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
+                            ),
+                            title: const Text(
+                              'Supprimer le code PIN',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             onTap: _showRemovePinDialog,
                           ),
                         ],
@@ -317,6 +467,80 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     );
                   },
                 ),
+              ),
+            ),
+            const SizedBox(height: 40),
+
+            const Text(
+              'DONNÉES',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.sync, color: AppColors.primary),
+                    title: const Text('État de synchronisation'),
+                    subtitle: const Text(
+                      'Opérations en attente et erreurs réseau',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/sync-status'),
+                  ),
+                  if (isBossMode) ...[
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.history,
+                        color: AppColors.primary,
+                      ),
+                      title: const Text('Historique d’audit'),
+                      subtitle: const Text('Ventes, caisse, stock et clôtures'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/activity-log'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.backup_outlined,
+                        color: AppColors.primary,
+                      ),
+                      title: const Text('Créer une sauvegarde'),
+                      subtitle: const Text(
+                        'Export JSON dans les documents ShopTrack',
+                      ),
+                      onTap: () async {
+                        try {
+                          final file = await ref
+                              .read(backupServiceProvider)
+                              .createBackup();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Sauvegarde créée : $file'),
+                              ),
+                            );
+                          }
+                        } catch (error) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Sauvegarde impossible : $error'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: 40),
@@ -329,14 +553,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 foregroundColor: AppColors.error,
                 side: const BorderSide(color: AppColors.error),
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               icon: const Icon(Icons.logout),
-              label: const Text('Se déconnecter', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              label: const Text(
+                'Se déconnecter',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
 
             const SizedBox(height: 20),
-            const Center(child: Text('ShopTrack v1.0.0', style: TextStyle(color: Colors.grey, fontSize: 12))),
+            const Center(
+              child: Text(
+                'ShopTrack v1.0.0',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ),
           ],
         ),
       ),

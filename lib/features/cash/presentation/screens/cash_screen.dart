@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -15,27 +14,37 @@ import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../domain/entities/cash_movement_entity.dart';
 
-final todayWithdrawalsProvider = FutureProvider<List<CashMovementEntity>>((ref) async {
+final todayWithdrawalsProvider = FutureProvider<List<CashMovementEntity>>((
+  ref,
+) async {
   final db = ref.read(localDbProvider);
 
   final now = DateTime.now();
   final startOfDay = DateTime(now.year, now.month, now.day);
   final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
-  final localMovements = await (db.select(db.localCashMovements)
-    ..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay) & t.type.equals('withdrawal')))
-      .get();
+  final localMovements =
+      await (db.select(db.localCashMovements)..where(
+            (t) =>
+                t.createdAt.isBetweenValues(startOfDay, endOfDay) &
+                t.type.equals('withdrawal'),
+          ))
+          .get();
 
-  final withdrawals = localMovements.map((m) => CashMovementEntity(
-    id: m.id,
-    shopId: m.shopId,
-    userId: m.userId,
-    amount: m.amount,
-    type: m.type,
-    category: m.category,
-    note: m.note,
-    createdAt: m.createdAt,
-  )).toList();
+  final withdrawals = localMovements
+      .map(
+        (m) => CashMovementEntity(
+          id: m.id,
+          shopId: m.shopId,
+          userId: m.userId,
+          amount: m.amount,
+          type: m.type,
+          category: m.category,
+          note: m.note,
+          createdAt: m.createdAt,
+        ),
+      )
+      .toList();
 
   withdrawals.sort((a, b) => b.createdAt.compareTo(a.createdAt));
   return withdrawals;
@@ -55,7 +64,13 @@ class _CashScreenState extends ConsumerState<CashScreen> {
   String _selectedCategory = 'Repas';
   bool _isLoading = false;
 
-  final List<String> _categories = ['Repas', 'Transport', 'Fournisseur', 'Personnel', 'Autre'];
+  final List<String> _categories = [
+    'Repas',
+    'Transport',
+    'Fournisseur',
+    'Personnel',
+    'Autre',
+  ];
 
   @override
   void dispose() {
@@ -72,11 +87,14 @@ class _CashScreenState extends ConsumerState<CashScreen> {
     try {
       // 👇 CORRECTION : ON UTILISE LA BASE LOCALE (DRIFT) 👇
       final db = ref.read(localDbProvider);
-      final userId = Supabase.instance.client.auth.currentUser?.id ?? 'offline_user';
+      final userId =
+          Supabase.instance.client.auth.currentUser?.id ?? 'offline_user';
 
       final products = ref.read(productProvider).value;
       if (products == null || products.isEmpty) {
-        throw Exception('Impossible d\'enregistrer une sortie sans produits synchronisés.');
+        throw Exception(
+          'Impossible d\'enregistrer une sortie sans produits synchronisés.',
+        );
       }
       final shopId = products.first.shopId;
 
@@ -85,18 +103,20 @@ class _CashScreenState extends ConsumerState<CashScreen> {
       final amount = double.parse(_amountController.text);
 
       // 1. On enregistre la sortie en LOCAL
-      await db.into(db.localCashMovements).insert(
-        LocalCashMovement(
-          id: movementId,
-          shopId: shopId,
-          userId: userId,
-          amount: amount,
-          type: 'withdrawal',
-          category: _selectedCategory,
-          note: _noteController.text.isEmpty ? null : _noteController.text,
-          createdAt: now,
-        ),
-      );
+      await db
+          .into(db.localCashMovements)
+          .insert(
+            LocalCashMovement(
+              id: movementId,
+              shopId: shopId,
+              userId: userId,
+              amount: amount,
+              type: 'withdrawal',
+              category: _selectedCategory,
+              note: _noteController.text.isEmpty ? null : _noteController.text,
+              createdAt: now,
+            ),
+          );
 
       // 2. On met dans la SALLE D'ATTENTE pour Supabase
       final payload = {
@@ -118,7 +138,10 @@ class _CashScreenState extends ConsumerState<CashScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sortie de caisse enregistrée'), backgroundColor: AppColors.primary),
+          const SnackBar(
+            content: Text('Sortie de caisse enregistrée'),
+            backgroundColor: AppColors.primary,
+          ),
         );
         _amountController.clear();
         _noteController.clear();
@@ -126,7 +149,10 @@ class _CashScreenState extends ConsumerState<CashScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -154,29 +180,44 @@ class _CashScreenState extends ConsumerState<CashScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Combien as-tu pris dans la caisse ?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Combien as-tu pris dans la caisse ?',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 16),
 
                   TextFormField(
                     controller: _amountController,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'Montant (FCFA)',
-                      prefixIcon: const Icon(Icons.money_off, color: Colors.red),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(
+                        Icons.money_off,
+                        color: Colors.red,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) return 'Obligatoire';
-                      if (double.tryParse(value) == null) return 'Montant invalide';
+                      if (double.tryParse(value) == null)
+                        return 'Montant invalide';
                       return null;
                     },
                   ),
                   const SizedBox(height: 30),
 
-                  const Text('Pourquoi ? (Catégorie)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Pourquoi ? (Catégorie)',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 16),
 
                   Wrap(
@@ -189,11 +230,16 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                         selected: isSelected,
                         selectedColor: Colors.red.shade100,
                         labelStyle: TextStyle(
-                          color: isSelected ? Colors.red.shade900 : Colors.black,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected
+                              ? Colors.red.shade900
+                              : Colors.black,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                         onSelected: (selected) {
-                          if (selected) setState(() => _selectedCategory = category);
+                          if (selected)
+                            setState(() => _selectedCategory = category);
                         },
                       );
                     }).toList(),
@@ -205,7 +251,9 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                     decoration: InputDecoration(
                       labelText: 'Note (Optionnel)',
                       hintText: 'Ex: Taxi pour aller chercher la marchandise',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -218,11 +266,16 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red.shade600,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: _isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Enregistrer la sortie', style: TextStyle(fontSize: 18, color: Colors.white)),
+                        : const Text(
+                            'Enregistrer la sortie',
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
                   ),
                 ],
               ),
@@ -232,7 +285,15 @@ class _CashScreenState extends ConsumerState<CashScreen> {
             const Divider(thickness: 2),
             const SizedBox(height: 20),
 
-            const Text('SORTIES DU JOUR', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+            const Text(
+              'SORTIES DU JOUR',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+                letterSpacing: 1.2,
+              ),
+            ),
             const SizedBox(height: 16),
 
             withdrawalsAsync.when(
@@ -246,14 +307,23 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                 if (withdrawals.isEmpty) {
                   return Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: const Center(
-                      child: Text('Aucune sortie enregistrée aujourd\'hui.', style: TextStyle(color: Colors.grey)),
+                      child: Text(
+                        'Aucune sortie enregistrée aujourd\'hui.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ),
                   );
                 }
 
-                final totalSorties = withdrawals.fold(0.0, (sum, item) => sum + item.amount);
+                final totalSorties = withdrawals.fold(
+                  0.0,
+                  (sum, item) => sum + item.amount,
+                );
 
                 return Column(
                   children: [
@@ -267,10 +337,20 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Total sorti :', style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold)),
+                          Text(
+                            'Total sorti :',
+                            style: TextStyle(
+                              color: Colors.red.shade900,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           Text(
                             CurrencyFormatter.format(totalSorties),
-                            style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold, fontSize: 18),
+                            style: TextStyle(
+                              color: Colors.red.shade900,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
                           ),
                         ],
                       ),
@@ -284,7 +364,9 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (context, index) {
                         final item = withdrawals[index];
-                        final timeStr = DateFormat('HH:mm').format(item.createdAt);
+                        final timeStr = DateFormat(
+                          'HH:mm',
+                        ).format(item.createdAt);
 
                         return Container(
                           padding: const EdgeInsets.all(12),
@@ -297,16 +379,33 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                             children: [
                               CircleAvatar(
                                 backgroundColor: Colors.red.shade50,
-                                child: Icon(Icons.arrow_upward, color: Colors.red.shade700, size: 20),
+                                child: Icon(
+                                  Icons.arrow_upward,
+                                  color: Colors.red.shade700,
+                                  size: 20,
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(item.category ?? 'Autre', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    if (item.note != null && item.note!.isNotEmpty)
-                                      Text(item.note!, style: const TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic)),
+                                    Text(
+                                      item.category ?? 'Autre',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (item.note != null &&
+                                        item.note!.isNotEmpty)
+                                      Text(
+                                        item.note!,
+                                        style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 12,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -315,9 +414,19 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                                 children: [
                                   Text(
                                     '- ${CurrencyFormatter.format(item.amount)}',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.red.shade700),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: Colors.red.shade700,
+                                    ),
                                   ),
-                                  Text(timeStr, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                  Text(
+                                    timeStr,
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],

@@ -6,8 +6,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/backup/backup_service.dart';
 import '../../../../core/network/connectivity_provider.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../../core/utils/daily_cash_calculator.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../domain/entities/daily_closing_entity.dart';
 import '../../data/datasources/closing_remote_datasource.dart';
@@ -55,9 +57,10 @@ class DashboardState {
 }
 
 // --- 3. LE PROVIDER PRINCIPAL (100% LOCAL avec cache SharedPreferences) ---
-final dashboardProvider = AsyncNotifierProvider<DashboardNotifier, DashboardState>(() {
-  return DashboardNotifier();
-});
+final dashboardProvider =
+    AsyncNotifierProvider<DashboardNotifier, DashboardState>(() {
+      return DashboardNotifier();
+    });
 
 class DashboardNotifier extends AsyncNotifier<DashboardState> {
   @override
@@ -81,7 +84,10 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
             .eq('user_id', currentUser.id)
             .single();
 
-        await prefs.setString('cached_shop_id', memberResponse['shop_id'] as String);
+        await prefs.setString(
+          'cached_shop_id',
+          memberResponse['shop_id'] as String,
+        );
         // On sauvegarde le nom de la boutique
         final shopData = memberResponse['shops'] as Map<String, dynamic>;
         await prefs.setString('cached_shop_name', shopData['name'] as String);
@@ -110,10 +116,13 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
           await _runBackgroundSync();
           ref.invalidate(productProvider);
         } else {
-          _runBackgroundSync();
+          await _runBackgroundSync();
+          ref.invalidate(productProvider);
         }
       } catch (e) {
-        print('⚠️ Synchro échouée, mais on charge quand même le cache local : $e');
+        print(
+          '⚠️ Synchro échouée, mais on charge quand même le cache local : $e',
+        );
       }
     }
 
@@ -128,25 +137,57 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     // ==========================================
     // 2. VÉRIFICATION DE LA CLÔTURE DE LA VEILLE
     // ==========================================
-    final lastSale = await (db.select(db.localSales)
-      ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt, mode: drift.OrderingMode.desc)])
-      ..limit(1)).getSingleOrNull();
+    final lastSale =
+        await (db.select(db.localSales)
+              ..orderBy([
+                (t) => drift.OrderingTerm(
+                  expression: t.createdAt,
+                  mode: drift.OrderingMode.desc,
+                ),
+              ])
+              ..limit(1))
+            .getSingleOrNull();
 
     if (lastSale != null) {
-      final lastSaleDate = DateTime(lastSale.createdAt.year, lastSale.createdAt.month, lastSale.createdAt.day);
+      final lastSaleDate = DateTime(
+        lastSale.createdAt.year,
+        lastSale.createdAt.month,
+        lastSale.createdAt.day,
+      );
 
       if (lastSaleDate.isBefore(startOfDay)) {
-        final startOfSaleDay = DateTime(lastSaleDate.year, lastSaleDate.month, lastSaleDate.day);
-        final endOfSaleDay = DateTime(lastSaleDate.year, lastSaleDate.month, lastSaleDate.day, 23, 59, 59);
+        final startOfSaleDay = DateTime(
+          lastSaleDate.year,
+          lastSaleDate.month,
+          lastSaleDate.day,
+        );
+        final endOfSaleDay = DateTime(
+          lastSaleDate.year,
+          lastSaleDate.month,
+          lastSaleDate.day,
+          23,
+          59,
+          59,
+        );
 
-        final existingClosing = await (db.select(db.localDailyClosings)
-          ..where((t) => t.closingDate.isBetweenValues(startOfSaleDay, endOfSaleDay))
-        ).getSingleOrNull();
+        final existingClosing =
+            await (db.select(db.localDailyClosings)..where(
+                  (t) => t.closingDate.isBetweenValues(
+                    startOfSaleDay,
+                    endOfSaleDay,
+                  ),
+                ))
+                .getSingleOrNull();
 
         if (existingClosing == null) {
           return DashboardState(
-            morningBalance: 0, totalSales: 0, totalWithdrawals: 0,
-            calculatedCash: 0, grossProfit: 0, netProfit: 0, salesCount: 0,
+            morningBalance: 0,
+            totalSales: 0,
+            totalWithdrawals: 0,
+            calculatedCash: 0,
+            grossProfit: 0,
+            netProfit: 0,
+            salesCount: 0,
             isClosed: false,
             needsPreviousDayClosing: true,
             dateToClose: lastSaleDate,
@@ -159,9 +200,11 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     // 3. LECTURE LOCALE DE LA JOURNÉE ACTUELLE
     // ==========================================
     // ✅ FIX : Utilisation de isBetweenValues au lieu de .year.equals()
-    final todayClosing = await (db.select(db.localDailyClosings)
-      ..where((t) => t.closingDate.isBetweenValues(startOfDay, endOfDay))
-    ).getSingleOrNull();
+    final todayClosing =
+        await (db.select(db.localDailyClosings)..where(
+              (t) => t.closingDate.isBetweenValues(startOfDay, endOfDay),
+            ))
+            .getSingleOrNull();
 
     if (todayClosing != null && todayClosing.isClosed) {
       return DashboardState(
@@ -176,51 +219,51 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       );
     }
 
-    final localSales = await (db.select(db.localSales)
-      ..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))
-    ).get();
+    final localSales = await (db.select(
+      db.localSales,
+    )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
 
     // ✅ FIX : On trie par date décroissante pour prendre le solde le plus récent
-    final localCashMovements = await (db.select(db.localCashMovements)
-      ..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))
-      ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt, mode: drift.OrderingMode.desc)])
-    ).get();
+    final localCashMovements =
+        await (db.select(db.localCashMovements)
+              ..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))
+              ..orderBy([
+                (t) => drift.OrderingTerm(
+                  expression: t.createdAt,
+                  mode: drift.OrderingMode.desc,
+                ),
+              ]))
+            .get();
 
-    double morningBalance = 0;
-    double totalWithdrawals = 0;
-    double totalSales = 0;
-    double grossProfit = 0;
-    bool morningBalanceFound = false;
-
-    for (var movement in localCashMovements) {
-      if (movement.type == 'morning_balance') {
-        // ✅ FIX : On assigne (=) au lieu d'additionner (+=) et on prend juste le premier (le plus récent)
-        if (!morningBalanceFound) {
-          morningBalance = movement.amount;
-          morningBalanceFound = true;
-        }
-      } else if (movement.type == 'withdrawal') {
-        totalWithdrawals += movement.amount;
-      }
-    }
-
-    for (var sale in localSales) {
-      totalSales += sale.totalAmount;
-      grossProfit += sale.totalProfit;
-    }
-
-    final calculatedCash = morningBalance + totalSales - totalWithdrawals;
-    final netProfit = grossProfit - totalWithdrawals;
+    final totals = _calculateTotals(localSales, localCashMovements);
 
     return DashboardState(
-      morningBalance: morningBalance,
-      totalSales: totalSales,
-      totalWithdrawals: totalWithdrawals,
-      calculatedCash: calculatedCash,
-      grossProfit: grossProfit,
-      netProfit: netProfit,
+      morningBalance: totals.morningBalance,
+      totalSales: totals.totalSales,
+      totalWithdrawals: totals.totalWithdrawals,
+      calculatedCash: totals.calculatedCash,
+      grossProfit: totals.grossProfit,
+      netProfit: totals.netProfit,
       salesCount: localSales.length,
       isClosed: false,
+    );
+  }
+
+  DailyCashTotals _calculateTotals(
+    List<LocalSale> sales,
+    List<LocalCashMovement> movements,
+  ) {
+    return DailyCashCalculator.calculate(
+      sales: sales.map(
+        (sale) => SaleValue(amount: sale.totalAmount, profit: sale.totalProfit),
+      ),
+      movements: movements.map(
+        (movement) => CashMovementValue(
+          type: movement.type,
+          amount: movement.amount,
+          createdAt: movement.createdAt,
+        ),
+      ),
     );
   }
 
@@ -240,19 +283,29 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final movementId = const Uuid().v4();
       final now = DateTime.now();
 
-      await db.into(db.localCashMovements).insert(
-          LocalCashMovement(
-            id: movementId, shopId: shopId, userId: userId,
-            amount: amount, type: 'morning_balance', createdAt: now,
-          )
-      );
+      await db
+          .into(db.localCashMovements)
+          .insert(
+            LocalCashMovement(
+              id: movementId,
+              shopId: shopId,
+              userId: userId,
+              amount: amount,
+              type: 'morning_balance',
+              createdAt: now,
+            ),
+          );
 
       final payload = {
-        'id': movementId, 'shop_id': shopId, 'user_id': userId,
-        'amount': amount, 'type': 'morning_balance', 'created_at': now.toIso8601String(),
+        'id': movementId,
+        'shop_id': shopId,
+        'user_id': userId,
+        'amount': amount,
+        'type': 'morning_balance',
+        'created_at': now.toIso8601String(),
       };
       await db.addToQueue('ADD_CASH_MOVEMENT', jsonEncode(payload));
-      ref.read(syncServiceProvider).processQueue();
+      await ref.read(syncServiceProvider).processQueue();
 
       state = AsyncValue.data(await _fetchDashboardData());
     } catch (e) {
@@ -260,7 +313,11 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     }
   }
 
-  Future<void> closeDay(double physicalCash, String? note, {DateTime? specificDate}) async {
+  Future<void> closeDay(
+    double physicalCash,
+    String? note, {
+    DateTime? specificDate,
+  }) async {
     state = const AsyncValue.loading();
     try {
       final db = ref.read(localDbProvider);
@@ -272,46 +329,83 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       if (shopId == null) throw Exception('Boutique introuvable.');
 
       final dateToClose = specificDate ?? DateTime.now();
-      final startOfDay = DateTime(dateToClose.year, dateToClose.month, dateToClose.day);
-      final endOfDay = DateTime(dateToClose.year, dateToClose.month, dateToClose.day, 23, 59, 59);
-
-      final localSales = await (db.select(db.localSales)..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
-      final localCashMovements = await (db.select(db.localCashMovements)..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
-
-      double mBalance = 0, tSales = 0, tWithdrawals = 0, gProfit = 0;
-      for (var m in localCashMovements) {
-        if (m.type == 'morning_balance') mBalance += m.amount;
-        else if (m.type == 'withdrawal') tWithdrawals += m.amount;
-      }
-      for (var s in localSales) {
-        tSales += s.totalAmount;
-        gProfit += s.totalProfit;
-      }
-
-      final cCash = mBalance + tSales - tWithdrawals;
-      final nProfit = gProfit - tWithdrawals;
-      final cashGap = physicalCash - cCash;
-      final closingId = const Uuid().v4();
-
-      await db.into(db.localDailyClosings).insert(
-          LocalDailyClosing(
-            id: closingId, shopId: shopId, userId: userId,
-            closingDate: dateToClose, morningBalance: mBalance, totalSales: tSales,
-            totalWithdrawals: tWithdrawals, calculatedCash: cCash, grossProfit: gProfit,
-            netProfit: nProfit, physicalCash: physicalCash, cashGap: cashGap,
-            isClosed: true, note: note,
-          )
+      final startOfDay = DateTime(
+        dateToClose.year,
+        dateToClose.month,
+        dateToClose.day,
+      );
+      final endOfDay = DateTime(
+        dateToClose.year,
+        dateToClose.month,
+        dateToClose.day,
+        23,
+        59,
+        59,
       );
 
+      final localSales = await (db.select(
+        db.localSales,
+      )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+      final localCashMovements = await (db.select(
+        db.localCashMovements,
+      )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+      final totals = _calculateTotals(localSales, localCashMovements);
+      final cashGap = physicalCash - totals.calculatedCash;
+
+      final existingClosing =
+          await (db.select(db.localDailyClosings)..where(
+                (t) => t.closingDate.isBetweenValues(startOfDay, endOfDay),
+              ))
+              .getSingleOrNull();
+      final closingId = existingClosing?.id ?? const Uuid().v4();
+      final normalizedClosingDate = startOfDay;
+
+      await db
+          .into(db.localDailyClosings)
+          .insert(
+            LocalDailyClosing(
+              id: closingId,
+              shopId: shopId,
+              userId: userId,
+              closingDate: normalizedClosingDate,
+              morningBalance: totals.morningBalance,
+              totalSales: totals.totalSales,
+              totalWithdrawals: totals.totalWithdrawals,
+              calculatedCash: totals.calculatedCash,
+              grossProfit: totals.grossProfit,
+              netProfit: totals.netProfit,
+              physicalCash: physicalCash,
+              cashGap: cashGap,
+              isClosed: true,
+              note: note,
+            ),
+            mode: drift.InsertMode.insertOrReplace,
+          );
+
       final payload = {
-        'id': closingId, 'shop_id': shopId, 'user_id': userId,
-        'closing_date': "${dateToClose.year}-${dateToClose.month.toString().padLeft(2, '0')}-${dateToClose.day.toString().padLeft(2, '0')}",
-        'morning_balance': mBalance, 'total_sales': tSales, 'total_withdrawals': tWithdrawals,
-        'calculated_cash': cCash, 'gross_profit': gProfit, 'net_profit': nProfit,
-        'physical_cash': physicalCash, 'cash_gap': cashGap, 'is_closed': true, 'note': note,
+        'id': closingId,
+        'shop_id': shopId,
+        'user_id': userId,
+        'closing_date':
+            "${dateToClose.year}-${dateToClose.month.toString().padLeft(2, '0')}-${dateToClose.day.toString().padLeft(2, '0')}",
+        'morning_balance': totals.morningBalance,
+        'total_sales': totals.totalSales,
+        'total_withdrawals': totals.totalWithdrawals,
+        'calculated_cash': totals.calculatedCash,
+        'gross_profit': totals.grossProfit,
+        'net_profit': totals.netProfit,
+        'physical_cash': physicalCash,
+        'cash_gap': cashGap,
+        'is_closed': true,
+        'note': note,
       };
       await db.addToQueue('ADD_CLOSING', jsonEncode(payload));
-      ref.read(syncServiceProvider).processQueue();
+      await ref.read(syncServiceProvider).processQueue();
+      try {
+        await ref.read(backupServiceProvider).createBackup();
+      } catch (_) {
+        // La clôture reste valide même si le stockage du téléphone est plein.
+      }
 
       state = AsyncValue.data(await _fetchDashboardData());
     } catch (e) {

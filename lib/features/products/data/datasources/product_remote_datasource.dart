@@ -8,16 +8,22 @@ class ProductRemoteDataSource {
 
   // Récupérer les produits depuis Supabase
   Future<List<ProductModel>> getProducts(String shopId) async {
-    final response = await supabase.from('products').select().eq('shop_id', shopId);
+    final response = await supabase
+        .from('products')
+        .select()
+        .eq('shop_id', shopId);
     return response.map((json) => ProductModel.fromJson(json)).toList();
   }
 
   // Créer un produit dans Supabase
   Future<void> createProduct(ProductModel product) async {
-    final response = await supabase.from('products').insert(product.toJson());
+    await supabase.from('products').insert(product.toJson());
   }
 
-  Future<ProductModel?> getProductByBarCode(String barcode, String shopId) async {
+  Future<ProductModel?> getProductByBarCode(
+    String barcode,
+    String shopId,
+  ) async {
     // maybeSingle() dit à Supabase : "Renvoie-moi 1 seul résultat, ou null s'il n'y a rien"
     final response = await supabase
         .from('products')
@@ -40,6 +46,4 @@ class ProductRemoteDataSource {
         .update(product.toJson())
         .eq('id', product.id);
   }
-
-
 }

@@ -1,17 +1,64 @@
-# shoptrack
+# ShopTrack
 
-A new Flutter project.
+Application Flutter de gestion de boutique avec cache local Drift et
+synchronisation Supabase.
 
-## Getting Started
+## Préparation
 
-This project is a starting point for a Flutter application.
+```bash
+flutter pub get
+flutter test
+flutter run
+```
 
-A few resources to get you started if this is your first Flutter project:
+## Migration Supabase obligatoire
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+La synchronisation atomique du stock dépend de la fonction
+`apply_stock_movement`. Avant d'installer cette version sur les téléphones,
+appliquer, dans cet ordre :
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```text
+supabase/migrations/202607270001_secure_sync.sql
+supabase/migrations/202607280002_stock_sync_and_unique_barcodes.sql
+```
+
+Avec Supabase CLI sur un projet déjà lié :
+
+```bash
+supabase db push
+```
+
+La migration :
+
+- empêche qu'une vente renvoyée deux fois redécompte le stock ;
+- refuse un stock négatif ;
+- ajoute l'unicité d'une clôture par boutique et par date ;
+- active des politiques RLS limitées aux membres de la boutique.
+
+Vérifier les politiques déjà présentes dans le tableau de bord Supabase avant
+la production. Si des clôtures en double existent déjà, les corriger avant de
+créer l'index unique.
+
+## Signature Android
+
+Une version `release` n'utilise plus la clé de débogage. Copier
+`android/key.properties.example` vers `android/key.properties`, créer un
+keystore privé, puis renseigner les quatre valeurs. Ne jamais versionner le
+keystore ni `key.properties`.
+
+## Validation avant production
+
+Tester le même APK sur au moins deux téléphones :
+
+1. accepter, refuser puis réactiver la permission caméra ;
+2. scanner le QR d'un produit créé sur l'autre téléphone ;
+3. vendre le même produit depuis deux téléphones ;
+4. effectuer une vente hors ligne, revenir en ligne et vérifier l'écran
+   **État de synchronisation** ;
+5. clôturer avec un manque puis un surplus et vérifier le bilan et son PDF ;
+6. confirmer qu'un vendeur ne peut ouvrir ni le bilan ni l'audit par une route
+   directe.
+
+Les sauvegardes JSON sont écrites dans le dossier applicatif
+`Documents/ShopTrackBackups`, automatiquement à chaque clôture et manuellement
+depuis le profil Patron.

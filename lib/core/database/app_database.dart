@@ -58,7 +58,8 @@ class LocalCashMovements extends Table {
   TextColumn get shopId => text()();
   TextColumn get userId => text()();
   RealColumn get amount => real()();
-  TextColumn get type => text()(); // 'morning_balance', 'withdrawal', 'incoming'
+  TextColumn get type =>
+      text()(); // 'morning_balance', 'withdrawal', 'incoming'
   TextColumn get category => text().nullable()();
   TextColumn get note => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
@@ -101,7 +102,6 @@ class LocalDailyClosings extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-
 // Table de la Salle d'attente (Sync Queue)
 class SyncQueueItems extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -110,19 +110,19 @@ class SyncQueueItems extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-
-
 // --- 2. CONFIGURATION DE LA BASE DE DONNÉES ---
 
-@DriftDatabase(tables: [
-  LocalProducts,
-  LocalSales,
-  LocalSaleItems,
-  LocalCashMovements,
-  LocalStockMovements,
-  LocalDailyClosings,
-  SyncQueueItems,
-])
+@DriftDatabase(
+  tables: [
+    LocalProducts,
+    LocalSales,
+    LocalSaleItems,
+    LocalCashMovements,
+    LocalStockMovements,
+    LocalDailyClosings,
+    SyncQueueItems,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -132,15 +132,21 @@ class AppDatabase extends _$AppDatabase {
   // --- FONCTIONS POUR LA SALLE D'ATTENTE ---
   Future<int> addToQueue(String action, String payload) {
     return into(syncQueueItems).insert(
-      SyncQueueItemsCompanion(
-        action: Value(action),
-        payload: Value(payload),
-      ),
+      SyncQueueItemsCompanion(action: Value(action), payload: Value(payload)),
     );
   }
 
   Future<List<SyncQueueItem>> getPendingItems() {
-    return (select(syncQueueItems)..orderBy([(t) => OrderingTerm(expression: t.createdAt)])).get();
+    return (select(
+      syncQueueItems,
+    )..orderBy([(t) => OrderingTerm(expression: t.createdAt)])).get();
+  }
+
+  Future<int> getPendingCount() async {
+    final countExpression = syncQueueItems.id.count();
+    final query = selectOnly(syncQueueItems)..addColumns([countExpression]);
+    final row = await query.getSingle();
+    return row.read(countExpression) ?? 0;
   }
 
   Future<void> removeFromQueue(int id) {
@@ -153,6 +159,7 @@ class AppDatabase extends _$AppDatabase {
     await delete(localSales).go();
     await delete(localSaleItems).go();
     await delete(localCashMovements).go();
+    await delete(localStockMovements).go();
     await delete(localDailyClosings).go();
     await delete(syncQueueItems).go();
   }

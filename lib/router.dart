@@ -19,6 +19,9 @@ import 'features/products/presentation/screens/product_detail_screen.dart';
 import 'features/products/presentation/screens/product_list_screen.dart';
 import 'features/sales/presentation/screens/new_sale_screen.dart';
 import 'features/sales/presentation/screens/sale_confirmation_screen.dart';
+import 'core/audit/activity_log_screen.dart';
+import 'core/sync/sync_status_screen.dart';
+import 'core/providers/app_mode_provider.dart';
 
 // Clés nécessaires pour le ShellRoute
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -31,19 +34,24 @@ final goRouter = GoRouter(
   redirect: (context, state) {
     final session = Supabase.instance.client.auth.currentSession;
     final isLoggedIn = session != null;
-    final isOnAuth = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+    final isOnAuth =
+        state.matchedLocation == '/login' ||
+        state.matchedLocation == '/register';
 
     if (isLoggedIn && isOnAuth) return '/home';
     if (!isLoggedIn && !isOnAuth) return '/login';
+    const bossOnlyRoutes = {'/bilan', '/activity-log'};
+    if (isLoggedIn &&
+        bossOnlyRoutes.contains(state.matchedLocation) &&
+        !bossModeAccess.value) {
+      return '/profile';
+    }
     return null;
   },
 
   routes: [
     // --- ROUTES SANS BARRE DE NAVIGATION (Plein écran) ---
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
@@ -56,10 +64,7 @@ final goRouter = GoRouter(
       path: '/closing',
       builder: (context, state) => const ClosingScreen(),
     ),
-    GoRoute(
-      path: '/cash-out',
-      builder: (context, state) => const CashScreen(),
-    ),
+    GoRoute(path: '/cash-out', builder: (context, state) => const CashScreen()),
     GoRoute(
       path: '/add-product',
       builder: (context, state) => const AddProductScreen(),
@@ -74,6 +79,14 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/scanner',
       builder: (context, state) => const BarcodeScannerScreen(),
+    ),
+    GoRoute(
+      path: '/sync-status',
+      builder: (context, state) => const SyncStatusScreen(),
+    ),
+    GoRoute(
+      path: '/activity-log',
+      builder: (context, state) => const ActivityLogScreen(),
     ),
     GoRoute(
       path: '/product-detail',
@@ -110,12 +123,12 @@ final goRouter = GoRouter(
         // Écrans temporaires en attendant de les coder (Phase 9 et Historique)
         GoRoute(
           path: '/sales-history',
-          builder: (context, state) => const SalesHistoryScreen(),        ),
+          builder: (context, state) => const SalesHistoryScreen(),
+        ),
         GoRoute(
           path: '/bilan',
           builder: (context, state) => const MonthlyReportScreen(),
         ),
-
       ],
     ),
   ],

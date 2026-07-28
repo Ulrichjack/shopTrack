@@ -48,3 +48,8 @@ app.*.map.json
 # Supabase config
 lib/supabase_config.dart.env
 lib/supabase_config.dart
+# Clés Android de production
+android/key.properties
+*.jks
+*.keystore
+*.pass
