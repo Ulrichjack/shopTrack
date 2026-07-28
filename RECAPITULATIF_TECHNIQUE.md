@@ -1,7 +1,7 @@
 # ShopTrack — Récapitulatif technique des modifications
 
 Date : 28 juillet 2026
-Version Android : `1.0.0+1`
+Version Android : `1.0.0+2`
 Branche : `develop`
 Package Android : `cm.shoptrack.shoptrack`
 
@@ -73,6 +73,8 @@ Modifications :
 - arrêt après la première détection ;
 - retour haptique après détection ;
 - gestion du cycle de vie Flutter ;
+- démarrage manuel unique pour éviter une double initialisation native ;
+- sérialisation des commandes caméra sur les appareils Android sensibles ;
 - arrêt à la mise en arrière-plan ;
 - redémarrage au retour dans l'application ;
 - libération correcte du contrôleur ;

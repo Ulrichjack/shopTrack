@@ -18,13 +18,17 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   late final MobileScannerController _controller;
   String? _detectedCode;
   bool _handlingDetection = false;
+  Future<void> _cameraOperations = Future<void>.value();
+  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller = MobileScannerController(
-      autoStart: true,
+      // Le cycle de vie est géré ci-dessous. Laisser autoStart activé lancerait
+      // deux initialisations concurrentes sur certains appareils Android.
+      autoStart: false,
       facing: CameraFacing.back,
       detectionSpeed: DetectionSpeed.noDuplicates,
       formats: const [
@@ -37,40 +41,68 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         BarcodeFormat.upcE,
       ],
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_safeStart());
+    });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      unawaited(_safeStart());
-    } else if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      unawaited(_controller.stop());
+    if (_disposed || !_controller.value.isInitialized) return;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        unawaited(_safeStart());
+      case AppLifecycleState.inactive:
+        unawaited(_safeStop());
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+        return;
     }
+  }
+
+  Future<void> _runCameraOperation(Future<void> Function() operation) {
+    _cameraOperations = _cameraOperations.then((_) async {
+      if (_disposed) return;
+      try {
+        await operation();
+      } on MobileScannerException {
+        // Le contrôleur publie l'erreur dans sa ValueListenable. MobileScanner
+        // l'affichera avec errorBuilder sans faire planter l'écran.
+      } on PlatformException {
+        // Une erreur native ponctuelle ne doit pas interrompre les prochaines
+        // opérations start/stop mises en file.
+      }
+    });
+    return _cameraOperations;
   }
 
   Future<void> _safeStart() async {
-    try {
+    await _runCameraOperation(() async {
       if (!_controller.value.isRunning) {
         await _controller.start();
       }
-    } on MobileScannerException catch (error) {
-      if (error.errorCode !=
-          MobileScannerErrorCode.controllerAlreadyInitialized) {
-        rethrow;
+    });
+  }
+
+  Future<void> _safeStop() async {
+    await _runCameraOperation(() async {
+      if (_controller.value.isInitialized && _controller.value.isRunning) {
+        await _controller.stop();
       }
-    }
+    });
   }
 
   Future<void> _retry() async {
-    try {
-      await _controller.stop();
-    } catch (_) {
-      // Le contrôleur peut ne pas être initialisé après un refus de permission.
-    }
-    await _safeStart();
-    if (mounted) setState(() {});
+    await _runCameraOperation(() async {
+      if (_controller.value.isInitialized && _controller.value.isRunning) {
+        await _controller.stop();
+      }
+      if (!_disposed) {
+        await _controller.start();
+      }
+    });
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
@@ -83,7 +115,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
     if (code == null) return;
     _handlingDetection = true;
-    await _controller.stop();
+    await _safeStop();
     await HapticFeedback.mediumImpact();
 
     if (mounted) {
@@ -100,6 +132,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       _handlingDetection = false;
     });
     await _safeStart();
+  }
+
+  Future<void> _switchCamera() async {
+    await _runCameraOperation(() async {
+      if (_controller.value.isInitialized && _controller.value.isRunning) {
+        await _controller.switchCamera();
+      }
+    });
+  }
+
+  Future<void> _toggleTorch() async {
+    await _runCameraOperation(() async {
+      final state = _controller.value;
+      if (state.isInitialized &&
+          state.isRunning &&
+          state.torchState != TorchState.unavailable) {
+        await _controller.toggleTorch();
+      }
+    });
   }
 
   Future<void> _enterCodeManually() async {
@@ -152,8 +203,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       MobileScannerErrorCode.controllerDisposed =>
         'Le scanner a été fermé de façon inattendue.',
       MobileScannerErrorCode.genericError =>
-        error.errorDetails?.message ??
-            'La caméra est indisponible. Vérifiez la permission et réessayez.',
+        'La caméra n’a pas pu démarrer. Fermez les autres applications qui utilisent la caméra, puis appuyez sur Réessayer.',
     };
   }
 
@@ -205,8 +255,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
   @override
   void dispose() {
+    _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
-    unawaited(_controller.dispose());
+    // Ne pas détruire le contrôleur pendant qu'un démarrage natif est en cours.
+    unawaited(_cameraOperations.whenComplete(_controller.dispose));
     super.dispose();
   }
 
@@ -223,22 +275,36 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
             onPressed: _enterCodeManually,
             icon: const Icon(Icons.keyboard),
           ),
-          IconButton(
-            tooltip: 'Changer de caméra',
-            onPressed: () => _controller.switchCamera(),
-            icon: const Icon(Icons.cameraswitch_outlined),
-          ),
-          IconButton(
-            tooltip: 'Flash',
-            icon: ValueListenableBuilder(
-              valueListenable: _controller,
-              builder: (context, state, child) => Icon(
-                state.torchState == TorchState.on
-                    ? Icons.flash_on
-                    : Icons.flash_off,
-              ),
+          ValueListenableBuilder(
+            valueListenable: _controller,
+            builder: (context, state, child) => Row(
+              children: [
+                IconButton(
+                  tooltip: 'Changer de caméra',
+                  onPressed:
+                      state.isInitialized &&
+                          state.isRunning &&
+                          state.availableCameras != 1
+                      ? _switchCamera
+                      : null,
+                  icon: const Icon(Icons.cameraswitch_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Flash',
+                  onPressed:
+                      state.isInitialized &&
+                          state.isRunning &&
+                          state.torchState != TorchState.unavailable
+                      ? _toggleTorch
+                      : null,
+                  icon: Icon(
+                    state.torchState == TorchState.on
+                        ? Icons.flash_on
+                        : Icons.flash_off,
+                  ),
+                ),
+              ],
             ),
-            onPressed: () => _controller.toggleTorch(),
           ),
         ],
       ),
@@ -247,7 +313,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           MobileScanner(
             controller: _controller,
             errorBuilder: _buildError,
-            placeholderBuilder: (_, __) => const ColoredBox(
+            placeholderBuilder: (_, _) => const ColoredBox(
               color: Colors.black,
               child: Center(child: CircularProgressIndicator()),
             ),
