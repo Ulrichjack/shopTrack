@@ -47,6 +47,11 @@ class LocalSaleItems extends Table {
   RealColumn get sellPrice => real()();
   RealColumn get buyPrice => real()();
   RealColumn get profit => real()();
+  // Module A (cycles/unités) — nullable : ignoré en mode simple.
+  TextColumn get cycleId => text().nullable()();
+  TextColumn get unitId => text().nullable()();
+  IntColumn get quantityInBase => integer().nullable()();
+  RealColumn get unitSellPrice => real().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -102,6 +107,61 @@ class LocalDailyClosings extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// Table des Réglages de Boutique (modules optionnels : cycles, multi-point...)
+class LocalShopSettings extends Table {
+  TextColumn get shopId => text()();
+  TextColumn get unitMode => text().withDefault(const Constant('simple'))();
+  TextColumn get saleCaptureMode =>
+      text().withDefault(const Constant('realtime'))();
+  BoolColumn get multiPointEnabled =>
+      boolean().withDefault(const Constant(false))();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {shopId};
+}
+
+// Module A — Unités d'un produit (ex: œuf(1), plateau(30), carton(360))
+class LocalProductUnits extends Table {
+  TextColumn get id => text()();
+  TextColumn get productId => text()();
+  TextColumn get unitName => text()();
+  IntColumn get ratioToBase => integer()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// Module A — Cycles d'approvisionnement
+class LocalSupplyCycles extends Table {
+  TextColumn get id => text()();
+  TextColumn get shopId => text()();
+  TextColumn get productId => text()();
+  DateTimeColumn get openedAt => dateTime()();
+  DateTimeColumn get closedAt => dateTime().nullable()();
+  IntColumn get quantityReceived => integer()();
+  RealColumn get purchaseCost => real()();
+  RealColumn get referenceMarginPerUnit => real().nullable()();
+  TextColumn get status => text().withDefault(const Constant('open'))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// Module A — Pertes rattachées à un cycle
+class LocalCycleLosses extends Table {
+  TextColumn get id => text()();
+  TextColumn get cycleId => text()();
+  IntColumn get quantity => integer()();
+  TextColumn get reason => text()();
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // Table de la Salle d'attente (Sync Queue)
 class SyncQueueItems extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -120,14 +180,40 @@ class SyncQueueItems extends Table {
     LocalCashMovements,
     LocalStockMovements,
     LocalDailyClosings,
+    LocalShopSettings,
+    LocalProductUnits,
+    LocalSupplyCycles,
+    LocalCycleLosses,
     SyncQueueItems,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// Base en mémoire, pour les tests uniquement.
+  AppDatabase.forTesting(super.executor);
+
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(localShopSettings);
+      }
+      if (from < 3) {
+        await m.createTable(localProductUnits);
+        await m.createTable(localSupplyCycles);
+        await m.createTable(localCycleLosses);
+        await m.addColumn(localSaleItems, localSaleItems.cycleId);
+        await m.addColumn(localSaleItems, localSaleItems.unitId);
+        await m.addColumn(localSaleItems, localSaleItems.quantityInBase);
+        await m.addColumn(localSaleItems, localSaleItems.unitSellPrice);
+      }
+    },
+  );
 
   // --- FONCTIONS POUR LA SALLE D'ATTENTE ---
   Future<int> addToQueue(String action, String payload) {
@@ -161,6 +247,10 @@ class AppDatabase extends _$AppDatabase {
     await delete(localCashMovements).go();
     await delete(localStockMovements).go();
     await delete(localDailyClosings).go();
+    await delete(localShopSettings).go();
+    await delete(localProductUnits).go();
+    await delete(localSupplyCycles).go();
+    await delete(localCycleLosses).go();
     await delete(syncQueueItems).go();
   }
 }

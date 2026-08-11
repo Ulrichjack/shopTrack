@@ -1070,6 +1070,48 @@ class $LocalSaleItemsTable extends LocalSaleItems
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _cycleIdMeta = const VerificationMeta(
+    'cycleId',
+  );
+  @override
+  late final GeneratedColumn<String> cycleId = GeneratedColumn<String>(
+    'cycle_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _unitIdMeta = const VerificationMeta('unitId');
+  @override
+  late final GeneratedColumn<String> unitId = GeneratedColumn<String>(
+    'unit_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _quantityInBaseMeta = const VerificationMeta(
+    'quantityInBase',
+  );
+  @override
+  late final GeneratedColumn<int> quantityInBase = GeneratedColumn<int>(
+    'quantity_in_base',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _unitSellPriceMeta = const VerificationMeta(
+    'unitSellPrice',
+  );
+  @override
+  late final GeneratedColumn<double> unitSellPrice = GeneratedColumn<double>(
+    'unit_sell_price',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1080,6 +1122,10 @@ class $LocalSaleItemsTable extends LocalSaleItems
     sellPrice,
     buyPrice,
     profit,
+    cycleId,
+    unitId,
+    quantityInBase,
+    unitSellPrice,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1157,6 +1203,36 @@ class $LocalSaleItemsTable extends LocalSaleItems
     } else if (isInserting) {
       context.missing(_profitMeta);
     }
+    if (data.containsKey('cycle_id')) {
+      context.handle(
+        _cycleIdMeta,
+        cycleId.isAcceptableOrUnknown(data['cycle_id']!, _cycleIdMeta),
+      );
+    }
+    if (data.containsKey('unit_id')) {
+      context.handle(
+        _unitIdMeta,
+        unitId.isAcceptableOrUnknown(data['unit_id']!, _unitIdMeta),
+      );
+    }
+    if (data.containsKey('quantity_in_base')) {
+      context.handle(
+        _quantityInBaseMeta,
+        quantityInBase.isAcceptableOrUnknown(
+          data['quantity_in_base']!,
+          _quantityInBaseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('unit_sell_price')) {
+      context.handle(
+        _unitSellPriceMeta,
+        unitSellPrice.isAcceptableOrUnknown(
+          data['unit_sell_price']!,
+          _unitSellPriceMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1198,6 +1274,22 @@ class $LocalSaleItemsTable extends LocalSaleItems
         DriftSqlType.double,
         data['${effectivePrefix}profit'],
       )!,
+      cycleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cycle_id'],
+      ),
+      unitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit_id'],
+      ),
+      quantityInBase: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity_in_base'],
+      ),
+      unitSellPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}unit_sell_price'],
+      ),
     );
   }
 
@@ -1216,6 +1308,10 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
   final double sellPrice;
   final double buyPrice;
   final double profit;
+  final String? cycleId;
+  final String? unitId;
+  final int? quantityInBase;
+  final double? unitSellPrice;
   const LocalSaleItem({
     required this.id,
     required this.saleId,
@@ -1225,6 +1321,10 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
     required this.sellPrice,
     required this.buyPrice,
     required this.profit,
+    this.cycleId,
+    this.unitId,
+    this.quantityInBase,
+    this.unitSellPrice,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1237,6 +1337,18 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
     map['sell_price'] = Variable<double>(sellPrice);
     map['buy_price'] = Variable<double>(buyPrice);
     map['profit'] = Variable<double>(profit);
+    if (!nullToAbsent || cycleId != null) {
+      map['cycle_id'] = Variable<String>(cycleId);
+    }
+    if (!nullToAbsent || unitId != null) {
+      map['unit_id'] = Variable<String>(unitId);
+    }
+    if (!nullToAbsent || quantityInBase != null) {
+      map['quantity_in_base'] = Variable<int>(quantityInBase);
+    }
+    if (!nullToAbsent || unitSellPrice != null) {
+      map['unit_sell_price'] = Variable<double>(unitSellPrice);
+    }
     return map;
   }
 
@@ -1250,6 +1362,18 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
       sellPrice: Value(sellPrice),
       buyPrice: Value(buyPrice),
       profit: Value(profit),
+      cycleId: cycleId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cycleId),
+      unitId: unitId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitId),
+      quantityInBase: quantityInBase == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quantityInBase),
+      unitSellPrice: unitSellPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitSellPrice),
     );
   }
 
@@ -1267,6 +1391,10 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
       sellPrice: serializer.fromJson<double>(json['sellPrice']),
       buyPrice: serializer.fromJson<double>(json['buyPrice']),
       profit: serializer.fromJson<double>(json['profit']),
+      cycleId: serializer.fromJson<String?>(json['cycleId']),
+      unitId: serializer.fromJson<String?>(json['unitId']),
+      quantityInBase: serializer.fromJson<int?>(json['quantityInBase']),
+      unitSellPrice: serializer.fromJson<double?>(json['unitSellPrice']),
     );
   }
   @override
@@ -1281,6 +1409,10 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
       'sellPrice': serializer.toJson<double>(sellPrice),
       'buyPrice': serializer.toJson<double>(buyPrice),
       'profit': serializer.toJson<double>(profit),
+      'cycleId': serializer.toJson<String?>(cycleId),
+      'unitId': serializer.toJson<String?>(unitId),
+      'quantityInBase': serializer.toJson<int?>(quantityInBase),
+      'unitSellPrice': serializer.toJson<double?>(unitSellPrice),
     };
   }
 
@@ -1293,6 +1425,10 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
     double? sellPrice,
     double? buyPrice,
     double? profit,
+    Value<String?> cycleId = const Value.absent(),
+    Value<String?> unitId = const Value.absent(),
+    Value<int?> quantityInBase = const Value.absent(),
+    Value<double?> unitSellPrice = const Value.absent(),
   }) => LocalSaleItem(
     id: id ?? this.id,
     saleId: saleId ?? this.saleId,
@@ -1302,6 +1438,14 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
     sellPrice: sellPrice ?? this.sellPrice,
     buyPrice: buyPrice ?? this.buyPrice,
     profit: profit ?? this.profit,
+    cycleId: cycleId.present ? cycleId.value : this.cycleId,
+    unitId: unitId.present ? unitId.value : this.unitId,
+    quantityInBase: quantityInBase.present
+        ? quantityInBase.value
+        : this.quantityInBase,
+    unitSellPrice: unitSellPrice.present
+        ? unitSellPrice.value
+        : this.unitSellPrice,
   );
   LocalSaleItem copyWithCompanion(LocalSaleItemsCompanion data) {
     return LocalSaleItem(
@@ -1315,6 +1459,14 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
       sellPrice: data.sellPrice.present ? data.sellPrice.value : this.sellPrice,
       buyPrice: data.buyPrice.present ? data.buyPrice.value : this.buyPrice,
       profit: data.profit.present ? data.profit.value : this.profit,
+      cycleId: data.cycleId.present ? data.cycleId.value : this.cycleId,
+      unitId: data.unitId.present ? data.unitId.value : this.unitId,
+      quantityInBase: data.quantityInBase.present
+          ? data.quantityInBase.value
+          : this.quantityInBase,
+      unitSellPrice: data.unitSellPrice.present
+          ? data.unitSellPrice.value
+          : this.unitSellPrice,
     );
   }
 
@@ -1328,7 +1480,11 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
           ..write('quantity: $quantity, ')
           ..write('sellPrice: $sellPrice, ')
           ..write('buyPrice: $buyPrice, ')
-          ..write('profit: $profit')
+          ..write('profit: $profit, ')
+          ..write('cycleId: $cycleId, ')
+          ..write('unitId: $unitId, ')
+          ..write('quantityInBase: $quantityInBase, ')
+          ..write('unitSellPrice: $unitSellPrice')
           ..write(')'))
         .toString();
   }
@@ -1343,6 +1499,10 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
     sellPrice,
     buyPrice,
     profit,
+    cycleId,
+    unitId,
+    quantityInBase,
+    unitSellPrice,
   );
   @override
   bool operator ==(Object other) =>
@@ -1355,7 +1515,11 @@ class LocalSaleItem extends DataClass implements Insertable<LocalSaleItem> {
           other.quantity == this.quantity &&
           other.sellPrice == this.sellPrice &&
           other.buyPrice == this.buyPrice &&
-          other.profit == this.profit);
+          other.profit == this.profit &&
+          other.cycleId == this.cycleId &&
+          other.unitId == this.unitId &&
+          other.quantityInBase == this.quantityInBase &&
+          other.unitSellPrice == this.unitSellPrice);
 }
 
 class LocalSaleItemsCompanion extends UpdateCompanion<LocalSaleItem> {
@@ -1367,6 +1531,10 @@ class LocalSaleItemsCompanion extends UpdateCompanion<LocalSaleItem> {
   final Value<double> sellPrice;
   final Value<double> buyPrice;
   final Value<double> profit;
+  final Value<String?> cycleId;
+  final Value<String?> unitId;
+  final Value<int?> quantityInBase;
+  final Value<double?> unitSellPrice;
   final Value<int> rowid;
   const LocalSaleItemsCompanion({
     this.id = const Value.absent(),
@@ -1377,6 +1545,10 @@ class LocalSaleItemsCompanion extends UpdateCompanion<LocalSaleItem> {
     this.sellPrice = const Value.absent(),
     this.buyPrice = const Value.absent(),
     this.profit = const Value.absent(),
+    this.cycleId = const Value.absent(),
+    this.unitId = const Value.absent(),
+    this.quantityInBase = const Value.absent(),
+    this.unitSellPrice = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalSaleItemsCompanion.insert({
@@ -1388,6 +1560,10 @@ class LocalSaleItemsCompanion extends UpdateCompanion<LocalSaleItem> {
     required double sellPrice,
     required double buyPrice,
     required double profit,
+    this.cycleId = const Value.absent(),
+    this.unitId = const Value.absent(),
+    this.quantityInBase = const Value.absent(),
+    this.unitSellPrice = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        saleId = Value(saleId),
@@ -1406,6 +1582,10 @@ class LocalSaleItemsCompanion extends UpdateCompanion<LocalSaleItem> {
     Expression<double>? sellPrice,
     Expression<double>? buyPrice,
     Expression<double>? profit,
+    Expression<String>? cycleId,
+    Expression<String>? unitId,
+    Expression<int>? quantityInBase,
+    Expression<double>? unitSellPrice,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1417,6 +1597,10 @@ class LocalSaleItemsCompanion extends UpdateCompanion<LocalSaleItem> {
       if (sellPrice != null) 'sell_price': sellPrice,
       if (buyPrice != null) 'buy_price': buyPrice,
       if (profit != null) 'profit': profit,
+      if (cycleId != null) 'cycle_id': cycleId,
+      if (unitId != null) 'unit_id': unitId,
+      if (quantityInBase != null) 'quantity_in_base': quantityInBase,
+      if (unitSellPrice != null) 'unit_sell_price': unitSellPrice,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1430,6 +1614,10 @@ class LocalSaleItemsCompanion extends UpdateCompanion<LocalSaleItem> {
     Value<double>? sellPrice,
     Value<double>? buyPrice,
     Value<double>? profit,
+    Value<String?>? cycleId,
+    Value<String?>? unitId,
+    Value<int?>? quantityInBase,
+    Value<double?>? unitSellPrice,
     Value<int>? rowid,
   }) {
     return LocalSaleItemsCompanion(
@@ -1441,6 +1629,10 @@ class LocalSaleItemsCompanion extends UpdateCompanion<LocalSaleItem> {
       sellPrice: sellPrice ?? this.sellPrice,
       buyPrice: buyPrice ?? this.buyPrice,
       profit: profit ?? this.profit,
+      cycleId: cycleId ?? this.cycleId,
+      unitId: unitId ?? this.unitId,
+      quantityInBase: quantityInBase ?? this.quantityInBase,
+      unitSellPrice: unitSellPrice ?? this.unitSellPrice,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1472,6 +1664,18 @@ class LocalSaleItemsCompanion extends UpdateCompanion<LocalSaleItem> {
     if (profit.present) {
       map['profit'] = Variable<double>(profit.value);
     }
+    if (cycleId.present) {
+      map['cycle_id'] = Variable<String>(cycleId.value);
+    }
+    if (unitId.present) {
+      map['unit_id'] = Variable<String>(unitId.value);
+    }
+    if (quantityInBase.present) {
+      map['quantity_in_base'] = Variable<int>(quantityInBase.value);
+    }
+    if (unitSellPrice.present) {
+      map['unit_sell_price'] = Variable<double>(unitSellPrice.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1489,6 +1693,10 @@ class LocalSaleItemsCompanion extends UpdateCompanion<LocalSaleItem> {
           ..write('sellPrice: $sellPrice, ')
           ..write('buyPrice: $buyPrice, ')
           ..write('profit: $profit, ')
+          ..write('cycleId: $cycleId, ')
+          ..write('unitId: $unitId, ')
+          ..write('quantityInBase: $quantityInBase, ')
+          ..write('unitSellPrice: $unitSellPrice, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3226,6 +3434,1740 @@ class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
   }
 }
 
+class $LocalShopSettingsTable extends LocalShopSettings
+    with TableInfo<$LocalShopSettingsTable, LocalShopSetting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalShopSettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _shopIdMeta = const VerificationMeta('shopId');
+  @override
+  late final GeneratedColumn<String> shopId = GeneratedColumn<String>(
+    'shop_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _unitModeMeta = const VerificationMeta(
+    'unitMode',
+  );
+  @override
+  late final GeneratedColumn<String> unitMode = GeneratedColumn<String>(
+    'unit_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('simple'),
+  );
+  static const VerificationMeta _saleCaptureModeMeta = const VerificationMeta(
+    'saleCaptureMode',
+  );
+  @override
+  late final GeneratedColumn<String> saleCaptureMode = GeneratedColumn<String>(
+    'sale_capture_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('realtime'),
+  );
+  static const VerificationMeta _multiPointEnabledMeta = const VerificationMeta(
+    'multiPointEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> multiPointEnabled = GeneratedColumn<bool>(
+    'multi_point_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("multi_point_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    shopId,
+    unitMode,
+    saleCaptureMode,
+    multiPointEnabled,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_shop_settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalShopSetting> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('shop_id')) {
+      context.handle(
+        _shopIdMeta,
+        shopId.isAcceptableOrUnknown(data['shop_id']!, _shopIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_shopIdMeta);
+    }
+    if (data.containsKey('unit_mode')) {
+      context.handle(
+        _unitModeMeta,
+        unitMode.isAcceptableOrUnknown(data['unit_mode']!, _unitModeMeta),
+      );
+    }
+    if (data.containsKey('sale_capture_mode')) {
+      context.handle(
+        _saleCaptureModeMeta,
+        saleCaptureMode.isAcceptableOrUnknown(
+          data['sale_capture_mode']!,
+          _saleCaptureModeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('multi_point_enabled')) {
+      context.handle(
+        _multiPointEnabledMeta,
+        multiPointEnabled.isAcceptableOrUnknown(
+          data['multi_point_enabled']!,
+          _multiPointEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {shopId};
+  @override
+  LocalShopSetting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalShopSetting(
+      shopId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shop_id'],
+      )!,
+      unitMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit_mode'],
+      )!,
+      saleCaptureMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sale_capture_mode'],
+      )!,
+      multiPointEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}multi_point_enabled'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalShopSettingsTable createAlias(String alias) {
+    return $LocalShopSettingsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalShopSetting extends DataClass
+    implements Insertable<LocalShopSetting> {
+  final String shopId;
+  final String unitMode;
+  final String saleCaptureMode;
+  final bool multiPointEnabled;
+  final DateTime updatedAt;
+  const LocalShopSetting({
+    required this.shopId,
+    required this.unitMode,
+    required this.saleCaptureMode,
+    required this.multiPointEnabled,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['shop_id'] = Variable<String>(shopId);
+    map['unit_mode'] = Variable<String>(unitMode);
+    map['sale_capture_mode'] = Variable<String>(saleCaptureMode);
+    map['multi_point_enabled'] = Variable<bool>(multiPointEnabled);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  LocalShopSettingsCompanion toCompanion(bool nullToAbsent) {
+    return LocalShopSettingsCompanion(
+      shopId: Value(shopId),
+      unitMode: Value(unitMode),
+      saleCaptureMode: Value(saleCaptureMode),
+      multiPointEnabled: Value(multiPointEnabled),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalShopSetting.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalShopSetting(
+      shopId: serializer.fromJson<String>(json['shopId']),
+      unitMode: serializer.fromJson<String>(json['unitMode']),
+      saleCaptureMode: serializer.fromJson<String>(json['saleCaptureMode']),
+      multiPointEnabled: serializer.fromJson<bool>(json['multiPointEnabled']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'shopId': serializer.toJson<String>(shopId),
+      'unitMode': serializer.toJson<String>(unitMode),
+      'saleCaptureMode': serializer.toJson<String>(saleCaptureMode),
+      'multiPointEnabled': serializer.toJson<bool>(multiPointEnabled),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LocalShopSetting copyWith({
+    String? shopId,
+    String? unitMode,
+    String? saleCaptureMode,
+    bool? multiPointEnabled,
+    DateTime? updatedAt,
+  }) => LocalShopSetting(
+    shopId: shopId ?? this.shopId,
+    unitMode: unitMode ?? this.unitMode,
+    saleCaptureMode: saleCaptureMode ?? this.saleCaptureMode,
+    multiPointEnabled: multiPointEnabled ?? this.multiPointEnabled,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LocalShopSetting copyWithCompanion(LocalShopSettingsCompanion data) {
+    return LocalShopSetting(
+      shopId: data.shopId.present ? data.shopId.value : this.shopId,
+      unitMode: data.unitMode.present ? data.unitMode.value : this.unitMode,
+      saleCaptureMode: data.saleCaptureMode.present
+          ? data.saleCaptureMode.value
+          : this.saleCaptureMode,
+      multiPointEnabled: data.multiPointEnabled.present
+          ? data.multiPointEnabled.value
+          : this.multiPointEnabled,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalShopSetting(')
+          ..write('shopId: $shopId, ')
+          ..write('unitMode: $unitMode, ')
+          ..write('saleCaptureMode: $saleCaptureMode, ')
+          ..write('multiPointEnabled: $multiPointEnabled, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    shopId,
+    unitMode,
+    saleCaptureMode,
+    multiPointEnabled,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalShopSetting &&
+          other.shopId == this.shopId &&
+          other.unitMode == this.unitMode &&
+          other.saleCaptureMode == this.saleCaptureMode &&
+          other.multiPointEnabled == this.multiPointEnabled &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalShopSettingsCompanion extends UpdateCompanion<LocalShopSetting> {
+  final Value<String> shopId;
+  final Value<String> unitMode;
+  final Value<String> saleCaptureMode;
+  final Value<bool> multiPointEnabled;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const LocalShopSettingsCompanion({
+    this.shopId = const Value.absent(),
+    this.unitMode = const Value.absent(),
+    this.saleCaptureMode = const Value.absent(),
+    this.multiPointEnabled = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalShopSettingsCompanion.insert({
+    required String shopId,
+    this.unitMode = const Value.absent(),
+    this.saleCaptureMode = const Value.absent(),
+    this.multiPointEnabled = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : shopId = Value(shopId);
+  static Insertable<LocalShopSetting> custom({
+    Expression<String>? shopId,
+    Expression<String>? unitMode,
+    Expression<String>? saleCaptureMode,
+    Expression<bool>? multiPointEnabled,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (shopId != null) 'shop_id': shopId,
+      if (unitMode != null) 'unit_mode': unitMode,
+      if (saleCaptureMode != null) 'sale_capture_mode': saleCaptureMode,
+      if (multiPointEnabled != null) 'multi_point_enabled': multiPointEnabled,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalShopSettingsCompanion copyWith({
+    Value<String>? shopId,
+    Value<String>? unitMode,
+    Value<String>? saleCaptureMode,
+    Value<bool>? multiPointEnabled,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return LocalShopSettingsCompanion(
+      shopId: shopId ?? this.shopId,
+      unitMode: unitMode ?? this.unitMode,
+      saleCaptureMode: saleCaptureMode ?? this.saleCaptureMode,
+      multiPointEnabled: multiPointEnabled ?? this.multiPointEnabled,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (shopId.present) {
+      map['shop_id'] = Variable<String>(shopId.value);
+    }
+    if (unitMode.present) {
+      map['unit_mode'] = Variable<String>(unitMode.value);
+    }
+    if (saleCaptureMode.present) {
+      map['sale_capture_mode'] = Variable<String>(saleCaptureMode.value);
+    }
+    if (multiPointEnabled.present) {
+      map['multi_point_enabled'] = Variable<bool>(multiPointEnabled.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalShopSettingsCompanion(')
+          ..write('shopId: $shopId, ')
+          ..write('unitMode: $unitMode, ')
+          ..write('saleCaptureMode: $saleCaptureMode, ')
+          ..write('multiPointEnabled: $multiPointEnabled, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalProductUnitsTable extends LocalProductUnits
+    with TableInfo<$LocalProductUnitsTable, LocalProductUnit> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalProductUnitsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _unitNameMeta = const VerificationMeta(
+    'unitName',
+  );
+  @override
+  late final GeneratedColumn<String> unitName = GeneratedColumn<String>(
+    'unit_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ratioToBaseMeta = const VerificationMeta(
+    'ratioToBase',
+  );
+  @override
+  late final GeneratedColumn<int> ratioToBase = GeneratedColumn<int>(
+    'ratio_to_base',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    productId,
+    unitName,
+    ratioToBase,
+    sortOrder,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_product_units';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalProductUnit> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('unit_name')) {
+      context.handle(
+        _unitNameMeta,
+        unitName.isAcceptableOrUnknown(data['unit_name']!, _unitNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_unitNameMeta);
+    }
+    if (data.containsKey('ratio_to_base')) {
+      context.handle(
+        _ratioToBaseMeta,
+        ratioToBase.isAcceptableOrUnknown(
+          data['ratio_to_base']!,
+          _ratioToBaseMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_ratioToBaseMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalProductUnit map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalProductUnit(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      unitName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit_name'],
+      )!,
+      ratioToBase: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ratio_to_base'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalProductUnitsTable createAlias(String alias) {
+    return $LocalProductUnitsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalProductUnit extends DataClass
+    implements Insertable<LocalProductUnit> {
+  final String id;
+  final String productId;
+  final String unitName;
+  final int ratioToBase;
+  final int sortOrder;
+  const LocalProductUnit({
+    required this.id,
+    required this.productId,
+    required this.unitName,
+    required this.ratioToBase,
+    required this.sortOrder,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['product_id'] = Variable<String>(productId);
+    map['unit_name'] = Variable<String>(unitName);
+    map['ratio_to_base'] = Variable<int>(ratioToBase);
+    map['sort_order'] = Variable<int>(sortOrder);
+    return map;
+  }
+
+  LocalProductUnitsCompanion toCompanion(bool nullToAbsent) {
+    return LocalProductUnitsCompanion(
+      id: Value(id),
+      productId: Value(productId),
+      unitName: Value(unitName),
+      ratioToBase: Value(ratioToBase),
+      sortOrder: Value(sortOrder),
+    );
+  }
+
+  factory LocalProductUnit.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalProductUnit(
+      id: serializer.fromJson<String>(json['id']),
+      productId: serializer.fromJson<String>(json['productId']),
+      unitName: serializer.fromJson<String>(json['unitName']),
+      ratioToBase: serializer.fromJson<int>(json['ratioToBase']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'productId': serializer.toJson<String>(productId),
+      'unitName': serializer.toJson<String>(unitName),
+      'ratioToBase': serializer.toJson<int>(ratioToBase),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+    };
+  }
+
+  LocalProductUnit copyWith({
+    String? id,
+    String? productId,
+    String? unitName,
+    int? ratioToBase,
+    int? sortOrder,
+  }) => LocalProductUnit(
+    id: id ?? this.id,
+    productId: productId ?? this.productId,
+    unitName: unitName ?? this.unitName,
+    ratioToBase: ratioToBase ?? this.ratioToBase,
+    sortOrder: sortOrder ?? this.sortOrder,
+  );
+  LocalProductUnit copyWithCompanion(LocalProductUnitsCompanion data) {
+    return LocalProductUnit(
+      id: data.id.present ? data.id.value : this.id,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      unitName: data.unitName.present ? data.unitName.value : this.unitName,
+      ratioToBase: data.ratioToBase.present
+          ? data.ratioToBase.value
+          : this.ratioToBase,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalProductUnit(')
+          ..write('id: $id, ')
+          ..write('productId: $productId, ')
+          ..write('unitName: $unitName, ')
+          ..write('ratioToBase: $ratioToBase, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, productId, unitName, ratioToBase, sortOrder);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalProductUnit &&
+          other.id == this.id &&
+          other.productId == this.productId &&
+          other.unitName == this.unitName &&
+          other.ratioToBase == this.ratioToBase &&
+          other.sortOrder == this.sortOrder);
+}
+
+class LocalProductUnitsCompanion extends UpdateCompanion<LocalProductUnit> {
+  final Value<String> id;
+  final Value<String> productId;
+  final Value<String> unitName;
+  final Value<int> ratioToBase;
+  final Value<int> sortOrder;
+  final Value<int> rowid;
+  const LocalProductUnitsCompanion({
+    this.id = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.unitName = const Value.absent(),
+    this.ratioToBase = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalProductUnitsCompanion.insert({
+    required String id,
+    required String productId,
+    required String unitName,
+    required int ratioToBase,
+    this.sortOrder = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       productId = Value(productId),
+       unitName = Value(unitName),
+       ratioToBase = Value(ratioToBase);
+  static Insertable<LocalProductUnit> custom({
+    Expression<String>? id,
+    Expression<String>? productId,
+    Expression<String>? unitName,
+    Expression<int>? ratioToBase,
+    Expression<int>? sortOrder,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (productId != null) 'product_id': productId,
+      if (unitName != null) 'unit_name': unitName,
+      if (ratioToBase != null) 'ratio_to_base': ratioToBase,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalProductUnitsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? productId,
+    Value<String>? unitName,
+    Value<int>? ratioToBase,
+    Value<int>? sortOrder,
+    Value<int>? rowid,
+  }) {
+    return LocalProductUnitsCompanion(
+      id: id ?? this.id,
+      productId: productId ?? this.productId,
+      unitName: unitName ?? this.unitName,
+      ratioToBase: ratioToBase ?? this.ratioToBase,
+      sortOrder: sortOrder ?? this.sortOrder,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (unitName.present) {
+      map['unit_name'] = Variable<String>(unitName.value);
+    }
+    if (ratioToBase.present) {
+      map['ratio_to_base'] = Variable<int>(ratioToBase.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalProductUnitsCompanion(')
+          ..write('id: $id, ')
+          ..write('productId: $productId, ')
+          ..write('unitName: $unitName, ')
+          ..write('ratioToBase: $ratioToBase, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalSupplyCyclesTable extends LocalSupplyCycles
+    with TableInfo<$LocalSupplyCyclesTable, LocalSupplyCycle> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalSupplyCyclesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _shopIdMeta = const VerificationMeta('shopId');
+  @override
+  late final GeneratedColumn<String> shopId = GeneratedColumn<String>(
+    'shop_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _openedAtMeta = const VerificationMeta(
+    'openedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> openedAt = GeneratedColumn<DateTime>(
+    'opened_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _closedAtMeta = const VerificationMeta(
+    'closedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> closedAt = GeneratedColumn<DateTime>(
+    'closed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _quantityReceivedMeta = const VerificationMeta(
+    'quantityReceived',
+  );
+  @override
+  late final GeneratedColumn<int> quantityReceived = GeneratedColumn<int>(
+    'quantity_received',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _purchaseCostMeta = const VerificationMeta(
+    'purchaseCost',
+  );
+  @override
+  late final GeneratedColumn<double> purchaseCost = GeneratedColumn<double>(
+    'purchase_cost',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _referenceMarginPerUnitMeta =
+      const VerificationMeta('referenceMarginPerUnit');
+  @override
+  late final GeneratedColumn<double> referenceMarginPerUnit =
+      GeneratedColumn<double>(
+        'reference_margin_per_unit',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('open'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    shopId,
+    productId,
+    openedAt,
+    closedAt,
+    quantityReceived,
+    purchaseCost,
+    referenceMarginPerUnit,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_supply_cycles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalSupplyCycle> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('shop_id')) {
+      context.handle(
+        _shopIdMeta,
+        shopId.isAcceptableOrUnknown(data['shop_id']!, _shopIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_shopIdMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('opened_at')) {
+      context.handle(
+        _openedAtMeta,
+        openedAt.isAcceptableOrUnknown(data['opened_at']!, _openedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_openedAtMeta);
+    }
+    if (data.containsKey('closed_at')) {
+      context.handle(
+        _closedAtMeta,
+        closedAt.isAcceptableOrUnknown(data['closed_at']!, _closedAtMeta),
+      );
+    }
+    if (data.containsKey('quantity_received')) {
+      context.handle(
+        _quantityReceivedMeta,
+        quantityReceived.isAcceptableOrUnknown(
+          data['quantity_received']!,
+          _quantityReceivedMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_quantityReceivedMeta);
+    }
+    if (data.containsKey('purchase_cost')) {
+      context.handle(
+        _purchaseCostMeta,
+        purchaseCost.isAcceptableOrUnknown(
+          data['purchase_cost']!,
+          _purchaseCostMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_purchaseCostMeta);
+    }
+    if (data.containsKey('reference_margin_per_unit')) {
+      context.handle(
+        _referenceMarginPerUnitMeta,
+        referenceMarginPerUnit.isAcceptableOrUnknown(
+          data['reference_margin_per_unit']!,
+          _referenceMarginPerUnitMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalSupplyCycle map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalSupplyCycle(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      shopId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shop_id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      openedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}opened_at'],
+      )!,
+      closedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}closed_at'],
+      ),
+      quantityReceived: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity_received'],
+      )!,
+      purchaseCost: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}purchase_cost'],
+      )!,
+      referenceMarginPerUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}reference_margin_per_unit'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalSupplyCyclesTable createAlias(String alias) {
+    return $LocalSupplyCyclesTable(attachedDatabase, alias);
+  }
+}
+
+class LocalSupplyCycle extends DataClass
+    implements Insertable<LocalSupplyCycle> {
+  final String id;
+  final String shopId;
+  final String productId;
+  final DateTime openedAt;
+  final DateTime? closedAt;
+  final int quantityReceived;
+  final double purchaseCost;
+  final double? referenceMarginPerUnit;
+  final String status;
+  const LocalSupplyCycle({
+    required this.id,
+    required this.shopId,
+    required this.productId,
+    required this.openedAt,
+    this.closedAt,
+    required this.quantityReceived,
+    required this.purchaseCost,
+    this.referenceMarginPerUnit,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['shop_id'] = Variable<String>(shopId);
+    map['product_id'] = Variable<String>(productId);
+    map['opened_at'] = Variable<DateTime>(openedAt);
+    if (!nullToAbsent || closedAt != null) {
+      map['closed_at'] = Variable<DateTime>(closedAt);
+    }
+    map['quantity_received'] = Variable<int>(quantityReceived);
+    map['purchase_cost'] = Variable<double>(purchaseCost);
+    if (!nullToAbsent || referenceMarginPerUnit != null) {
+      map['reference_margin_per_unit'] = Variable<double>(
+        referenceMarginPerUnit,
+      );
+    }
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  LocalSupplyCyclesCompanion toCompanion(bool nullToAbsent) {
+    return LocalSupplyCyclesCompanion(
+      id: Value(id),
+      shopId: Value(shopId),
+      productId: Value(productId),
+      openedAt: Value(openedAt),
+      closedAt: closedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(closedAt),
+      quantityReceived: Value(quantityReceived),
+      purchaseCost: Value(purchaseCost),
+      referenceMarginPerUnit: referenceMarginPerUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(referenceMarginPerUnit),
+      status: Value(status),
+    );
+  }
+
+  factory LocalSupplyCycle.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalSupplyCycle(
+      id: serializer.fromJson<String>(json['id']),
+      shopId: serializer.fromJson<String>(json['shopId']),
+      productId: serializer.fromJson<String>(json['productId']),
+      openedAt: serializer.fromJson<DateTime>(json['openedAt']),
+      closedAt: serializer.fromJson<DateTime?>(json['closedAt']),
+      quantityReceived: serializer.fromJson<int>(json['quantityReceived']),
+      purchaseCost: serializer.fromJson<double>(json['purchaseCost']),
+      referenceMarginPerUnit: serializer.fromJson<double?>(
+        json['referenceMarginPerUnit'],
+      ),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'shopId': serializer.toJson<String>(shopId),
+      'productId': serializer.toJson<String>(productId),
+      'openedAt': serializer.toJson<DateTime>(openedAt),
+      'closedAt': serializer.toJson<DateTime?>(closedAt),
+      'quantityReceived': serializer.toJson<int>(quantityReceived),
+      'purchaseCost': serializer.toJson<double>(purchaseCost),
+      'referenceMarginPerUnit': serializer.toJson<double?>(
+        referenceMarginPerUnit,
+      ),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  LocalSupplyCycle copyWith({
+    String? id,
+    String? shopId,
+    String? productId,
+    DateTime? openedAt,
+    Value<DateTime?> closedAt = const Value.absent(),
+    int? quantityReceived,
+    double? purchaseCost,
+    Value<double?> referenceMarginPerUnit = const Value.absent(),
+    String? status,
+  }) => LocalSupplyCycle(
+    id: id ?? this.id,
+    shopId: shopId ?? this.shopId,
+    productId: productId ?? this.productId,
+    openedAt: openedAt ?? this.openedAt,
+    closedAt: closedAt.present ? closedAt.value : this.closedAt,
+    quantityReceived: quantityReceived ?? this.quantityReceived,
+    purchaseCost: purchaseCost ?? this.purchaseCost,
+    referenceMarginPerUnit: referenceMarginPerUnit.present
+        ? referenceMarginPerUnit.value
+        : this.referenceMarginPerUnit,
+    status: status ?? this.status,
+  );
+  LocalSupplyCycle copyWithCompanion(LocalSupplyCyclesCompanion data) {
+    return LocalSupplyCycle(
+      id: data.id.present ? data.id.value : this.id,
+      shopId: data.shopId.present ? data.shopId.value : this.shopId,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      openedAt: data.openedAt.present ? data.openedAt.value : this.openedAt,
+      closedAt: data.closedAt.present ? data.closedAt.value : this.closedAt,
+      quantityReceived: data.quantityReceived.present
+          ? data.quantityReceived.value
+          : this.quantityReceived,
+      purchaseCost: data.purchaseCost.present
+          ? data.purchaseCost.value
+          : this.purchaseCost,
+      referenceMarginPerUnit: data.referenceMarginPerUnit.present
+          ? data.referenceMarginPerUnit.value
+          : this.referenceMarginPerUnit,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalSupplyCycle(')
+          ..write('id: $id, ')
+          ..write('shopId: $shopId, ')
+          ..write('productId: $productId, ')
+          ..write('openedAt: $openedAt, ')
+          ..write('closedAt: $closedAt, ')
+          ..write('quantityReceived: $quantityReceived, ')
+          ..write('purchaseCost: $purchaseCost, ')
+          ..write('referenceMarginPerUnit: $referenceMarginPerUnit, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    shopId,
+    productId,
+    openedAt,
+    closedAt,
+    quantityReceived,
+    purchaseCost,
+    referenceMarginPerUnit,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalSupplyCycle &&
+          other.id == this.id &&
+          other.shopId == this.shopId &&
+          other.productId == this.productId &&
+          other.openedAt == this.openedAt &&
+          other.closedAt == this.closedAt &&
+          other.quantityReceived == this.quantityReceived &&
+          other.purchaseCost == this.purchaseCost &&
+          other.referenceMarginPerUnit == this.referenceMarginPerUnit &&
+          other.status == this.status);
+}
+
+class LocalSupplyCyclesCompanion extends UpdateCompanion<LocalSupplyCycle> {
+  final Value<String> id;
+  final Value<String> shopId;
+  final Value<String> productId;
+  final Value<DateTime> openedAt;
+  final Value<DateTime?> closedAt;
+  final Value<int> quantityReceived;
+  final Value<double> purchaseCost;
+  final Value<double?> referenceMarginPerUnit;
+  final Value<String> status;
+  final Value<int> rowid;
+  const LocalSupplyCyclesCompanion({
+    this.id = const Value.absent(),
+    this.shopId = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.openedAt = const Value.absent(),
+    this.closedAt = const Value.absent(),
+    this.quantityReceived = const Value.absent(),
+    this.purchaseCost = const Value.absent(),
+    this.referenceMarginPerUnit = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalSupplyCyclesCompanion.insert({
+    required String id,
+    required String shopId,
+    required String productId,
+    required DateTime openedAt,
+    this.closedAt = const Value.absent(),
+    required int quantityReceived,
+    required double purchaseCost,
+    this.referenceMarginPerUnit = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       shopId = Value(shopId),
+       productId = Value(productId),
+       openedAt = Value(openedAt),
+       quantityReceived = Value(quantityReceived),
+       purchaseCost = Value(purchaseCost);
+  static Insertable<LocalSupplyCycle> custom({
+    Expression<String>? id,
+    Expression<String>? shopId,
+    Expression<String>? productId,
+    Expression<DateTime>? openedAt,
+    Expression<DateTime>? closedAt,
+    Expression<int>? quantityReceived,
+    Expression<double>? purchaseCost,
+    Expression<double>? referenceMarginPerUnit,
+    Expression<String>? status,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (shopId != null) 'shop_id': shopId,
+      if (productId != null) 'product_id': productId,
+      if (openedAt != null) 'opened_at': openedAt,
+      if (closedAt != null) 'closed_at': closedAt,
+      if (quantityReceived != null) 'quantity_received': quantityReceived,
+      if (purchaseCost != null) 'purchase_cost': purchaseCost,
+      if (referenceMarginPerUnit != null)
+        'reference_margin_per_unit': referenceMarginPerUnit,
+      if (status != null) 'status': status,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalSupplyCyclesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? shopId,
+    Value<String>? productId,
+    Value<DateTime>? openedAt,
+    Value<DateTime?>? closedAt,
+    Value<int>? quantityReceived,
+    Value<double>? purchaseCost,
+    Value<double?>? referenceMarginPerUnit,
+    Value<String>? status,
+    Value<int>? rowid,
+  }) {
+    return LocalSupplyCyclesCompanion(
+      id: id ?? this.id,
+      shopId: shopId ?? this.shopId,
+      productId: productId ?? this.productId,
+      openedAt: openedAt ?? this.openedAt,
+      closedAt: closedAt ?? this.closedAt,
+      quantityReceived: quantityReceived ?? this.quantityReceived,
+      purchaseCost: purchaseCost ?? this.purchaseCost,
+      referenceMarginPerUnit:
+          referenceMarginPerUnit ?? this.referenceMarginPerUnit,
+      status: status ?? this.status,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (shopId.present) {
+      map['shop_id'] = Variable<String>(shopId.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (openedAt.present) {
+      map['opened_at'] = Variable<DateTime>(openedAt.value);
+    }
+    if (closedAt.present) {
+      map['closed_at'] = Variable<DateTime>(closedAt.value);
+    }
+    if (quantityReceived.present) {
+      map['quantity_received'] = Variable<int>(quantityReceived.value);
+    }
+    if (purchaseCost.present) {
+      map['purchase_cost'] = Variable<double>(purchaseCost.value);
+    }
+    if (referenceMarginPerUnit.present) {
+      map['reference_margin_per_unit'] = Variable<double>(
+        referenceMarginPerUnit.value,
+      );
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalSupplyCyclesCompanion(')
+          ..write('id: $id, ')
+          ..write('shopId: $shopId, ')
+          ..write('productId: $productId, ')
+          ..write('openedAt: $openedAt, ')
+          ..write('closedAt: $closedAt, ')
+          ..write('quantityReceived: $quantityReceived, ')
+          ..write('purchaseCost: $purchaseCost, ')
+          ..write('referenceMarginPerUnit: $referenceMarginPerUnit, ')
+          ..write('status: $status, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalCycleLossesTable extends LocalCycleLosses
+    with TableInfo<$LocalCycleLossesTable, LocalCycleLossesData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalCycleLossesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cycleIdMeta = const VerificationMeta(
+    'cycleId',
+  );
+  @override
+  late final GeneratedColumn<String> cycleId = GeneratedColumn<String>(
+    'cycle_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    cycleId,
+    quantity,
+    reason,
+    note,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_cycle_losses';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalCycleLossesData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('cycle_id')) {
+      context.handle(
+        _cycleIdMeta,
+        cycleId.isAcceptableOrUnknown(data['cycle_id']!, _cycleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cycleIdMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalCycleLossesData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalCycleLossesData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      cycleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cycle_id'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalCycleLossesTable createAlias(String alias) {
+    return $LocalCycleLossesTable(attachedDatabase, alias);
+  }
+}
+
+class LocalCycleLossesData extends DataClass
+    implements Insertable<LocalCycleLossesData> {
+  final String id;
+  final String cycleId;
+  final int quantity;
+  final String reason;
+  final String? note;
+  final DateTime createdAt;
+  const LocalCycleLossesData({
+    required this.id,
+    required this.cycleId,
+    required this.quantity,
+    required this.reason,
+    this.note,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['cycle_id'] = Variable<String>(cycleId);
+    map['quantity'] = Variable<int>(quantity);
+    map['reason'] = Variable<String>(reason);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  LocalCycleLossesCompanion toCompanion(bool nullToAbsent) {
+    return LocalCycleLossesCompanion(
+      id: Value(id),
+      cycleId: Value(cycleId),
+      quantity: Value(quantity),
+      reason: Value(reason),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory LocalCycleLossesData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalCycleLossesData(
+      id: serializer.fromJson<String>(json['id']),
+      cycleId: serializer.fromJson<String>(json['cycleId']),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      reason: serializer.fromJson<String>(json['reason']),
+      note: serializer.fromJson<String?>(json['note']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'cycleId': serializer.toJson<String>(cycleId),
+      'quantity': serializer.toJson<int>(quantity),
+      'reason': serializer.toJson<String>(reason),
+      'note': serializer.toJson<String?>(note),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  LocalCycleLossesData copyWith({
+    String? id,
+    String? cycleId,
+    int? quantity,
+    String? reason,
+    Value<String?> note = const Value.absent(),
+    DateTime? createdAt,
+  }) => LocalCycleLossesData(
+    id: id ?? this.id,
+    cycleId: cycleId ?? this.cycleId,
+    quantity: quantity ?? this.quantity,
+    reason: reason ?? this.reason,
+    note: note.present ? note.value : this.note,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  LocalCycleLossesData copyWithCompanion(LocalCycleLossesCompanion data) {
+    return LocalCycleLossesData(
+      id: data.id.present ? data.id.value : this.id,
+      cycleId: data.cycleId.present ? data.cycleId.value : this.cycleId,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      note: data.note.present ? data.note.value : this.note,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCycleLossesData(')
+          ..write('id: $id, ')
+          ..write('cycleId: $cycleId, ')
+          ..write('quantity: $quantity, ')
+          ..write('reason: $reason, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, cycleId, quantity, reason, note, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalCycleLossesData &&
+          other.id == this.id &&
+          other.cycleId == this.cycleId &&
+          other.quantity == this.quantity &&
+          other.reason == this.reason &&
+          other.note == this.note &&
+          other.createdAt == this.createdAt);
+}
+
+class LocalCycleLossesCompanion extends UpdateCompanion<LocalCycleLossesData> {
+  final Value<String> id;
+  final Value<String> cycleId;
+  final Value<int> quantity;
+  final Value<String> reason;
+  final Value<String?> note;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const LocalCycleLossesCompanion({
+    this.id = const Value.absent(),
+    this.cycleId = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalCycleLossesCompanion.insert({
+    required String id,
+    required String cycleId,
+    required int quantity,
+    required String reason,
+    this.note = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       cycleId = Value(cycleId),
+       quantity = Value(quantity),
+       reason = Value(reason),
+       createdAt = Value(createdAt);
+  static Insertable<LocalCycleLossesData> custom({
+    Expression<String>? id,
+    Expression<String>? cycleId,
+    Expression<int>? quantity,
+    Expression<String>? reason,
+    Expression<String>? note,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (cycleId != null) 'cycle_id': cycleId,
+      if (quantity != null) 'quantity': quantity,
+      if (reason != null) 'reason': reason,
+      if (note != null) 'note': note,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalCycleLossesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? cycleId,
+    Value<int>? quantity,
+    Value<String>? reason,
+    Value<String?>? note,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return LocalCycleLossesCompanion(
+      id: id ?? this.id,
+      cycleId: cycleId ?? this.cycleId,
+      quantity: quantity ?? this.quantity,
+      reason: reason ?? this.reason,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (cycleId.present) {
+      map['cycle_id'] = Variable<String>(cycleId.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCycleLossesCompanion(')
+          ..write('id: $id, ')
+          ..write('cycleId: $cycleId, ')
+          ..write('quantity: $quantity, ')
+          ..write('reason: $reason, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncQueueItemsTable extends SyncQueueItems
     with TableInfo<$SyncQueueItemsTable, SyncQueueItem> {
   @override
@@ -3534,6 +5476,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LocalStockMovementsTable(this);
   late final $LocalDailyClosingsTable localDailyClosings =
       $LocalDailyClosingsTable(this);
+  late final $LocalShopSettingsTable localShopSettings =
+      $LocalShopSettingsTable(this);
+  late final $LocalProductUnitsTable localProductUnits =
+      $LocalProductUnitsTable(this);
+  late final $LocalSupplyCyclesTable localSupplyCycles =
+      $LocalSupplyCyclesTable(this);
+  late final $LocalCycleLossesTable localCycleLosses = $LocalCycleLossesTable(
+    this,
+  );
   late final $SyncQueueItemsTable syncQueueItems = $SyncQueueItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -3546,6 +5497,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     localCashMovements,
     localStockMovements,
     localDailyClosings,
+    localShopSettings,
+    localProductUnits,
+    localSupplyCycles,
+    localCycleLosses,
     syncQueueItems,
   ];
 }
@@ -4058,6 +6013,10 @@ typedef $$LocalSaleItemsTableCreateCompanionBuilder =
       required double sellPrice,
       required double buyPrice,
       required double profit,
+      Value<String?> cycleId,
+      Value<String?> unitId,
+      Value<int?> quantityInBase,
+      Value<double?> unitSellPrice,
       Value<int> rowid,
     });
 typedef $$LocalSaleItemsTableUpdateCompanionBuilder =
@@ -4070,6 +6029,10 @@ typedef $$LocalSaleItemsTableUpdateCompanionBuilder =
       Value<double> sellPrice,
       Value<double> buyPrice,
       Value<double> profit,
+      Value<String?> cycleId,
+      Value<String?> unitId,
+      Value<int?> quantityInBase,
+      Value<double?> unitSellPrice,
       Value<int> rowid,
     });
 
@@ -4119,6 +6082,26 @@ class $$LocalSaleItemsTableFilterComposer
 
   ColumnFilters<double> get profit => $composableBuilder(
     column: $table.profit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cycleId => $composableBuilder(
+    column: $table.cycleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get unitId => $composableBuilder(
+    column: $table.unitId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantityInBase => $composableBuilder(
+    column: $table.quantityInBase,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get unitSellPrice => $composableBuilder(
+    column: $table.unitSellPrice,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4171,6 +6154,26 @@ class $$LocalSaleItemsTableOrderingComposer
     column: $table.profit,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get cycleId => $composableBuilder(
+    column: $table.cycleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unitId => $composableBuilder(
+    column: $table.unitId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantityInBase => $composableBuilder(
+    column: $table.quantityInBase,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get unitSellPrice => $composableBuilder(
+    column: $table.unitSellPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalSaleItemsTableAnnotationComposer
@@ -4207,6 +6210,22 @@ class $$LocalSaleItemsTableAnnotationComposer
 
   GeneratedColumn<double> get profit =>
       $composableBuilder(column: $table.profit, builder: (column) => column);
+
+  GeneratedColumn<String> get cycleId =>
+      $composableBuilder(column: $table.cycleId, builder: (column) => column);
+
+  GeneratedColumn<String> get unitId =>
+      $composableBuilder(column: $table.unitId, builder: (column) => column);
+
+  GeneratedColumn<int> get quantityInBase => $composableBuilder(
+    column: $table.quantityInBase,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get unitSellPrice => $composableBuilder(
+    column: $table.unitSellPrice,
+    builder: (column) => column,
+  );
 }
 
 class $$LocalSaleItemsTableTableManager
@@ -4250,6 +6269,10 @@ class $$LocalSaleItemsTableTableManager
                 Value<double> sellPrice = const Value.absent(),
                 Value<double> buyPrice = const Value.absent(),
                 Value<double> profit = const Value.absent(),
+                Value<String?> cycleId = const Value.absent(),
+                Value<String?> unitId = const Value.absent(),
+                Value<int?> quantityInBase = const Value.absent(),
+                Value<double?> unitSellPrice = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalSaleItemsCompanion(
                 id: id,
@@ -4260,6 +6283,10 @@ class $$LocalSaleItemsTableTableManager
                 sellPrice: sellPrice,
                 buyPrice: buyPrice,
                 profit: profit,
+                cycleId: cycleId,
+                unitId: unitId,
+                quantityInBase: quantityInBase,
+                unitSellPrice: unitSellPrice,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4272,6 +6299,10 @@ class $$LocalSaleItemsTableTableManager
                 required double sellPrice,
                 required double buyPrice,
                 required double profit,
+                Value<String?> cycleId = const Value.absent(),
+                Value<String?> unitId = const Value.absent(),
+                Value<int?> quantityInBase = const Value.absent(),
+                Value<double?> unitSellPrice = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalSaleItemsCompanion.insert(
                 id: id,
@@ -4282,6 +6313,10 @@ class $$LocalSaleItemsTableTableManager
                 sellPrice: sellPrice,
                 buyPrice: buyPrice,
                 profit: profit,
+                cycleId: cycleId,
+                unitId: unitId,
+                quantityInBase: quantityInBase,
+                unitSellPrice: unitSellPrice,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -5212,6 +7247,962 @@ typedef $$LocalDailyClosingsTableProcessedTableManager =
       LocalDailyClosing,
       PrefetchHooks Function()
     >;
+typedef $$LocalShopSettingsTableCreateCompanionBuilder =
+    LocalShopSettingsCompanion Function({
+      required String shopId,
+      Value<String> unitMode,
+      Value<String> saleCaptureMode,
+      Value<bool> multiPointEnabled,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$LocalShopSettingsTableUpdateCompanionBuilder =
+    LocalShopSettingsCompanion Function({
+      Value<String> shopId,
+      Value<String> unitMode,
+      Value<String> saleCaptureMode,
+      Value<bool> multiPointEnabled,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$LocalShopSettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalShopSettingsTable> {
+  $$LocalShopSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get unitMode => $composableBuilder(
+    column: $table.unitMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get saleCaptureMode => $composableBuilder(
+    column: $table.saleCaptureMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get multiPointEnabled => $composableBuilder(
+    column: $table.multiPointEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalShopSettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalShopSettingsTable> {
+  $$LocalShopSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unitMode => $composableBuilder(
+    column: $table.unitMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get saleCaptureMode => $composableBuilder(
+    column: $table.saleCaptureMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get multiPointEnabled => $composableBuilder(
+    column: $table.multiPointEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalShopSettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalShopSettingsTable> {
+  $$LocalShopSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get shopId =>
+      $composableBuilder(column: $table.shopId, builder: (column) => column);
+
+  GeneratedColumn<String> get unitMode =>
+      $composableBuilder(column: $table.unitMode, builder: (column) => column);
+
+  GeneratedColumn<String> get saleCaptureMode => $composableBuilder(
+    column: $table.saleCaptureMode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get multiPointEnabled => $composableBuilder(
+    column: $table.multiPointEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$LocalShopSettingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalShopSettingsTable,
+          LocalShopSetting,
+          $$LocalShopSettingsTableFilterComposer,
+          $$LocalShopSettingsTableOrderingComposer,
+          $$LocalShopSettingsTableAnnotationComposer,
+          $$LocalShopSettingsTableCreateCompanionBuilder,
+          $$LocalShopSettingsTableUpdateCompanionBuilder,
+          (
+            LocalShopSetting,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalShopSettingsTable,
+              LocalShopSetting
+            >,
+          ),
+          LocalShopSetting,
+          PrefetchHooks Function()
+        > {
+  $$LocalShopSettingsTableTableManager(
+    _$AppDatabase db,
+    $LocalShopSettingsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalShopSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalShopSettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalShopSettingsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> shopId = const Value.absent(),
+                Value<String> unitMode = const Value.absent(),
+                Value<String> saleCaptureMode = const Value.absent(),
+                Value<bool> multiPointEnabled = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalShopSettingsCompanion(
+                shopId: shopId,
+                unitMode: unitMode,
+                saleCaptureMode: saleCaptureMode,
+                multiPointEnabled: multiPointEnabled,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String shopId,
+                Value<String> unitMode = const Value.absent(),
+                Value<String> saleCaptureMode = const Value.absent(),
+                Value<bool> multiPointEnabled = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalShopSettingsCompanion.insert(
+                shopId: shopId,
+                unitMode: unitMode,
+                saleCaptureMode: saleCaptureMode,
+                multiPointEnabled: multiPointEnabled,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalShopSettingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalShopSettingsTable,
+      LocalShopSetting,
+      $$LocalShopSettingsTableFilterComposer,
+      $$LocalShopSettingsTableOrderingComposer,
+      $$LocalShopSettingsTableAnnotationComposer,
+      $$LocalShopSettingsTableCreateCompanionBuilder,
+      $$LocalShopSettingsTableUpdateCompanionBuilder,
+      (
+        LocalShopSetting,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalShopSettingsTable,
+          LocalShopSetting
+        >,
+      ),
+      LocalShopSetting,
+      PrefetchHooks Function()
+    >;
+typedef $$LocalProductUnitsTableCreateCompanionBuilder =
+    LocalProductUnitsCompanion Function({
+      required String id,
+      required String productId,
+      required String unitName,
+      required int ratioToBase,
+      Value<int> sortOrder,
+      Value<int> rowid,
+    });
+typedef $$LocalProductUnitsTableUpdateCompanionBuilder =
+    LocalProductUnitsCompanion Function({
+      Value<String> id,
+      Value<String> productId,
+      Value<String> unitName,
+      Value<int> ratioToBase,
+      Value<int> sortOrder,
+      Value<int> rowid,
+    });
+
+class $$LocalProductUnitsTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalProductUnitsTable> {
+  $$LocalProductUnitsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get unitName => $composableBuilder(
+    column: $table.unitName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ratioToBase => $composableBuilder(
+    column: $table.ratioToBase,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalProductUnitsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalProductUnitsTable> {
+  $$LocalProductUnitsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unitName => $composableBuilder(
+    column: $table.unitName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ratioToBase => $composableBuilder(
+    column: $table.ratioToBase,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalProductUnitsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalProductUnitsTable> {
+  $$LocalProductUnitsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<String> get unitName =>
+      $composableBuilder(column: $table.unitName, builder: (column) => column);
+
+  GeneratedColumn<int> get ratioToBase => $composableBuilder(
+    column: $table.ratioToBase,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+}
+
+class $$LocalProductUnitsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalProductUnitsTable,
+          LocalProductUnit,
+          $$LocalProductUnitsTableFilterComposer,
+          $$LocalProductUnitsTableOrderingComposer,
+          $$LocalProductUnitsTableAnnotationComposer,
+          $$LocalProductUnitsTableCreateCompanionBuilder,
+          $$LocalProductUnitsTableUpdateCompanionBuilder,
+          (
+            LocalProductUnit,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalProductUnitsTable,
+              LocalProductUnit
+            >,
+          ),
+          LocalProductUnit,
+          PrefetchHooks Function()
+        > {
+  $$LocalProductUnitsTableTableManager(
+    _$AppDatabase db,
+    $LocalProductUnitsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalProductUnitsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalProductUnitsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalProductUnitsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<String> unitName = const Value.absent(),
+                Value<int> ratioToBase = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalProductUnitsCompanion(
+                id: id,
+                productId: productId,
+                unitName: unitName,
+                ratioToBase: ratioToBase,
+                sortOrder: sortOrder,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String productId,
+                required String unitName,
+                required int ratioToBase,
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalProductUnitsCompanion.insert(
+                id: id,
+                productId: productId,
+                unitName: unitName,
+                ratioToBase: ratioToBase,
+                sortOrder: sortOrder,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalProductUnitsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalProductUnitsTable,
+      LocalProductUnit,
+      $$LocalProductUnitsTableFilterComposer,
+      $$LocalProductUnitsTableOrderingComposer,
+      $$LocalProductUnitsTableAnnotationComposer,
+      $$LocalProductUnitsTableCreateCompanionBuilder,
+      $$LocalProductUnitsTableUpdateCompanionBuilder,
+      (
+        LocalProductUnit,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalProductUnitsTable,
+          LocalProductUnit
+        >,
+      ),
+      LocalProductUnit,
+      PrefetchHooks Function()
+    >;
+typedef $$LocalSupplyCyclesTableCreateCompanionBuilder =
+    LocalSupplyCyclesCompanion Function({
+      required String id,
+      required String shopId,
+      required String productId,
+      required DateTime openedAt,
+      Value<DateTime?> closedAt,
+      required int quantityReceived,
+      required double purchaseCost,
+      Value<double?> referenceMarginPerUnit,
+      Value<String> status,
+      Value<int> rowid,
+    });
+typedef $$LocalSupplyCyclesTableUpdateCompanionBuilder =
+    LocalSupplyCyclesCompanion Function({
+      Value<String> id,
+      Value<String> shopId,
+      Value<String> productId,
+      Value<DateTime> openedAt,
+      Value<DateTime?> closedAt,
+      Value<int> quantityReceived,
+      Value<double> purchaseCost,
+      Value<double?> referenceMarginPerUnit,
+      Value<String> status,
+      Value<int> rowid,
+    });
+
+class $$LocalSupplyCyclesTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalSupplyCyclesTable> {
+  $$LocalSupplyCyclesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get openedAt => $composableBuilder(
+    column: $table.openedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get closedAt => $composableBuilder(
+    column: $table.closedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantityReceived => $composableBuilder(
+    column: $table.quantityReceived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get purchaseCost => $composableBuilder(
+    column: $table.purchaseCost,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get referenceMarginPerUnit => $composableBuilder(
+    column: $table.referenceMarginPerUnit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalSupplyCyclesTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalSupplyCyclesTable> {
+  $$LocalSupplyCyclesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get openedAt => $composableBuilder(
+    column: $table.openedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get closedAt => $composableBuilder(
+    column: $table.closedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantityReceived => $composableBuilder(
+    column: $table.quantityReceived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get purchaseCost => $composableBuilder(
+    column: $table.purchaseCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get referenceMarginPerUnit => $composableBuilder(
+    column: $table.referenceMarginPerUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalSupplyCyclesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalSupplyCyclesTable> {
+  $$LocalSupplyCyclesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get shopId =>
+      $composableBuilder(column: $table.shopId, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get openedAt =>
+      $composableBuilder(column: $table.openedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get closedAt =>
+      $composableBuilder(column: $table.closedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get quantityReceived => $composableBuilder(
+    column: $table.quantityReceived,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get purchaseCost => $composableBuilder(
+    column: $table.purchaseCost,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get referenceMarginPerUnit => $composableBuilder(
+    column: $table.referenceMarginPerUnit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+}
+
+class $$LocalSupplyCyclesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalSupplyCyclesTable,
+          LocalSupplyCycle,
+          $$LocalSupplyCyclesTableFilterComposer,
+          $$LocalSupplyCyclesTableOrderingComposer,
+          $$LocalSupplyCyclesTableAnnotationComposer,
+          $$LocalSupplyCyclesTableCreateCompanionBuilder,
+          $$LocalSupplyCyclesTableUpdateCompanionBuilder,
+          (
+            LocalSupplyCycle,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalSupplyCyclesTable,
+              LocalSupplyCycle
+            >,
+          ),
+          LocalSupplyCycle,
+          PrefetchHooks Function()
+        > {
+  $$LocalSupplyCyclesTableTableManager(
+    _$AppDatabase db,
+    $LocalSupplyCyclesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalSupplyCyclesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalSupplyCyclesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalSupplyCyclesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> shopId = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<DateTime> openedAt = const Value.absent(),
+                Value<DateTime?> closedAt = const Value.absent(),
+                Value<int> quantityReceived = const Value.absent(),
+                Value<double> purchaseCost = const Value.absent(),
+                Value<double?> referenceMarginPerUnit = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalSupplyCyclesCompanion(
+                id: id,
+                shopId: shopId,
+                productId: productId,
+                openedAt: openedAt,
+                closedAt: closedAt,
+                quantityReceived: quantityReceived,
+                purchaseCost: purchaseCost,
+                referenceMarginPerUnit: referenceMarginPerUnit,
+                status: status,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String shopId,
+                required String productId,
+                required DateTime openedAt,
+                Value<DateTime?> closedAt = const Value.absent(),
+                required int quantityReceived,
+                required double purchaseCost,
+                Value<double?> referenceMarginPerUnit = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalSupplyCyclesCompanion.insert(
+                id: id,
+                shopId: shopId,
+                productId: productId,
+                openedAt: openedAt,
+                closedAt: closedAt,
+                quantityReceived: quantityReceived,
+                purchaseCost: purchaseCost,
+                referenceMarginPerUnit: referenceMarginPerUnit,
+                status: status,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalSupplyCyclesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalSupplyCyclesTable,
+      LocalSupplyCycle,
+      $$LocalSupplyCyclesTableFilterComposer,
+      $$LocalSupplyCyclesTableOrderingComposer,
+      $$LocalSupplyCyclesTableAnnotationComposer,
+      $$LocalSupplyCyclesTableCreateCompanionBuilder,
+      $$LocalSupplyCyclesTableUpdateCompanionBuilder,
+      (
+        LocalSupplyCycle,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalSupplyCyclesTable,
+          LocalSupplyCycle
+        >,
+      ),
+      LocalSupplyCycle,
+      PrefetchHooks Function()
+    >;
+typedef $$LocalCycleLossesTableCreateCompanionBuilder =
+    LocalCycleLossesCompanion Function({
+      required String id,
+      required String cycleId,
+      required int quantity,
+      required String reason,
+      Value<String?> note,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$LocalCycleLossesTableUpdateCompanionBuilder =
+    LocalCycleLossesCompanion Function({
+      Value<String> id,
+      Value<String> cycleId,
+      Value<int> quantity,
+      Value<String> reason,
+      Value<String?> note,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$LocalCycleLossesTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalCycleLossesTable> {
+  $$LocalCycleLossesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cycleId => $composableBuilder(
+    column: $table.cycleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalCycleLossesTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalCycleLossesTable> {
+  $$LocalCycleLossesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cycleId => $composableBuilder(
+    column: $table.cycleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalCycleLossesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalCycleLossesTable> {
+  $$LocalCycleLossesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get cycleId =>
+      $composableBuilder(column: $table.cycleId, builder: (column) => column);
+
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$LocalCycleLossesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalCycleLossesTable,
+          LocalCycleLossesData,
+          $$LocalCycleLossesTableFilterComposer,
+          $$LocalCycleLossesTableOrderingComposer,
+          $$LocalCycleLossesTableAnnotationComposer,
+          $$LocalCycleLossesTableCreateCompanionBuilder,
+          $$LocalCycleLossesTableUpdateCompanionBuilder,
+          (
+            LocalCycleLossesData,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalCycleLossesTable,
+              LocalCycleLossesData
+            >,
+          ),
+          LocalCycleLossesData,
+          PrefetchHooks Function()
+        > {
+  $$LocalCycleLossesTableTableManager(
+    _$AppDatabase db,
+    $LocalCycleLossesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalCycleLossesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalCycleLossesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalCycleLossesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> cycleId = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalCycleLossesCompanion(
+                id: id,
+                cycleId: cycleId,
+                quantity: quantity,
+                reason: reason,
+                note: note,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String cycleId,
+                required int quantity,
+                required String reason,
+                Value<String?> note = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => LocalCycleLossesCompanion.insert(
+                id: id,
+                cycleId: cycleId,
+                quantity: quantity,
+                reason: reason,
+                note: note,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalCycleLossesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalCycleLossesTable,
+      LocalCycleLossesData,
+      $$LocalCycleLossesTableFilterComposer,
+      $$LocalCycleLossesTableOrderingComposer,
+      $$LocalCycleLossesTableAnnotationComposer,
+      $$LocalCycleLossesTableCreateCompanionBuilder,
+      $$LocalCycleLossesTableUpdateCompanionBuilder,
+      (
+        LocalCycleLossesData,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalCycleLossesTable,
+          LocalCycleLossesData
+        >,
+      ),
+      LocalCycleLossesData,
+      PrefetchHooks Function()
+    >;
 typedef $$SyncQueueItemsTableCreateCompanionBuilder =
     SyncQueueItemsCompanion Function({
       Value<int> id,
@@ -5405,6 +8396,14 @@ class $AppDatabaseManager {
       $$LocalStockMovementsTableTableManager(_db, _db.localStockMovements);
   $$LocalDailyClosingsTableTableManager get localDailyClosings =>
       $$LocalDailyClosingsTableTableManager(_db, _db.localDailyClosings);
+  $$LocalShopSettingsTableTableManager get localShopSettings =>
+      $$LocalShopSettingsTableTableManager(_db, _db.localShopSettings);
+  $$LocalProductUnitsTableTableManager get localProductUnits =>
+      $$LocalProductUnitsTableTableManager(_db, _db.localProductUnits);
+  $$LocalSupplyCyclesTableTableManager get localSupplyCycles =>
+      $$LocalSupplyCyclesTableTableManager(_db, _db.localSupplyCycles);
+  $$LocalCycleLossesTableTableManager get localCycleLosses =>
+      $$LocalCycleLossesTableTableManager(_db, _db.localCycleLosses);
   $$SyncQueueItemsTableTableManager get syncQueueItems =>
       $$SyncQueueItemsTableTableManager(_db, _db.syncQueueItems);
 }

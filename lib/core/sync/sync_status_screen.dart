@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../constants/app_colors.dart';
+import '../errors/sync_error_message.dart';
 import 'sync_service.dart';
 
 class SyncStatusScreen extends ConsumerWidget {
@@ -80,7 +81,27 @@ class SyncStatusScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      SelectableText(status.lastError!),
+                      Text(humanSyncError(status.lastError)),
+                      const SizedBox(height: 12),
+                      // Le message brut reste accessible pour le support,
+                      // mais replié : il n'aide pas le commerçant.
+                      ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: EdgeInsets.zero,
+                        title: const Text(
+                          'Détail technique',
+                          style: TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
+                        children: [
+                          SelectableText(
+                            status.lastError!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),

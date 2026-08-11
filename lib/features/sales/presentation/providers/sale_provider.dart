@@ -98,6 +98,12 @@ class SaleNotifier extends AsyncNotifier<void> {
                   sellPrice: item.sellPrice,
                   buyPrice: item.buyPrice,
                   profit: item.profit,
+                  cycleId: item.cycleId,
+                  unitId: item.unitId,
+                  // Module A : quantité/prix déjà exprimés en unité de base
+                  // pour toute la ligne (voir cycle_result_calculator.dart).
+                  quantityInBase: item.cycleId != null ? item.quantity : null,
+                  unitSellPrice: item.cycleId != null ? item.sellPrice : null,
                 ),
               );
           await (db.update(
@@ -117,6 +123,16 @@ class SaleNotifier extends AsyncNotifier<void> {
             'sell_price': item.sellPrice,
             'buy_price': item.buyPrice,
             'profit': item.profit,
+            // Colonnes Module A ajoutées seulement pour une vente de cycle :
+            // une vente simple envoie exactement le même payload qu'avant, et
+            // reste donc valide même sur une base où la migration Module A
+            // n'a pas encore été appliquée.
+            if (item.cycleId != null) ...{
+              'cycle_id': item.cycleId,
+              'unit_id': item.unitId,
+              'quantity_in_base': item.quantity,
+              'unit_sell_price': item.sellPrice,
+            },
             // Champ interne retiré avant insertion distante.
             'stock_movement_id': stockMovementId,
           });

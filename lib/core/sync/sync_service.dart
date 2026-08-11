@@ -89,16 +89,19 @@ class SyncService {
 
   Future<void> synchronize() async {
     await processQueue();
-    // Ne jamais écraser un stock local tant qu'une écriture n'est pas envoyée.
-    if (await db.getPendingCount() == 0) {
-      await pullDataFromSupabase();
-    }
+    await pullDataFromSupabase();
   }
 
   Future<void> pullDataFromSupabase() async {
+    // Ne JAMAIS écraser les données locales tant qu'une écriture n'est pas
+    // partie : le serveur ignore encore cette vente, donc son stock est
+    // périmé. La garde vit ici et pas chez l'appelant, sinon un appel direct
+    // (dashboard, bilan) la contourne et fait « remonter » le stock vendu.
+    if (_isPulling || await db.getPendingCount() > 0) return;
+
     final supabase = Supabase.instance.client;
     final userId = supabase.auth.currentUser?.id;
-    if (userId == null || _isPulling) return;
+    if (userId == null) return;
 
     _isPulling = true;
     _emit(
@@ -123,6 +126,17 @@ class SyncService {
             .select('*, sales!inner(shop_id)')
             .eq('sales.shop_id', shopId),
         supabase.from('daily_closings').select().eq('shop_id', shopId),
+        // Module A : sans ces trois-là, un 2e téléphone ne voit ni les
+        // cycles ni les unités, donc ne peut pas vendre au plateau.
+        supabase.from('supply_cycles').select().eq('shop_id', shopId),
+        supabase
+            .from('product_units')
+            .select('*, products!inner(shop_id)')
+            .eq('products.shop_id', shopId),
+        supabase
+            .from('cycle_losses')
+            .select('*, supply_cycles!inner(shop_id)')
+            .eq('supply_cycles.shop_id', shopId),
       ]);
 
       final productsData = results[0];
@@ -130,6 +144,9 @@ class SyncService {
       final salesData = results[2];
       final saleItemsData = results[3];
       final closingsData = results[4];
+      final cyclesData = results[5];
+      final unitsData = results[6];
+      final lossesData = results[7];
 
       // Fusionner au lieu de vider les tables protège les écritures hors ligne.
       await db.transaction(() async {
@@ -200,6 +217,12 @@ class SyncService {
                     sellPrice: (i['sell_price'] as num).toDouble(),
                     buyPrice: (i['buy_price'] as num).toDouble(),
                     profit: (i['profit'] as num).toDouble(),
+                    // Module A : sans ces colonnes, le pull efface le lien
+                    // vente ↔ cycle et le rapport retombe à 0 F.
+                    cycleId: i['cycle_id'] as String?,
+                    unitId: i['unit_id'] as String?,
+                    quantityInBase: i['quantity_in_base'] as int?,
+                    unitSellPrice: (i['unit_sell_price'] as num?)?.toDouble(),
                   ),
                 )
                 .toList(),
@@ -229,6 +252,59 @@ class SyncService {
                         : (c['cash_gap'] as num).toDouble(),
                     isClosed: c['is_closed'] ?? false,
                     note: c['note'],
+                  ),
+                )
+                .toList(),
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.localSupplyCycles,
+            cyclesData
+                .map(
+                  (c) => LocalSupplyCycle(
+                    id: c['id'],
+                    shopId: c['shop_id'],
+                    productId: c['product_id'],
+                    openedAt: DateTime.parse(c['opened_at']),
+                    closedAt: c['closed_at'] == null
+                        ? null
+                        : DateTime.parse(c['closed_at']),
+                    quantityReceived: c['quantity_received'],
+                    purchaseCost: (c['purchase_cost'] as num).toDouble(),
+                    referenceMarginPerUnit:
+                        (c['reference_margin_per_unit'] as num?)?.toDouble(),
+                    status: c['status'] ?? 'open',
+                  ),
+                )
+                .toList(),
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.localProductUnits,
+            unitsData
+                .map(
+                  (u) => LocalProductUnit(
+                    id: u['id'],
+                    productId: u['product_id'],
+                    unitName: u['unit_name'],
+                    ratioToBase: u['ratio_to_base'],
+                    sortOrder: u['sort_order'] ?? 0,
+                  ),
+                )
+                .toList(),
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.localCycleLosses,
+            lossesData
+                .map(
+                  (l) => LocalCycleLossesData(
+                    id: l['id'],
+                    cycleId: l['cycle_id'],
+                    quantity: l['quantity'],
+                    reason: l['reason'],
+                    note: l['note'],
+                    createdAt: DateTime.parse(l['created_at']),
                   ),
                 )
                 .toList(),
@@ -311,6 +387,26 @@ class SyncService {
         await supabase
             .from('daily_closings')
             .upsert(payload, onConflict: 'shop_id,closing_date');
+      case 'SET_SHOP_SETTINGS':
+        await supabase
+            .from('shop_settings')
+            .upsert(payload, onConflict: 'shop_id');
+      case 'ADD_SUPPLY_CYCLE':
+        await supabase.from('supply_cycles').upsert(payload);
+      case 'CLOSE_SUPPLY_CYCLE':
+        await supabase
+            .from('supply_cycles')
+            .update({
+              'status': payload['status'],
+              'closed_at': payload['closed_at'],
+            })
+            .eq('id', payload['id']);
+      case 'ADD_PRODUCT_UNIT':
+        await supabase.from('product_units').upsert(payload);
+      case 'DELETE_PRODUCT_UNIT':
+        await supabase.from('product_units').delete().eq('id', payload['id']);
+      case 'ADD_CYCLE_LOSS':
+        await supabase.from('cycle_losses').upsert(payload);
       default:
         throw StateError('Action de synchronisation inconnue : $action');
     }
