@@ -9,6 +9,9 @@ class SaleItemEntity {
   final double sellPrice;
   final double buyPrice;
   final double profit;
+  // Module A (cycles/unités) — null pour une vente simple.
+  final String? cycleId;
+  final String? unitId;
 
   SaleItemEntity({
     required this.id,
@@ -19,6 +22,8 @@ class SaleItemEntity {
     required this.sellPrice,
     required this.buyPrice,
     required this.profit,
+    this.cycleId,
+    this.unitId,
 });
 
 }
