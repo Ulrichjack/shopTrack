@@ -48,7 +48,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_disposed || !_controller.value.isInitialized) return;
+    if (_disposed) return;
 
     switch (state) {
       case AppLifecycleState.resumed:
@@ -198,6 +198,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         'Le scanner n’est pas compatible avec cet appareil.',
       MobileScannerErrorCode.controllerUninitialized =>
         'La caméra ne s’est pas initialisée correctement.',
+      MobileScannerErrorCode.controllerInitializing =>
+        'La caméra est encore en cours d’initialisation. Patientez un instant puis réessayez.',
+      MobileScannerErrorCode.controllerNotAttached =>
+        'Le scanner n’est pas encore prêt. Fermez cet écran puis ouvrez-le à nouveau.',
       MobileScannerErrorCode.controllerAlreadyInitialized =>
         'La caméra est déjà utilisée. Fermez les autres applications caméra puis réessayez.',
       MobileScannerErrorCode.controllerDisposed =>
@@ -207,11 +211,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     };
   }
 
-  Widget _buildError(
-    BuildContext context,
-    MobileScannerException error,
-    Widget? child,
-  ) {
+  Widget _buildError(BuildContext context, MobileScannerException error) {
     return ColoredBox(
       color: Colors.black,
       child: Center(
@@ -312,8 +312,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         children: [
           MobileScanner(
             controller: _controller,
+            // Le cycle de vie est géré par cet écran et mis en file avec les
+            // autres opérations caméra pour empêcher deux start() simultanés.
+            useAppLifecycleState: false,
             errorBuilder: _buildError,
-            placeholderBuilder: (_, _) => const ColoredBox(
+            placeholderBuilder: (_) => const ColoredBox(
               color: Colors.black,
               child: Center(child: CircularProgressIndicator()),
             ),
