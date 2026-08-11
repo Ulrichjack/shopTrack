@@ -20,6 +20,8 @@ appliquer, dans cet ordre :
 ```text
 supabase/migrations/202607270001_secure_sync.sql
 supabase/migrations/202607280002_stock_sync_and_unique_barcodes.sql
+supabase/migrations/202608090001_shop_settings.sql
+supabase/migrations/202608090002_module_a_cycles.sql
 ```
 
 Avec Supabase CLI sur un projet déjà lié :

@@ -391,6 +391,15 @@ La règle métier doit être unique :
 Ajouter une contrainte logique empêchant plusieurs soldes matinaux actifs pour
 la même boutique et la même date.
 
+### 6.3 Cas limite constaté (2026-08-09)
+
+`morningBalance == 0` sert à la fois de valeur métier valide (caisse vraiment
+vide le matin) et de indicateur "pas encore saisi" dans
+`dashboard_screen.dart` (`_checkAlerts`). Une boutique qui saisit
+volontairement 0 verra donc la boîte de dialogue obligatoire réapparaître en
+boucle, puisque le calcul reste à 0 après l'enregistrement. Non corrigé —
+nécessite un indicateur "saisi aujourd'hui" séparé du montant lui-même.
+
 ---
 
 ## 7. Priorité haute — Fiabilité de la clôture
@@ -622,7 +631,15 @@ Remplacer le README Flutter par défaut avec :
 - affichage détaillé des écarts ;
 - filtre des jours avec anomalie ;
 - export PDF enrichi ;
-- version de l'application visible dans le profil.
+- version de l'application visible dans le profil ;
+- corriger le contenu masqué par les boutons/barre de navigation en bas de
+  certains écrans (safe area insuffisante — signalé sur plusieurs tailles
+  d'écran, 2026-08-09) ;
+- rendre la sauvegarde JSON manuelle du profil réellement utile au client
+  (partage/export vers WhatsApp, mail, Drive...) ou la retirer de l'interface
+  — aujourd'hui le fichier est écrit dans un dossier privé de l'appli, non
+  accessible sans outil technique (la sauvegarde automatique avant
+  déconnexion, elle, reste utile en interne et n'est pas concernée).
 
 ### Moyen terme
 
@@ -633,10 +650,24 @@ Remplacer le README Flutter par défaut avec :
 - annulation contrôlée d'une vente ;
 - impression ou partage de reçu ;
 - sauvegarde et restauration contrôlées ;
-- tableau de bord multi-boutiques.
+- tableau de bord multi-boutiques ;
+- abonnement payant par boutique (monétisation) — voir
+  `docs/PLAN_MODULES_CLIENTS.md` pour le lien avec l'activation des modules A/B.
 
 ### Long terme
 
+- **refonte visuelle inspirée de WhatsApp** (direction assumée, décidée le
+  2026-08-11) : très peu de couleurs (vert/blanc/gris), tout en listes au
+  rythme constant (icône · titre gras · sous-titre gris · action à droite),
+  aucune décoration inutile. Objectif : familiarité — le commerçant retrouve
+  les réflexes de l'app qu'il utilise déjà tous les jours, ce qui réduit le
+  temps d'apprentissage. **Ne pas** reprendre la métaphore de conversation
+  (bulles) : ShopTrack manipule des chiffres, pas des messages.
+  À faire **après** la validation terrain du module A, en une refonte
+  cohérente plutôt qu'écran par écran. Défauts actuels à corriger à cette
+  occasion : hiérarchie visuelle trop plate sur le tableau de bord (le
+  montant en caisse doit dominer), deux styles qui cohabitent (cartes
+  ombrées vs champs bordés), états vides pauvres, Bilan trop dense ;
 - synchronisation temps réel Supabase ;
 - tableau de bord Web pour le patron ;
 - lecture de codes EAN/UPC et génération d'étiquettes ;

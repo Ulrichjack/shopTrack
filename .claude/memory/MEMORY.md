@@ -1,0 +1,3 @@
+- [User: ShopTrack dev](user_shoptrack_dev.md) — solo dev of French-language Flutter/Supabase POS app for Cameroon shops
+- [Project: ShopTrack state](project_shoptrack_state.md) — beta stage, not production-ready, open items list, keystore handling
+- [Reference: ShopTrack docs](project_shoptrack_docs.md) — where status docs and Supabase migrations live
