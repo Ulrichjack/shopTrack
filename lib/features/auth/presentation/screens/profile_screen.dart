@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/app_mode_provider.dart';
+import '../../../../core/providers/shop_settings_provider.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../../core/backup/backup_service.dart';
 
@@ -508,36 +509,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     const Divider(height: 1),
                     ListTile(
                       leading: const Icon(
-                        Icons.backup_outlined,
+                        Icons.settings_outlined,
                         color: AppColors.primary,
                       ),
-                      title: const Text('Créer une sauvegarde'),
+                      title: const Text('Réglages de la boutique'),
                       subtitle: const Text(
-                        'Export JSON dans les documents ShopTrack',
+                        'Vente par unités, modules optionnels',
                       ),
-                      onTap: () async {
-                        try {
-                          final file = await ref
-                              .read(backupServiceProvider)
-                              .createBackup();
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Sauvegarde créée : $file'),
-                              ),
-                            );
-                          }
-                        } catch (error) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Sauvegarde impossible : $error'),
-                                backgroundColor: AppColors.error,
-                              ),
-                            );
-                          }
-                        }
-                      },
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/shop-settings'),
                     ),
                   ],
                 ],

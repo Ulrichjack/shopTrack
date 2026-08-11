@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart'; // 👈 On importe Rive
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/app_mode_provider.dart';
+import '../../core/providers/shop_settings_provider.dart';
 import 'offline_banner.dart';
 
 // 👈 On utilise ConsumerWidget à la place de StatelessWidget
@@ -11,39 +12,61 @@ class MainLayout extends ConsumerWidget {
 
   const MainLayout({super.key, required this.child});
 
-  // 👈 On passe isBossMode pour sécuriser l'index
-  int _calculateSelectedIndex(BuildContext context, bool isBossMode) {
-    final String location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/home')) return 0;
-    if (location.startsWith('/sales-history')) return 1;
-    if (location.startsWith('/products')) return 2;
-    // Si c'est le vendeur (isBossMode = false), on force le retour à 0 pour éviter un crash
-    if (location.startsWith('/bilan')) return isBossMode ? 3 : 0;
-    return 0;
-  }
-
-  void _onItemTapped(int index, BuildContext context) {
-    switch (index) {
-      case 0:
-        context.go('/home');
-        break;
-      case 1:
-        context.go('/sales-history');
-        break;
-      case 2:
-        context.go('/products');
-        break;
-      case 3:
-        context.go('/bilan');
-        break;
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) { // 👈 On ajoute WidgetRef ref
 
     // 👈 ON LIT LE MODE ICI
     final isBossMode = ref.watch(appModeProvider).value ?? false;
+    // Mode de la boutique : ajoute l'onglet Cycles pour les boutiques qui
+    // vendent par unités (œufs, casiers...) — voir docs/ARCHITECTURE_MODULES.md
+    final isHierarchical =
+        ref.watch(shopSettingsProvider).value?.unitMode == 'hierarchical';
+
+    // Un seul endroit décide des onglets ET de leur ordre : impossible que
+    // l'index tapé et l'index surligné se désynchronisent quand un onglet
+    // apparaît ou disparaît selon le mode.
+    final destinations = <_NavDestination>[
+      const _NavDestination(
+        route: '/home',
+        label: 'Accueil',
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home,
+      ),
+      const _NavDestination(
+        route: '/sales-history',
+        label: 'Ventes',
+        icon: Icons.receipt_long_outlined,
+        activeIcon: Icons.receipt_long,
+      ),
+      const _NavDestination(
+        route: '/products',
+        label: 'Stock',
+        icon: Icons.inventory_2_outlined,
+        activeIcon: Icons.inventory_2,
+      ),
+      if (isHierarchical)
+        const _NavDestination(
+          route: '/cycles',
+          label: 'Cycles',
+          icon: Icons.autorenew_outlined,
+          activeIcon: Icons.autorenew,
+        ),
+      if (isBossMode)
+        const _NavDestination(
+          route: '/bilan',
+          label: 'Bilan',
+          icon: Icons.bar_chart_outlined,
+          activeIcon: Icons.bar_chart,
+        ),
+    ];
+
+    final location = GoRouterState.of(context).matchedLocation;
+    final matchedIndex = destinations.indexWhere(
+      (destination) => location.startsWith(destination.route),
+    );
+    // Onglet masqué dans ce mode (ex: /bilan pour un vendeur) : on retombe
+    // sur Accueil plutôt que de planter avec un index hors liste.
+    final selectedIndex = matchedIndex >= 0 ? matchedIndex : 0;
 
     return Scaffold(
       body: Column(
@@ -54,40 +77,36 @@ class MainLayout extends ConsumerWidget {
       ),
 
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _calculateSelectedIndex(context, isBossMode),
-        onTap: (index) => _onItemTapped(index, context),
+        currentIndex: selectedIndex,
+        onTap: (index) => context.go(destinations[index].route),
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
-
-        // 👈 On enlève le "const" devant la liste car elle contient maintenant un "if"
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Accueil',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_outlined),
-            activeIcon: Icon(Icons.receipt_long),
-            label: 'Ventes',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2_outlined),
-            activeIcon: Icon(Icons.inventory_2),
-            label: 'Stock',
-          ),
-
-          // 👇 C'EST ICI QU'ON CACHE LE BILAN 👇
-          if (isBossMode)
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_outlined),
-              activeIcon: Icon(Icons.bar_chart),
-              label: 'Bilan',
-            ),
-        ],
+        items: destinations
+            .map(
+              (destination) => BottomNavigationBarItem(
+                icon: Icon(destination.icon),
+                activeIcon: Icon(destination.activeIcon),
+                label: destination.label,
+              ),
+            )
+            .toList(),
       ),
     );
   }
+}
+
+class _NavDestination {
+  const _NavDestination({
+    required this.route,
+    required this.label,
+    required this.icon,
+    required this.activeIcon,
+  });
+
+  final String route;
+  final String label;
+  final IconData icon;
+  final IconData activeIcon;
 }

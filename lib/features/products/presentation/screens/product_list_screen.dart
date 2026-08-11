@@ -155,7 +155,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
                 // 👇 AFFICHAGE DE LA LISTE 👇
                 return ListView.separated(
-                  padding: const EdgeInsets.all(16),
+                  // Marge basse volontairement large : le bouton flottant
+                  // « Ajouter un article » recouvre sinon le dernier produit.
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                   itemCount: filteredProducts.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
