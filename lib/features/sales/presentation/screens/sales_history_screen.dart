@@ -5,6 +5,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/network_error_widget.dart';
 import '../../../../core/sync/sync_service.dart'; // Pour accéder à localDbProvider
+import '../../../../core/errors/sync_error_message.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:drift/drift.dart' hide Column;
 
 // --- 1. MODÈLE DE DONNÉES ---
@@ -149,6 +151,158 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
     }
   }
 
+  /// Bandeau rouge sur une journée passée jamais clôturée : le commerçant
+  /// voit *laquelle* pose problème en naviguant dans ses jours, et la traite
+  /// sur place.
+  Widget _buildPendingClosingBanner() {
+    final pending = ref.watch(pendingClosingProvider(_selectedDate)).value;
+    if (pending == null) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.error),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.error),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  pending.daysLate == 1
+                      ? 'Journée non clôturée (hier)'
+                      : 'Journée non clôturée '
+                            '(il y a ${pending.daysLate} jours)',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (pending.isUnreliable) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Tu ne te souviendras probablement plus du montant exact de ce '
+              'jour-là. Saisis ce dont tu es sûr : l\'écart sera peu fiable.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+            ),
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showCloseDayDialog(pending),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: const Icon(Icons.lock_clock, color: Colors.white),
+              label: const Text(
+                'Clôturer cette journée',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCloseDayDialog(PendingClosing pending) async {
+    final controller = TextEditingController();
+    final dateStr = DateFormat('dd/MM/yyyy').format(pending.date);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Clôture du $dateStr'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              pending.isUnreliable
+                  ? 'Combien y avait-il dans la caisse à la fin de cette '
+                        'journée ? Une estimation vaut mieux que rien.'
+                  : 'Combien y avait-il dans la caisse à la fin de cette '
+                        'journée ?',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Montant compté (FCFA)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text(
+              'Clôturer',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    final amount = double.tryParse(controller.text.replaceAll(' ', ''));
+    if (amount == null) return;
+
+    try {
+      await ref
+          .read(dashboardProvider.notifier)
+          .closeDay(
+            amount,
+            pending.isUnreliable
+                ? 'Clôture tardive (${pending.daysLate} jours) — '
+                      'montant reconstitué de mémoire.'
+                : null,
+            specificDate: pending.date,
+          );
+      ref.invalidate(pendingClosingProvider(_selectedDate));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Journée du $dateStr clôturée.'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(humanSyncError(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final transactionsAsync = ref.watch(dailyTransactionsProvider(_selectedDate));
@@ -264,6 +418,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
             },
             orElse: () => const SizedBox.shrink(),
           ),
+          _buildPendingClosingBanner(),
           // LISTE DES TRANSACTIONS
           Expanded(
             child: RefreshIndicator(

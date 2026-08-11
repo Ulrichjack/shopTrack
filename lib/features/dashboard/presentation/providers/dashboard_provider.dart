@@ -37,6 +37,11 @@ class DashboardState {
   final bool isClosed;
   final DailyClosingEntity? closingData;
 
+  /// Un solde a-t-il été saisi aujourd'hui ? Distinct de `morningBalance == 0`,
+  /// car 0 est une valeur légitime (caisse vide le matin) : sans ce drapeau,
+  /// la boîte de saisie revient en boucle après un 0 enregistré.
+  final bool hasMorningBalance;
+
   // NOUVEAU : Gestion de l'oubli de clôture
   final bool needsPreviousDayClosing;
   final DateTime? dateToClose;
@@ -50,11 +55,59 @@ class DashboardState {
     required this.netProfit,
     required this.salesCount,
     required this.isClosed,
+    this.hasMorningBalance = false,
     this.closingData,
     this.needsPreviousDayClosing = false,
     this.dateToClose,
   });
 }
+
+/// Une journée passée est « en retard » si elle a eu de l'activité (vente ou
+/// mouvement de caisse) et n'a jamais été clôturée. On regarde aussi la caisse
+/// et pas seulement les ventes : un jour sans client mais avec un solde du
+/// matin doit quand même être clôturé.
+class PendingClosing {
+  const PendingClosing({required this.date, required this.daysLate});
+
+  final DateTime date;
+  final int daysLate;
+
+  /// Au-delà de quelques jours, le montant saisi est une reconstitution de
+  /// mémoire : l'écart calculé ne doit pas être lu comme un vol.
+  bool get isUnreliable => daysLate > 3;
+}
+
+final pendingClosingProvider = FutureProvider.family<PendingClosing?, DateTime>(
+  (ref, date) async {
+    final db = ref.watch(localDbProvider);
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+    final today = DateTime.now();
+    final startOfToday = DateTime(today.year, today.month, today.day);
+    if (!startOfDay.isBefore(startOfToday)) return null; // jour en cours
+
+    final closing =
+        await (db.select(db.localDailyClosings)..where(
+              (t) => t.closingDate.isBetweenValues(startOfDay, endOfDay),
+            ))
+            .getSingleOrNull();
+    if (closing != null) return null;
+
+    final sales = await (db.select(
+      db.localSales,
+    )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+    final movements = await (db.select(
+      db.localCashMovements,
+    )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+    if (sales.isEmpty && movements.isEmpty) return null;
+
+    return PendingClosing(
+      date: startOfDay,
+      daysLate: startOfToday.difference(startOfDay).inDays,
+    );
+  },
+);
 
 // --- 3. LE PROVIDER PRINCIPAL (100% LOCAL avec cache SharedPreferences) ---
 final dashboardProvider =
@@ -126,6 +179,11 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       }
     }
 
+    // La toute première synchronisation renseigne cached_shop_id. Il faut le
+    // relire ici : la valeur récupérée avant la synchronisation est encore
+    // vide, même si SharedPreferences a été correctement mis à jour.
+    shopId = prefs.getString('cached_shop_id') ?? '';
+
     if (shopId.isEmpty && isFirstLoad) {
       throw Exception('Boutique introuvable. Connectez-vous à internet.');
     }
@@ -137,16 +195,17 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     // ==========================================
     // 2. VÉRIFICATION DE LA CLÔTURE DE LA VEILLE
     // ==========================================
-    final lastSale =
+    // On prend la journée non clôturée la PLUS ANCIENNE, pas la dernière :
+    // après plusieurs jours d'oubli, il faut clôturer dans l'ordre
+    // chronologique, sinon les journées intermédiaires resteraient trouées.
+    final pastSales =
         await (db.select(db.localSales)
+              ..where((t) => t.createdAt.isSmallerThanValue(startOfDay))
               ..orderBy([
-                (t) => drift.OrderingTerm(
-                  expression: t.createdAt,
-                  mode: drift.OrderingMode.desc,
-                ),
-              ])
-              ..limit(1))
-            .getSingleOrNull();
+                (t) => drift.OrderingTerm(expression: t.createdAt),
+              ]))
+            .get();
+    final lastSale = pastSales.isEmpty ? null : pastSales.first;
 
     if (lastSale != null) {
       final lastSaleDate = DateTime(
@@ -236,8 +295,12 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
             .get();
 
     final totals = _calculateTotals(localSales, localCashMovements);
+    final hasMorningBalance = localCashMovements.any(
+      (movement) => movement.type == 'morning_balance',
+    );
 
     return DashboardState(
+      hasMorningBalance: hasMorningBalance,
       morningBalance: totals.morningBalance,
       totalSales: totals.totalSales,
       totalWithdrawals: totals.totalWithdrawals,

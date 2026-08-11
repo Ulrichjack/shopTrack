@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/app_mode_provider.dart';
+import '../../../../core/providers/shop_settings_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/network_error_widget.dart';
 import '../../../products/presentation/providers/product_provider.dart';
@@ -37,7 +38,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (data.needsPreviousDayClosing && data.dateToClose != null) {
         setState(() => _isDialogOpen = true);
         _showForceClosingDialog(data.dateToClose!);
-      } else if (!data.isClosed && data.morningBalance == 0) {
+      } else if (!data.isClosed && !data.hasMorningBalance) {
+        // On teste « a-t-on saisi ? », pas « le montant vaut-il 0 ? » :
+        // une caisse vide le matin est un 0 parfaitement valide.
         setState(() => _isDialogOpen = true);
         _showMorningBalanceDialog();
       }
@@ -131,14 +134,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  void _showMorningBalanceDialog({double currentBalance = 0}) {
+  // isEdit : on corrige un solde déjà saisi (donc annulable), au lieu de la
+  // toute première saisie de la journée qui reste obligatoire.
+  void _showMorningBalanceDialog({
+    double currentBalance = 0,
+    bool isEdit = false,
+  }) {
     final controller = TextEditingController(
-      text: currentBalance > 0 ? currentBalance.toInt().toString() : '',
+      text: isEdit ? currentBalance.toInt().toString() : '',
     );
 
     showDialog(
       context: context,
-      barrierDismissible: currentBalance > 0,
+      barrierDismissible: isEdit,
       builder: (context) => AlertDialog(
         title: const Text('Solde de la caisse', textAlign: TextAlign.center),
         content: Column(
@@ -158,7 +166,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         actions: [
-          if (currentBalance > 0)
+          if (isEdit)
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
@@ -214,6 +222,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final dashboardAsync = ref.watch(dashboardProvider);
     final isBossMode = ref.watch(appModeProvider).value ?? false;
+    final isHierarchical =
+        ref.watch(shopSettingsProvider).value?.unitMode == 'hierarchical';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -274,7 +284,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       GestureDetector(
                         onTap: data.isClosed ? null : () {
                           setState(() => _isDialogOpen = true);
-                          _showMorningBalanceDialog(currentBalance: data.morningBalance);
+                          _showMorningBalanceDialog(
+                            currentBalance: data.morningBalance,
+                            isEdit: true,
+                          );
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -337,7 +350,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   const SizedBox(height: 40),
 
                   ElevatedButton.icon(
-                    onPressed: data.isClosed ? null : () => context.push('/sales/new'),
+                    onPressed: data.isClosed
+                        ? null
+                        : () => context.push(
+                            isHierarchical ? '/cycle-sale' : '/sales/new',
+                          ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 20),
