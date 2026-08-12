@@ -44,11 +44,11 @@
 
 | # | Scénario | Attendu | État |
 |---|----------|---------|------|
-| C1 | Vente en mode avion | Enregistrée, file +1 | ❌ à rejouer |
-| C2 | Perte en mode avion | Enregistrée, file +1 | ⬜ |
+| C1 | Vente en mode avion | Enregistrée, file +1 | ✅ |
+| C2 | Perte en mode avion | Enregistrée, file +1 | ✅ |
 | C3 | Création de cycle en mode avion | Enregistrée, stock à jour | ⬜ |
-| C4 | Retour du réseau | File → 0, **stock inchangé** | ⬜ |
-| C5 | Fermer/rouvrir l'app hors ligne | Données toujours là | ⬜ |
+| C4 | Retour du réseau | File → 0, **stock inchangé** | ✅ |
+| C5 | Fermer/rouvrir l'app hors ligne | Données toujours là | ✅ |
 | C6 | Réseau coupé **pendant** l'envoi | Pas de double décompte du stock | ⬜ |
 | C7 | 10+ opérations en attente | Envoyées dans l'ordre | ⬜ |
 | C8 | Une opération échoue | Les suivantes restent en file | ⬜ |
@@ -56,15 +56,15 @@
 **C4 est le test le plus important du projet** : c'est le bug corrigé le
 2026-08-10 (le pull écrasait le stock local non encore envoyé).
 
-## D. Multi-téléphone (jamais testé, bloquant pour la production)
+## D. Multi-téléphone — **validé le 2026-08-12**
 
 | # | Scénario | Attendu | État |
 |---|----------|---------|------|
-| D1 | Cycle créé sur tel. A → visible sur tel. B | Oui après synchro | ⬜ |
-| D2 | Unités créées sur A → visibles sur B | Oui | ⬜ |
-| D3 | Vente sur A puis vente sur B | Stock cohérent des deux côtés | ⬜ |
-| D4 | Ventes simultanées A et B | Aucun stock négatif | ⬜ |
-| D5 | A hors ligne, B en ligne, puis A revient | Aucune perte de données | ⬜ |
+| D1 | Cycle créé sur tel. A → visible sur tel. B | Oui après synchro | ✅ |
+| D2 | Unités créées sur A → visibles sur B | Oui | ✅ |
+| D3 | Vente sur A puis vente sur B | Stock cohérent des deux côtés | ✅ |
+| D4 | Ventes simultanées A et B, **les deux hors ligne** | Les 2 ventes survivent, stock décompté 2× exactement | ✅ |
+| D5 | A hors ligne, B en ligne, puis A revient | Aucune perte de données | ✅ |
 | D6 | Rapport de cycle identique sur A et B | Mêmes chiffres | ⬜ |
 
 ## E. Coexistence avec le mode simple (non-régression)
@@ -73,15 +73,15 @@
 |---|----------|---------|------|
 | E1 | Boutique en mode simple | Aucun onglet Cycles, vente classique | ⬜ |
 | E2 | Vente simple pendant qu'une autre boutique est en mode œufs | Aucun impact | ⬜ |
-| E3 | Boutique œufs vendant aussi un produit **sans** cycle | **Trou connu** : impossible aujourd'hui | ❌ |
+| E3 | Boutique œufs vendant aussi un produit **sans** cycle | Vente simple dans le même écran | ✅ |
 | E4 | Clôture journalière en mode œufs | Ventes cycles comptées normalement | ⬜ |
 | E5 | Bilan mensuel en mode œufs | Chiffres cohérents | ⬜ |
 
-**E3 est un manque de conception**, pas un bug : en mode `hierarchical`, le
-bouton NOUVELLE VENTE mène toujours à la vente par unité. Un dépôt qui vend
-des œufs **et** du savon ne peut plus vendre le savon. À trancher avec le
-client : soit sa boutique ne vend qu'un type de produit, soit l'écran de vente
-doit proposer les deux chemins.
+**E3 corrigé le 2026-08-11** : le mode ne se décide plus par boutique mais
+**par produit**. Un produit avec unités et cycle ouvert se vend au plateau ;
+tout autre produit garde la vente ordinaire, dans le même écran et sans
+re-sélection. Le module est donc une couche par-dessus le socle simple, pas
+un remplacement.
 
 ## F. Caisse et clôture
 
@@ -90,7 +90,7 @@ doit proposer les deux chemins.
 | F1 | Solde du matin à 0 | Accepté, la boîte ne revient pas | ✅ |
 | F2 | Oublier une journée | Clôture forcée de la plus ancienne | ⬜ |
 | F3 | Oublier plusieurs journées | Traitées dans l'ordre chronologique | ⬜ |
-| F4 | Journée sans vente mais avec caisse | **Trou connu** : non détectée | ❌ |
+| F4 | Journée sans vente mais avec caisse | Détectée (corrigé le 11/08) | ⬜ |
 | F5 | Écart de caisse négatif | Manque affiché clairement | ⬜ |
 
 ## G. Sécurité
@@ -113,10 +113,20 @@ seront écrits qu'une fois l'architecture (`ARCHITECTURE_MODULES.md` §2)
 transformée en implémentation. Ne pas promettre ce module à un client tant
 que le module A n'est pas validé sur le terrain.
 
-## Ordre conseillé
+## Résultat du 2026-08-12 (S24 Ultra + émulateur Pixel 5)
 
-1. **C (hors ligne)** — le local-first est la promesse centrale de ShopTrack.
-2. **D (multi-téléphone)** — bloquant pour la production, jamais testé.
-3. **B (cas limites)** — évite les mauvaises surprises chez le client.
-4. **E, F, G** — non-régression et arbitrages produit.
-5. **A7–A9** — fermeture de cycle, fonctionnalité la plus récente.
+Les deux appareils ont vendu 2 plateaux chacun **simultanément et tous deux
+hors ligne**. Au retour du réseau : les deux ventes ont survécu, sont
+présentes des deux côtés, files vides, et le stock est passé de 145 à **85**
+— décompté exactement deux fois, ni une ni trois. C'est le scénario patron +
+vendeur d'une vraie boutique : il fonctionne.
+
+## Ordre conseillé pour la suite
+
+1. **B (cas limites)** — évite les mauvaises surprises chez le client.
+2. **A7–A9** — fermeture de cycle ; il manque encore le signalement
+   « cycle épuisé » et la **réouverture** d'un cycle fermé par erreur
+   (aujourd'hui irréversible).
+3. **F2–F5** — clôtures rattrapées, livrées mais jamais utilisées.
+4. **E, G** — non-régression et arbitrage sur la visibilité des coûts d'achat
+   pour un vendeur.
