@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../dashboard/domain/entities/daily_closing_entity.dart';
 import '../../../../core/sync/sync_service.dart'; // 👈 AJOUT POUR LA SYNCHRO
 import '../providers/monthly_report_provider.dart';
 
@@ -307,27 +308,90 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     );
   }
 
-  /// Affiche la note d'une journée : réouverture, clôture tardive, incident.
-  /// C'est ce qui permet de distinguer un vrai manquant d'un simple oubli.
-  void _showClosingNote(BuildContext context, String dateStr, String note) {
+  /// Détail d'une journée : le tableau ne montre que l'écart, pas les deux
+  /// montants qui le produisent. Trois semaines plus tard, « +2 447 F » ne
+  /// veut plus rien dire sans savoir ce qui avait été compté.
+  void _showClosingDetail(
+    BuildContext context,
+    String dateStr,
+    DailyClosingEntity closing,
+  ) {
+    final gap = closing.cashGap ?? 0;
+    final note = closing.note?.trim() ?? '';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.sticky_note_2_outlined, color: Colors.orange.shade700),
-            const SizedBox(width: 10),
-            Text('Journée du $dateStr'),
-          ],
-        ),
+        title: Text('Journée du $dateStr'),
         content: SingleChildScrollView(
-          child: Text(note, style: const TextStyle(height: 1.4)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _detailLine('Caisse attendue', closing.calculatedCash),
+              _detailLine('Caisse comptée', closing.physicalCash ?? 0),
+              const Divider(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    gap == 0
+                        ? 'Écart'
+                        : (gap < 0 ? 'Manquant' : 'Surplus'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    CurrencyFormatter.format(gap),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: gap < 0
+                          ? Colors.red
+                          : (gap > 0 ? Colors.blue : Colors.green),
+                    ),
+                  ),
+                ],
+              ),
+              if (note.isNotEmpty) ...[
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.sticky_note_2_outlined,
+                      size: 18,
+                      color: Colors.orange.shade700,
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Note',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(note, style: const TextStyle(height: 1.4)),
+              ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Fermer'),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailLine(String label, double amount) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey)),
+          Text(CurrencyFormatter.format(amount)),
         ],
       ),
     );
@@ -713,13 +777,13 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                                   // tardive, incident) doit se voir : sinon la
                                   // trace existe en base sans que personne ne
                                   // la lise jamais.
-                                  onSelectChanged: hasNote
-                                      ? (_) => _showClosingNote(
-                                          context,
-                                          dateStr,
-                                          note,
-                                        )
-                                      : null,
+                                  // Toutes les journées sont consultables, pas
+                                  // seulement celles qui portent une note.
+                                  onSelectChanged: (_) => _showClosingDetail(
+                                    context,
+                                    dateStr,
+                                    closing,
+                                  ),
                                   cells: [
                                     DataCell(
                                       Row(
