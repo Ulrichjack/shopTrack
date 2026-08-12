@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/errors/sync_error_message.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/cycle_provider.dart';
@@ -38,27 +40,85 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
                     return const Text('Aucun cycle créé pour le moment.');
                   }
                   final products = productsAsync.value ?? [];
-                  return DropdownButtonFormField<String>(
-                    initialValue: _selectedCycleId,
-                    decoration: const InputDecoration(
-                      labelText: 'Choisir un cycle',
-                      border: OutlineInputBorder(),
+                  final selected = cycles
+                      .where((c) => c.id == _selectedCycleId)
+                      .firstOrNull;
+                  String nameOf(String productId) => products
+                      .where((p) => p.id == productId)
+                      .map((p) => p.name)
+                      .firstOrNull ??
+                      'Produit inconnu';
+
+                  return Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => _pickCycle(cycles, nameOf),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: selected == null
+                                ? Colors.grey.shade300
+                                : AppColors.primary,
+                            width: selected == null ? 1 : 2,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.autorenew,
+                              color: selected == null
+                                  ? Colors.grey.shade400
+                                  : AppColors.primary,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Cycle',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    selected == null
+                                        ? 'Choisir un cycle'
+                                        : nameOf(selected.productId),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: selected == null
+                                          ? Colors.grey.shade500
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  if (selected != null)
+                                    Text(
+                                      '${DateFormat('dd/MM/yyyy').format(selected.openedAt)}'
+                                      ' · ${selected.status == 'open' ? 'en cours' : 'terminé'}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.expand_more, color: Colors.grey),
+                          ],
+                        ),
+                      ),
                     ),
-                    items: cycles.map((c) {
-                      final productName = products
-                          .firstWhere(
-                            (p) => p.id == c.productId,
-                            orElse: () => products.first,
-                          )
-                          .name;
-                      final date = DateFormat('dd/MM/yyyy').format(c.openedAt);
-                      return DropdownMenuItem(
-                        value: c.id,
-                        child: Text('$productName — $date (${c.status})'),
-                      );
-                    }).toList(),
-                    onChanged: (value) =>
-                        setState(() => _selectedCycleId = value),
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -120,6 +180,27 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
                                 emphasize: true,
                               ),
                               const SizedBox(height: 32),
+                              // Signaler l'épuisement plutôt que fermer tout
+                              // seul : figer le résultat est un acte
+                              // comptable, il reste au commerçant.
+                              if (report.cycle.status == 'open' &&
+                                  totals.remainingStock <= 0)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade50,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    'Ce cycle est épuisé : tout a été vendu '
+                                    'ou perdu. Tu peux le terminer.',
+                                    style: TextStyle(
+                                      color: Colors.blue.shade900,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
                               if (report.cycle.status == 'open')
                                 OutlinedButton.icon(
                                   onPressed: () => _confirmClose(report),
@@ -135,7 +216,7 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
                                   icon: const Icon(Icons.archive_outlined),
                                   label: const Text('Terminer ce cycle'),
                                 )
-                              else
+                              else ...[
                                 Container(
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
@@ -152,6 +233,13 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
                                     ),
                                   ),
                                 ),
+                                const SizedBox(height: 12),
+                                TextButton.icon(
+                                  onPressed: () => _confirmReopen(report),
+                                  icon: const Icon(Icons.lock_open, size: 18),
+                                  label: const Text('Rouvrir ce cycle'),
+                                ),
+                              ],
                               const SizedBox(height: 20),
                             ],
                           );
@@ -225,6 +313,175 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
     }
   }
 
+  /// Même principe que le sélecteur de produit : une feuille lisible avec
+  /// recherche, plutôt qu'une liste déroulante illisible à 20 entrées.
+  Future<void> _pickCycle(
+    List<LocalSupplyCycle> cycles,
+    String Function(String) nameOf,
+  ) async {
+    final ordered = [...cycles]
+      ..sort((a, b) {
+        if (a.status != b.status) return a.status == 'open' ? -1 : 1;
+        return b.openedAt.compareTo(a.openedAt);
+      });
+    final controller = TextEditingController();
+
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final query = controller.text.trim().toLowerCase();
+          final visible = query.isEmpty
+              ? ordered
+              : ordered
+                    .where((c) => nameOf(c.productId).toLowerCase().contains(query))
+                    .toList();
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: SafeArea(
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.7,
+                child: Column(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: TextField(
+                        controller: controller,
+                        onChanged: (_) => setSheetState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Rechercher un produit…',
+                          prefixIcon: const Icon(Icons.search),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: visible.isEmpty
+                          ? const Center(child: Text('Aucun cycle trouvé'))
+                          : ListView.separated(
+                              itemCount: visible.length,
+                              separatorBuilder: (_, _) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final cycle = visible[index];
+                                final isOpen = cycle.status == 'open';
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: isOpen
+                                        ? AppColors.primaryLight
+                                        : Colors.grey.shade200,
+                                    child: Icon(
+                                      isOpen
+                                          ? Icons.autorenew
+                                          : Icons.archive_outlined,
+                                      color: isOpen
+                                          ? AppColors.primaryDark
+                                          : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    nameOf(cycle.productId),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${cycle.quantityReceived} reçus · '
+                                    '${DateFormat('dd/MM/yyyy').format(cycle.openedAt)}'
+                                    '${isOpen ? "" : " · terminé"}',
+                                  ),
+                                  onTap: () => Navigator.pop(context, cycle.id),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    if (picked != null) setState(() => _selectedCycleId = picked);
+  }
+
+  Future<void> _confirmReopen(CycleReport report) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rouvrir ce cycle ?'),
+        content: const Text(
+          'Les prochaines ventes de ce produit seront de nouveau rattachées '
+          'à ce cycle et compteront dans son résultat.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryDark,
+            ),
+            child: const Text('Rouvrir', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ref.read(cyclesProvider.notifier).reopenCycle(report.cycle.id);
+      ref.invalidate(cycleReportProvider(report.cycle.id));
+      ref.invalidate(openCycleForProductProvider(report.cycle.productId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cycle rouvert.'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(humanSyncError(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _row(String label, String value, {bool emphasize = false}) {
     final style = TextStyle(
       fontSize: emphasize ? 20 : 15,
@@ -234,10 +491,14 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: style),
-          Text(value, style: style),
+          // Le libellé se replie ; le montant garde toute sa place. Sans ça
+          // « Coût réel par unité de base » + un montant long débordent sur
+          // les petits écrans.
+          Expanded(child: Text(label, style: style)),
+          const SizedBox(width: 12),
+          Text(value, style: style, textAlign: TextAlign.right),
         ],
       ),
     );

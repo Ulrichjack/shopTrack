@@ -2,8 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/sync/sync_service.dart';
 import '../../../products/domain/entities/product_entity.dart';
 import '../../../products/presentation/providers/product_provider.dart';
+
+/// Nombre de ventes par produit, pour remonter en tête ceux qui servent le
+/// plus. Un vendeur d'œufs ne doit pas faire défiler 20 articles pour
+/// retrouver celui qu'il vend toute la journée.
+final productSaleCountsProvider = FutureProvider<Map<String, int>>((ref) async {
+  final db = ref.watch(localDbProvider);
+  final rows = await db.select(db.localSaleItems).get();
+  final counts = <String, int>{};
+  for (final row in rows) {
+    counts[row.productId] = (counts[row.productId] ?? 0) + 1;
+  }
+  return counts;
+});
 
 /// Sélecteur de produit partagé par les écrans du module cycles.
 /// Une liste déroulante native affiche mal le stock et se manipule mal sur un
@@ -39,7 +53,7 @@ class ProductPicker extends ConsumerWidget {
           child: InkWell(
             onTap: products.isEmpty
                 ? null
-                : () => _openSheet(context, products),
+                : () => _openSheet(context, ref, products),
             child: Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -111,76 +125,167 @@ class ProductPicker extends ConsumerWidget {
 
   Future<void> _openSheet(
     BuildContext context,
+    WidgetRef ref,
     List<ProductEntity> products,
   ) async {
+    final counts = ref.read(productSaleCountsProvider).value ?? {};
+    // Les plus vendus d'abord : c'est ce que le vendeur cherche 9 fois sur 10.
+    final ordered = [...products]
+      ..sort((a, b) {
+        final byUse = (counts[b.id] ?? 0).compareTo(counts[a.id] ?? 0);
+        return byUse != 0 ? byUse : a.name.compareTo(b.name);
+      });
+
     final picked = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: products.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final product = products[index];
-                  final isSelected = product.id == selectedProductId;
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isSelected
-                          ? AppColors.primaryLight
-                          : Colors.grey.shade200,
-                      child: Icon(
-                        Icons.inventory_2_outlined,
-                        color: isSelected
-                            ? AppColors.primaryDark
-                            : Colors.grey.shade600,
-                      ),
-                    ),
-                    title: Text(
-                      product.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text('Stock : ${product.quantity}'),
-                    trailing: isSelected
-                        ? const Icon(Icons.check, color: AppColors.primary)
-                        : null,
-                    onTap: () => Navigator.pop(context, product.id),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
+      builder: (context) => _ProductSheet(
+        label: label,
+        products: ordered,
+        counts: counts,
+        selectedProductId: selectedProductId,
       ),
     );
 
     if (picked != null) onChanged(picked);
+  }
+}
+
+class _ProductSheet extends StatefulWidget {
+  const _ProductSheet({
+    required this.label,
+    required this.products,
+    required this.counts,
+    required this.selectedProductId,
+  });
+
+  final String label;
+  final List<ProductEntity> products;
+  final Map<String, int> counts;
+  final String? selectedProductId;
+
+  @override
+  State<_ProductSheet> createState() => _ProductSheetState();
+}
+
+class _ProductSheetState extends State<_ProductSheet> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchController.text.trim().toLowerCase();
+    final visible = query.isEmpty
+        ? widget.products
+        : widget.products
+              .where((p) => p.name.toLowerCase().contains(query))
+              .toList();
+
+    return Padding(
+      // Remonte la feuille au-dessus du clavier pendant la recherche.
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: widget.products.length > 8,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher un produit…',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                          ),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: visible.isEmpty
+                    ? const Center(child: Text('Aucun produit trouvé'))
+                    : ListView.separated(
+                        itemCount: visible.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final product = visible[index];
+                          final isSelected =
+                              product.id == widget.selectedProductId;
+                          final sold = widget.counts[product.id] ?? 0;
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: isSelected
+                                  ? AppColors.primaryLight
+                                  : Colors.grey.shade200,
+                              child: Icon(
+                                Icons.inventory_2_outlined,
+                                color: isSelected
+                                    ? AppColors.primaryDark
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                            title: Text(
+                              product.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              sold > 0
+                                  ? 'Stock : ${product.quantity} · vendu $sold fois'
+                                  : 'Stock : ${product.quantity}',
+                            ),
+                            trailing: isSelected
+                                ? const Icon(
+                                    Icons.check,
+                                    color: AppColors.primary,
+                                  )
+                                : null,
+                            onTap: () => Navigator.pop(context, product.id),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

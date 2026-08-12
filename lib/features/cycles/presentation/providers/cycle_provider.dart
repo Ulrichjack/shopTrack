@@ -127,15 +127,24 @@ class CyclesNotifier extends AsyncNotifier<List<LocalSupplyCycle>> {
 
   /// Archive un cycle : son résultat est figé, il ne reçoit plus ni vente ni
   /// perte. Ne touche pas au stock — ce qui reste invendu reste vendable.
-  Future<void> closeCycle(String cycleId) async {
+  Future<void> closeCycle(String cycleId) =>
+      _setCycleStatus(cycleId, closed: true);
+
+  /// Rouvre un cycle fermé par erreur. Sans ça, la seule issue serait de
+  /// créer un second cycle pour un même arrivage, ce qui fausse l'historique.
+  Future<void> reopenCycle(String cycleId) =>
+      _setCycleStatus(cycleId, closed: false);
+
+  Future<void> _setCycleStatus(String cycleId, {required bool closed}) async {
     final db = ref.read(localDbProvider);
-    final closedAt = DateTime.now();
+    final closedAt = closed ? DateTime.now() : null;
+    final status = closed ? 'closed' : 'open';
 
     await (db.update(
       db.localSupplyCycles,
     )..where((t) => t.id.equals(cycleId))).write(
       LocalSupplyCyclesCompanion(
-        status: const drift.Value('closed'),
+        status: drift.Value(status),
         closedAt: drift.Value(closedAt),
       ),
     );
@@ -144,8 +153,8 @@ class CyclesNotifier extends AsyncNotifier<List<LocalSupplyCycle>> {
       'CLOSE_SUPPLY_CYCLE',
       jsonEncode({
         'id': cycleId,
-        'status': 'closed',
-        'closed_at': closedAt.toIso8601String(),
+        'status': status,
+        'closed_at': closedAt?.toIso8601String(),
       }),
     );
     await ref.read(syncServiceProvider).processQueue();
