@@ -19,24 +19,24 @@
 | A4 | Vendre 2 plateaux à 2 000 | Stock 300, bénéfice +1 000 | ✅ |
 | A5 | Déclarer une perte de 12 | Stock −12, rattachée au cycle | ✅ |
 | A6 | Rapport de cycle | CA / coût / pertes / restant / net cohérents | ✅ |
-| A7 | Terminer un cycle | Résultat figé, stock intact | ⬜ |
-| A8 | Vendre après fermeture du dernier cycle | Refus « aucun cycle ouvert », stock intact | ⬜ |
-| A9 | Rouvrir un cycle après fermeture | Vente possible à nouveau, nouveau coût unitaire | ⬜ |
+| A7 | Terminer un cycle | Résultat figé, stock intact | ✅ |
+| A8 | Vendre après fermeture du dernier cycle | Bascule en vente simple, stock intact | ✅ |
+| A9 | Rouvrir un cycle après fermeture | Vente possible à nouveau | ⬜ livré 12/08, à tester |
 
 ## B. Module A — cas limites et erreurs
 
 | # | Scénario | Attendu | État |
 |---|----------|---------|------|
-| B1 | Vendre plus que le stock | Refus avant validation (encadré rouge) | ⬜ |
-| B2 | Perte supérieure au stock | Refus explicite | ⬜ |
+| B1 | Vendre plus que le stock | Le « + » se bloque au stock | ✅ |
+| B2 | Perte supérieure au stock | Refus explicite | ✅ |
 | B3 | Unité nommée « 30 » (nombre) | Refusé : « un mot, pas un nombre » | ✅ |
-| B4 | Ratio 0 ou négatif | Refusé | ⬜ |
-| B5 | Supprimer une unité **déjà utilisée** | Refus + message | ⬜ |
+| B4 | Ratio 0 ou négatif | Refusé | ✅ |
+| B5 | Supprimer une unité **déjà utilisée** | Refus + message | ✅ |
 | B6 | Supprimer une unité **jamais utilisée** | Suppression OK | ✅ |
-| B7 | Produit sans unité définie | Message clair, pas de plantage | ⬜ |
+| B7 | Produit sans unité définie | Vente simple dans le même écran | ✅ |
 | B8 | Quantité reçue 0 / coût 0 | Pas de division par zéro | ⬜ |
-| B9 | Prix de vente 0 (don, casse offerte) | Accepté, perte affichée en rouge | ⬜ |
-| B10 | Prix inférieur au coût | Perte annoncée **avant** validation | ⬜ |
+| B9 | Prix de vente 0 (don, casse offerte) | Accepté, perte affichée en rouge | ✅ |
+| B10 | Prix inférieur au coût | Accepté, perte annoncée **avant** validation | ✅ |
 | B11 | Deux cycles ouverts sur le même produit | Le plus récent est utilisé | ⬜ |
 | B12 | Vendre en carton (360) tout le stock | Conversion correcte, stock à 0 | ⬜ |
 
@@ -88,7 +88,7 @@ un remplacement.
 | # | Scénario | Attendu | État |
 |---|----------|---------|------|
 | F1 | Solde du matin à 0 | Accepté, la boîte ne revient pas | ✅ |
-| F2 | Oublier une journée | Clôture forcée de la plus ancienne | ⬜ |
+| F2 | Oublier une journée | Bandeau rouge dans Ventes + clôture sur place | ✅ |
 | F3 | Oublier plusieurs journées | Traitées dans l'ordre chronologique | ⬜ |
 | F4 | Journée sans vente mais avec caisse | Détectée (corrigé le 11/08) | ⬜ |
 | F5 | Écart de caisse négatif | Manque affiché clairement | ⬜ |
@@ -120,6 +120,20 @@ hors ligne**. Au retour du réseau : les deux ventes ont survécu, sont
 présentes des deux côtés, files vides, et le stock est passé de 145 à **85**
 — décompté exactement deux fois, ni une ni trois. C'est le scénario patron +
 vendeur d'une vraie boutique : il fonctionne.
+
+## Reste à faire avant de confier l'app à un client
+
+**Prioritaire — argent et sécurité, jamais vérifiés :**
+- **G1/G2** : en mode vendeur (PIN posé), l'onglet Bilan doit rester masqué et
+  `/bilan` inaccessible en direct. La construction des onglets a changé le
+  11/08 (`main_layout.dart`, liste unique de destinations) : cette protection
+  n'a pas été rejouée depuis.
+- **E4/E5** : une vente par cycle doit compter normalement dans la clôture
+  journalière et dans le bilan mensuel. Ce sont les écrans sur lesquels le
+  patron juge son argent ; ils n'ont jamais été relus en mode œufs.
+
+**Ensuite :** A9 (réouverture, livrée le 12/08), B8/B11/B12, C3/C6/C7/C8,
+D6, E1/E2, F3–F5.
 
 ## Ordre conseillé pour la suite
 
