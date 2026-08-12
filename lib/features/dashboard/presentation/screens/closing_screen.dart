@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -25,6 +26,42 @@ class _ClosingScreenState extends ConsumerState<ClosingScreen> {
     _cashController.dispose();
     _noteController.dispose();
     super.dispose();
+  }
+
+  /// Avertit sans bloquer si on clôture tôt : les boutiques n'ont pas toutes
+  /// le même horaire (jour de marché, fermeture tardive), donc une heure
+  /// imposée serait contournée tous les jours. Ce qui protège vraiment de
+  /// l'erreur, c'est la possibilité de rouvrir la journée.
+  Future<bool> _confirmEarlyClosing() async {
+    final now = DateTime.now();
+    if (now.hour >= 16) return true;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clôturer maintenant ?'),
+        content: Text(
+          'Il n\'est que ${DateFormat('HH:mm').format(now)}.\n\n'
+          'Après la clôture, tu ne pourras plus vendre aujourd\'hui sans '
+          'rouvrir la journée.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text(
+              'Clôturer quand même',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+    return confirm == true;
   }
 
   @override
@@ -216,6 +253,7 @@ class _ClosingScreenState extends ConsumerState<ClosingScreen> {
                   onPressed: _isSaving
                       ? null
                       : () async {
+                          if (!await _confirmEarlyClosing()) return;
                           setState(() => _isSaving = true);
                           await ref
                               .read(dashboardProvider.notifier)

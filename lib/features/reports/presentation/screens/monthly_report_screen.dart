@@ -224,6 +224,44 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                   ];
                 }).toList(),
               ),
+              // Les journées annotées (réouverture, clôture tardive) doivent
+              // suivre le PDF : c'est ce document que le patron relit ou
+              // transmet, et un écart s'y explique.
+              if (report.dailyClosings.any(
+                (c) => (c.note?.trim() ?? '').isNotEmpty,
+              )) ...[
+                pw.SizedBox(height: 24),
+                pw.Text(
+                  'Journées annotées',
+                  style: pw.TextStyle(
+                    fontSize: 14,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 8),
+                ...report.dailyClosings
+                    .where((c) => (c.note?.trim() ?? '').isNotEmpty)
+                    .map(
+                      (c) => pw.Padding(
+                        padding: const pw.EdgeInsets.only(bottom: 8),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              DateFormat('dd/MM/yyyy').format(c.closingDate),
+                              style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
+                            pw.Text(
+                              c.note!.trim(),
+                              style: const pw.TextStyle(fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+              ],
             ],
           );
         },
@@ -263,6 +301,32 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
               fontWeight: pw.FontWeight.bold,
               color: isGreen ? PdfColors.green700 : PdfColors.black,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Affiche la note d'une journée : réouverture, clôture tardive, incident.
+  /// C'est ce qui permet de distinguer un vrai manquant d'un simple oubli.
+  void _showClosingNote(BuildContext context, String dateStr, String note) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.sticky_note_2_outlined, color: Colors.orange.shade700),
+            const SizedBox(width: 10),
+            Text('Journée du $dateStr'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Text(note, style: const TextStyle(height: 1.4)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
           ),
         ],
       ),
@@ -641,15 +705,41 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                                 ).format(closing.closingDate);
                                 final coutAchat =
                                     closing.totalSales - closing.grossProfit;
+                                final note = closing.note?.trim() ?? '';
+                                final hasNote = note.isNotEmpty;
 
                                 return DataRow(
+                                  // Une journée annotée (réouverture, clôture
+                                  // tardive, incident) doit se voir : sinon la
+                                  // trace existe en base sans que personne ne
+                                  // la lise jamais.
+                                  onSelectChanged: hasNote
+                                      ? (_) => _showClosingNote(
+                                          context,
+                                          dateStr,
+                                          note,
+                                        )
+                                      : null,
                                   cells: [
                                     DataCell(
-                                      Text(
-                                        dateStr,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            dateStr,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          if (hasNote) ...[
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              Icons.sticky_note_2_outlined,
+                                              size: 16,
+                                              color: Colors.orange.shade700,
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     ),
                                     DataCell(

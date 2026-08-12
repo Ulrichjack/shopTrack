@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/errors/sync_error_message.dart';
 import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/providers/shop_settings_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -193,6 +194,53 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
+  Future<void> _confirmReopenDay() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rouvrir la journée ?'),
+        content: const Text(
+          'Tu pourras de nouveau vendre aujourd\'hui.\n\n'
+          'Le comptage déjà fait et son écart seront conservés dans la note '
+          'de la journée. Il faudra recompter la caisse en refermant.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Rouvrir', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ref.read(dashboardProvider.notifier).reopenDay(DateTime.now());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Journée rouverte. Tu peux vendre à nouveau.'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(humanSyncError(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildStatCard(String title, String amount, IconData icon, Color color, {bool isLarge = false}) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -268,9 +316,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           Icon(Icons.lock, color: Colors.red.shade700),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'Journée clôturée. Aucune nouvelle vente ne peut être enregistrée aujourd\'hui.',
-                              style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Journée clôturée. Aucune nouvelle vente ne peut être enregistrée aujourd\'hui.',
+                                  style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold),
+                                ),
+                                // Un client qui arrive après la fermeture ne
+                                // doit pas obliger à vendre hors de l'app.
+                                if (isBossMode) ...[
+                                  const SizedBox(height: 4),
+                                  TextButton.icon(
+                                    onPressed: _confirmReopenDay,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red.shade900,
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    icon: const Icon(Icons.lock_open, size: 18),
+                                    label: const Text('Rouvrir la journée'),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ],

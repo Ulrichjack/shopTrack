@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -376,6 +377,72 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     }
   }
 
+  /// Rouvre une journée clôturée : le commerçant ferme sa caisse à 18h et un
+  /// client arrive à 19h. Sans ça, la vente ne serait pas enregistrée du tout.
+  ///
+  /// Le comptage précédent et son écart sont **écrits dans la note**, jamais
+  /// effacés : recompter ne doit pas pouvoir faire disparaître un manquant.
+  /// Réservé au Patron (route protégée), sinon un vendeur pourrait recompter
+  /// jusqu'à masquer un écart gênant.
+  Future<void> reopenDay(DateTime date) async {
+    final db = ref.read(localDbProvider);
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+    final closing =
+        await (db.select(db.localDailyClosings)..where(
+              (t) => t.closingDate.isBetweenValues(startOfDay, endOfDay),
+            ))
+            .getSingleOrNull();
+    if (closing == null) return;
+
+    final now = DateTime.now();
+    final trace =
+        'Rouverte le ${DateFormat('dd/MM').format(now)} '
+        'à ${DateFormat('HH:mm').format(now)}\n'
+        '(comptage précédent : '
+        '${(closing.physicalCash ?? 0).round()} F — '
+        'écart : ${(closing.cashGap ?? 0).round()} F)';
+    final mergedNote = [
+      if (closing.note != null && closing.note!.trim().isNotEmpty)
+        closing.note!.trim(),
+      trace,
+    ].join('\n');
+
+    await (db.update(
+      db.localDailyClosings,
+    )..where((t) => t.id.equals(closing.id))).write(
+      LocalDailyClosingsCompanion(
+        isClosed: const drift.Value(false),
+        note: drift.Value(mergedNote),
+      ),
+    );
+
+    await db.addToQueue(
+      'ADD_CLOSING',
+      jsonEncode({
+        'id': closing.id,
+        'shop_id': closing.shopId,
+        'user_id': closing.userId,
+        'closing_date':
+            "${startOfDay.year}-${startOfDay.month.toString().padLeft(2, '0')}-${startOfDay.day.toString().padLeft(2, '0')}",
+        'morning_balance': closing.morningBalance,
+        'total_sales': closing.totalSales,
+        'total_withdrawals': closing.totalWithdrawals,
+        'calculated_cash': closing.calculatedCash,
+        'gross_profit': closing.grossProfit,
+        'net_profit': closing.netProfit,
+        'physical_cash': closing.physicalCash,
+        'cash_gap': closing.cashGap,
+        'is_closed': false,
+        'note': mergedNote,
+      }),
+    );
+    await ref.read(syncServiceProvider).processQueue();
+
+    state = AsyncValue.data(await _fetchDashboardData());
+  }
+
   Future<void> closeDay(
     double physicalCash,
     String? note, {
@@ -423,6 +490,15 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final closingId = existingClosing?.id ?? const Uuid().v4();
       final normalizedClosingDate = startOfDay;
 
+      // Refermer après une réouverture ne doit pas effacer la trace : on
+      // conserve la note existante et on ajoute la nouvelle en dessous.
+      final previousNote = existingClosing?.note?.trim();
+      final mergedNote = [
+        if (previousNote != null && previousNote.isNotEmpty) previousNote,
+        if (note != null && note.trim().isNotEmpty) note.trim(),
+      ].join('\n');
+      final finalNote = mergedNote.isEmpty ? null : mergedNote;
+
       await db
           .into(db.localDailyClosings)
           .insert(
@@ -440,7 +516,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
               physicalCash: physicalCash,
               cashGap: cashGap,
               isClosed: true,
-              note: note,
+              note: finalNote,
             ),
             mode: drift.InsertMode.insertOrReplace,
           );
@@ -460,7 +536,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         'physical_cash': physicalCash,
         'cash_gap': cashGap,
         'is_closed': true,
-        'note': note,
+        'note': finalNote,
       };
       await db.addToQueue('ADD_CLOSING', jsonEncode(payload));
       await ref.read(syncServiceProvider).processQueue();
