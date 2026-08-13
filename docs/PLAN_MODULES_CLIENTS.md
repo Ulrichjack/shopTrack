@@ -147,7 +147,7 @@ Ordre d'implémentation, du plus indépendant au plus risqué :
 - [ ] **B2 — Calculateur pur** `inventory_reconciliation_calculator.dart` +
   tests, sur le modèle de `cycle_result_calculator.dart` : sorties totales →
   pertes déclarées → ventes présumées → écart avec l'argent encaissé.
-- [ ] **B3 — Comptage d'inventaire.** Table `inventory_counts` (repères par
+- [x] **B3 — Comptage d'inventaire.** Table `inventory_counts` (repères par
   produit), écran de saisie **à l'aveugle** (ne jamais afficher la quantité
   théorique), sauvegarde progressive, indicateur « 22 produits sur 30 ».
 - [ ] **B4 — Approvisionnement avec prix.** Le prix payé est enregistré **sur

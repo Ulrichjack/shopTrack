@@ -5428,6 +5428,494 @@ class LocalShopTakingsCompanion extends UpdateCompanion<LocalShopTaking> {
   }
 }
 
+class $LocalInventoryCountsTable extends LocalInventoryCounts
+    with TableInfo<$LocalInventoryCountsTable, LocalInventoryCount> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalInventoryCountsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _shopIdMeta = const VerificationMeta('shopId');
+  @override
+  late final GeneratedColumn<String> shopId = GeneratedColumn<String>(
+    'shop_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _countedAtMeta = const VerificationMeta(
+    'countedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> countedAt = GeneratedColumn<DateTime>(
+    'counted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _countedQuantityMeta = const VerificationMeta(
+    'countedQuantity',
+  );
+  @override
+  late final GeneratedColumn<int> countedQuantity = GeneratedColumn<int>(
+    'counted_quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _previousCountedAtMeta = const VerificationMeta(
+    'previousCountedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> previousCountedAt =
+      GeneratedColumn<DateTime>(
+        'previous_counted_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _previousQuantityMeta = const VerificationMeta(
+    'previousQuantity',
+  );
+  @override
+  late final GeneratedColumn<int> previousQuantity = GeneratedColumn<int>(
+    'previous_quantity',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    shopId,
+    productId,
+    countedAt,
+    countedQuantity,
+    previousCountedAt,
+    previousQuantity,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_inventory_counts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalInventoryCount> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('shop_id')) {
+      context.handle(
+        _shopIdMeta,
+        shopId.isAcceptableOrUnknown(data['shop_id']!, _shopIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_shopIdMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('counted_at')) {
+      context.handle(
+        _countedAtMeta,
+        countedAt.isAcceptableOrUnknown(data['counted_at']!, _countedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_countedAtMeta);
+    }
+    if (data.containsKey('counted_quantity')) {
+      context.handle(
+        _countedQuantityMeta,
+        countedQuantity.isAcceptableOrUnknown(
+          data['counted_quantity']!,
+          _countedQuantityMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_countedQuantityMeta);
+    }
+    if (data.containsKey('previous_counted_at')) {
+      context.handle(
+        _previousCountedAtMeta,
+        previousCountedAt.isAcceptableOrUnknown(
+          data['previous_counted_at']!,
+          _previousCountedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('previous_quantity')) {
+      context.handle(
+        _previousQuantityMeta,
+        previousQuantity.isAcceptableOrUnknown(
+          data['previous_quantity']!,
+          _previousQuantityMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalInventoryCount map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalInventoryCount(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      shopId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shop_id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      countedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}counted_at'],
+      )!,
+      countedQuantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}counted_quantity'],
+      )!,
+      previousCountedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}previous_counted_at'],
+      ),
+      previousQuantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}previous_quantity'],
+      ),
+    );
+  }
+
+  @override
+  $LocalInventoryCountsTable createAlias(String alias) {
+    return $LocalInventoryCountsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalInventoryCount extends DataClass
+    implements Insertable<LocalInventoryCount> {
+  final String id;
+  final String shopId;
+  final String productId;
+  final DateTime countedAt;
+  final int countedQuantity;
+  final DateTime? previousCountedAt;
+  final int? previousQuantity;
+  const LocalInventoryCount({
+    required this.id,
+    required this.shopId,
+    required this.productId,
+    required this.countedAt,
+    required this.countedQuantity,
+    this.previousCountedAt,
+    this.previousQuantity,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['shop_id'] = Variable<String>(shopId);
+    map['product_id'] = Variable<String>(productId);
+    map['counted_at'] = Variable<DateTime>(countedAt);
+    map['counted_quantity'] = Variable<int>(countedQuantity);
+    if (!nullToAbsent || previousCountedAt != null) {
+      map['previous_counted_at'] = Variable<DateTime>(previousCountedAt);
+    }
+    if (!nullToAbsent || previousQuantity != null) {
+      map['previous_quantity'] = Variable<int>(previousQuantity);
+    }
+    return map;
+  }
+
+  LocalInventoryCountsCompanion toCompanion(bool nullToAbsent) {
+    return LocalInventoryCountsCompanion(
+      id: Value(id),
+      shopId: Value(shopId),
+      productId: Value(productId),
+      countedAt: Value(countedAt),
+      countedQuantity: Value(countedQuantity),
+      previousCountedAt: previousCountedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(previousCountedAt),
+      previousQuantity: previousQuantity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(previousQuantity),
+    );
+  }
+
+  factory LocalInventoryCount.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalInventoryCount(
+      id: serializer.fromJson<String>(json['id']),
+      shopId: serializer.fromJson<String>(json['shopId']),
+      productId: serializer.fromJson<String>(json['productId']),
+      countedAt: serializer.fromJson<DateTime>(json['countedAt']),
+      countedQuantity: serializer.fromJson<int>(json['countedQuantity']),
+      previousCountedAt: serializer.fromJson<DateTime?>(
+        json['previousCountedAt'],
+      ),
+      previousQuantity: serializer.fromJson<int?>(json['previousQuantity']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'shopId': serializer.toJson<String>(shopId),
+      'productId': serializer.toJson<String>(productId),
+      'countedAt': serializer.toJson<DateTime>(countedAt),
+      'countedQuantity': serializer.toJson<int>(countedQuantity),
+      'previousCountedAt': serializer.toJson<DateTime?>(previousCountedAt),
+      'previousQuantity': serializer.toJson<int?>(previousQuantity),
+    };
+  }
+
+  LocalInventoryCount copyWith({
+    String? id,
+    String? shopId,
+    String? productId,
+    DateTime? countedAt,
+    int? countedQuantity,
+    Value<DateTime?> previousCountedAt = const Value.absent(),
+    Value<int?> previousQuantity = const Value.absent(),
+  }) => LocalInventoryCount(
+    id: id ?? this.id,
+    shopId: shopId ?? this.shopId,
+    productId: productId ?? this.productId,
+    countedAt: countedAt ?? this.countedAt,
+    countedQuantity: countedQuantity ?? this.countedQuantity,
+    previousCountedAt: previousCountedAt.present
+        ? previousCountedAt.value
+        : this.previousCountedAt,
+    previousQuantity: previousQuantity.present
+        ? previousQuantity.value
+        : this.previousQuantity,
+  );
+  LocalInventoryCount copyWithCompanion(LocalInventoryCountsCompanion data) {
+    return LocalInventoryCount(
+      id: data.id.present ? data.id.value : this.id,
+      shopId: data.shopId.present ? data.shopId.value : this.shopId,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      countedAt: data.countedAt.present ? data.countedAt.value : this.countedAt,
+      countedQuantity: data.countedQuantity.present
+          ? data.countedQuantity.value
+          : this.countedQuantity,
+      previousCountedAt: data.previousCountedAt.present
+          ? data.previousCountedAt.value
+          : this.previousCountedAt,
+      previousQuantity: data.previousQuantity.present
+          ? data.previousQuantity.value
+          : this.previousQuantity,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalInventoryCount(')
+          ..write('id: $id, ')
+          ..write('shopId: $shopId, ')
+          ..write('productId: $productId, ')
+          ..write('countedAt: $countedAt, ')
+          ..write('countedQuantity: $countedQuantity, ')
+          ..write('previousCountedAt: $previousCountedAt, ')
+          ..write('previousQuantity: $previousQuantity')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    shopId,
+    productId,
+    countedAt,
+    countedQuantity,
+    previousCountedAt,
+    previousQuantity,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalInventoryCount &&
+          other.id == this.id &&
+          other.shopId == this.shopId &&
+          other.productId == this.productId &&
+          other.countedAt == this.countedAt &&
+          other.countedQuantity == this.countedQuantity &&
+          other.previousCountedAt == this.previousCountedAt &&
+          other.previousQuantity == this.previousQuantity);
+}
+
+class LocalInventoryCountsCompanion
+    extends UpdateCompanion<LocalInventoryCount> {
+  final Value<String> id;
+  final Value<String> shopId;
+  final Value<String> productId;
+  final Value<DateTime> countedAt;
+  final Value<int> countedQuantity;
+  final Value<DateTime?> previousCountedAt;
+  final Value<int?> previousQuantity;
+  final Value<int> rowid;
+  const LocalInventoryCountsCompanion({
+    this.id = const Value.absent(),
+    this.shopId = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.countedAt = const Value.absent(),
+    this.countedQuantity = const Value.absent(),
+    this.previousCountedAt = const Value.absent(),
+    this.previousQuantity = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalInventoryCountsCompanion.insert({
+    required String id,
+    required String shopId,
+    required String productId,
+    required DateTime countedAt,
+    required int countedQuantity,
+    this.previousCountedAt = const Value.absent(),
+    this.previousQuantity = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       shopId = Value(shopId),
+       productId = Value(productId),
+       countedAt = Value(countedAt),
+       countedQuantity = Value(countedQuantity);
+  static Insertable<LocalInventoryCount> custom({
+    Expression<String>? id,
+    Expression<String>? shopId,
+    Expression<String>? productId,
+    Expression<DateTime>? countedAt,
+    Expression<int>? countedQuantity,
+    Expression<DateTime>? previousCountedAt,
+    Expression<int>? previousQuantity,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (shopId != null) 'shop_id': shopId,
+      if (productId != null) 'product_id': productId,
+      if (countedAt != null) 'counted_at': countedAt,
+      if (countedQuantity != null) 'counted_quantity': countedQuantity,
+      if (previousCountedAt != null) 'previous_counted_at': previousCountedAt,
+      if (previousQuantity != null) 'previous_quantity': previousQuantity,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalInventoryCountsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? shopId,
+    Value<String>? productId,
+    Value<DateTime>? countedAt,
+    Value<int>? countedQuantity,
+    Value<DateTime?>? previousCountedAt,
+    Value<int?>? previousQuantity,
+    Value<int>? rowid,
+  }) {
+    return LocalInventoryCountsCompanion(
+      id: id ?? this.id,
+      shopId: shopId ?? this.shopId,
+      productId: productId ?? this.productId,
+      countedAt: countedAt ?? this.countedAt,
+      countedQuantity: countedQuantity ?? this.countedQuantity,
+      previousCountedAt: previousCountedAt ?? this.previousCountedAt,
+      previousQuantity: previousQuantity ?? this.previousQuantity,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (shopId.present) {
+      map['shop_id'] = Variable<String>(shopId.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (countedAt.present) {
+      map['counted_at'] = Variable<DateTime>(countedAt.value);
+    }
+    if (countedQuantity.present) {
+      map['counted_quantity'] = Variable<int>(countedQuantity.value);
+    }
+    if (previousCountedAt.present) {
+      map['previous_counted_at'] = Variable<DateTime>(previousCountedAt.value);
+    }
+    if (previousQuantity.present) {
+      map['previous_quantity'] = Variable<int>(previousQuantity.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalInventoryCountsCompanion(')
+          ..write('id: $id, ')
+          ..write('shopId: $shopId, ')
+          ..write('productId: $productId, ')
+          ..write('countedAt: $countedAt, ')
+          ..write('countedQuantity: $countedQuantity, ')
+          ..write('previousCountedAt: $previousCountedAt, ')
+          ..write('previousQuantity: $previousQuantity, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncQueueItemsTable extends SyncQueueItems
     with TableInfo<$SyncQueueItemsTable, SyncQueueItem> {
   @override
@@ -5748,6 +6236,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $LocalShopTakingsTable localShopTakings = $LocalShopTakingsTable(
     this,
   );
+  late final $LocalInventoryCountsTable localInventoryCounts =
+      $LocalInventoryCountsTable(this);
   late final $SyncQueueItemsTable syncQueueItems = $SyncQueueItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -5765,6 +6255,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     localSupplyCycles,
     localCycleLosses,
     localShopTakings,
+    localInventoryCounts,
     syncQueueItems,
   ];
 }
@@ -8635,6 +9126,266 @@ typedef $$LocalShopTakingsTableProcessedTableManager =
       LocalShopTaking,
       PrefetchHooks Function()
     >;
+typedef $$LocalInventoryCountsTableCreateCompanionBuilder =
+    LocalInventoryCountsCompanion Function({
+      required String id,
+      required String shopId,
+      required String productId,
+      required DateTime countedAt,
+      required int countedQuantity,
+      Value<DateTime?> previousCountedAt,
+      Value<int?> previousQuantity,
+      Value<int> rowid,
+    });
+typedef $$LocalInventoryCountsTableUpdateCompanionBuilder =
+    LocalInventoryCountsCompanion Function({
+      Value<String> id,
+      Value<String> shopId,
+      Value<String> productId,
+      Value<DateTime> countedAt,
+      Value<int> countedQuantity,
+      Value<DateTime?> previousCountedAt,
+      Value<int?> previousQuantity,
+      Value<int> rowid,
+    });
+
+class $$LocalInventoryCountsTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalInventoryCountsTable> {
+  $$LocalInventoryCountsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get countedAt => $composableBuilder(
+    column: $table.countedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get countedQuantity => $composableBuilder(
+    column: $table.countedQuantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get previousCountedAt => $composableBuilder(
+    column: $table.previousCountedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get previousQuantity => $composableBuilder(
+    column: $table.previousQuantity,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalInventoryCountsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalInventoryCountsTable> {
+  $$LocalInventoryCountsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get countedAt => $composableBuilder(
+    column: $table.countedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get countedQuantity => $composableBuilder(
+    column: $table.countedQuantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get previousCountedAt => $composableBuilder(
+    column: $table.previousCountedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get previousQuantity => $composableBuilder(
+    column: $table.previousQuantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalInventoryCountsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalInventoryCountsTable> {
+  $$LocalInventoryCountsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get shopId =>
+      $composableBuilder(column: $table.shopId, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get countedAt =>
+      $composableBuilder(column: $table.countedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get countedQuantity => $composableBuilder(
+    column: $table.countedQuantity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get previousCountedAt => $composableBuilder(
+    column: $table.previousCountedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get previousQuantity => $composableBuilder(
+    column: $table.previousQuantity,
+    builder: (column) => column,
+  );
+}
+
+class $$LocalInventoryCountsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalInventoryCountsTable,
+          LocalInventoryCount,
+          $$LocalInventoryCountsTableFilterComposer,
+          $$LocalInventoryCountsTableOrderingComposer,
+          $$LocalInventoryCountsTableAnnotationComposer,
+          $$LocalInventoryCountsTableCreateCompanionBuilder,
+          $$LocalInventoryCountsTableUpdateCompanionBuilder,
+          (
+            LocalInventoryCount,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalInventoryCountsTable,
+              LocalInventoryCount
+            >,
+          ),
+          LocalInventoryCount,
+          PrefetchHooks Function()
+        > {
+  $$LocalInventoryCountsTableTableManager(
+    _$AppDatabase db,
+    $LocalInventoryCountsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalInventoryCountsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalInventoryCountsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$LocalInventoryCountsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> shopId = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<DateTime> countedAt = const Value.absent(),
+                Value<int> countedQuantity = const Value.absent(),
+                Value<DateTime?> previousCountedAt = const Value.absent(),
+                Value<int?> previousQuantity = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalInventoryCountsCompanion(
+                id: id,
+                shopId: shopId,
+                productId: productId,
+                countedAt: countedAt,
+                countedQuantity: countedQuantity,
+                previousCountedAt: previousCountedAt,
+                previousQuantity: previousQuantity,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String shopId,
+                required String productId,
+                required DateTime countedAt,
+                required int countedQuantity,
+                Value<DateTime?> previousCountedAt = const Value.absent(),
+                Value<int?> previousQuantity = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalInventoryCountsCompanion.insert(
+                id: id,
+                shopId: shopId,
+                productId: productId,
+                countedAt: countedAt,
+                countedQuantity: countedQuantity,
+                previousCountedAt: previousCountedAt,
+                previousQuantity: previousQuantity,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalInventoryCountsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalInventoryCountsTable,
+      LocalInventoryCount,
+      $$LocalInventoryCountsTableFilterComposer,
+      $$LocalInventoryCountsTableOrderingComposer,
+      $$LocalInventoryCountsTableAnnotationComposer,
+      $$LocalInventoryCountsTableCreateCompanionBuilder,
+      $$LocalInventoryCountsTableUpdateCompanionBuilder,
+      (
+        LocalInventoryCount,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalInventoryCountsTable,
+          LocalInventoryCount
+        >,
+      ),
+      LocalInventoryCount,
+      PrefetchHooks Function()
+    >;
 typedef $$SyncQueueItemsTableCreateCompanionBuilder =
     SyncQueueItemsCompanion Function({
       Value<int> id,
@@ -8838,6 +9589,8 @@ class $AppDatabaseManager {
       $$LocalCycleLossesTableTableManager(_db, _db.localCycleLosses);
   $$LocalShopTakingsTableTableManager get localShopTakings =>
       $$LocalShopTakingsTableTableManager(_db, _db.localShopTakings);
+  $$LocalInventoryCountsTableTableManager get localInventoryCounts =>
+      $$LocalInventoryCountsTableTableManager(_db, _db.localInventoryCounts);
   $$SyncQueueItemsTableTableManager get syncQueueItems =>
       $$SyncQueueItemsTableTableManager(_db, _db.syncQueueItems);
 }

@@ -75,14 +75,14 @@ class InventoryDashboardScreen extends ConsumerWidget {
             // saisie quotidienne, et son absence fausse tout le reste.
             _TakingsCard(
               amount: todayTaking?.amount,
-              onTap: () => context.go('/inventory'),
+              onTap: () => context.push('/daily-takings'),
             ),
 
             if (missingDays.isNotEmpty) ...[
               const SizedBox(height: 16),
               _MissingDaysBanner(
                 days: missingDays,
-                onTap: () => context.go('/inventory'),
+                onTap: () => context.push('/daily-takings'),
               ),
             ],
 

@@ -172,6 +172,20 @@ class LocalShopTakings extends Table {
   Set<Column> get primaryKey => {shopId, date};
 }
 
+// Module B — Repères physiques posés produit par produit.
+class LocalInventoryCounts extends Table {
+  TextColumn get id => text()();
+  TextColumn get shopId => text()();
+  TextColumn get productId => text()();
+  DateTimeColumn get countedAt => dateTime()();
+  IntColumn get countedQuantity => integer()();
+  DateTimeColumn get previousCountedAt => dateTime().nullable()();
+  IntColumn get previousQuantity => integer().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // Table de la Salle d'attente (Sync Queue)
 class SyncQueueItems extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -195,6 +209,7 @@ class SyncQueueItems extends Table {
     LocalSupplyCycles,
     LocalCycleLosses,
     LocalShopTakings,
+    LocalInventoryCounts,
     SyncQueueItems,
   ],
 )
@@ -205,7 +220,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -225,6 +240,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 4) {
         await m.createTable(localShopTakings);
+      }
+      if (from < 5) {
+        await m.createTable(localInventoryCounts);
       }
     },
   );
@@ -266,6 +284,7 @@ class AppDatabase extends _$AppDatabase {
     await delete(localSupplyCycles).go();
     await delete(localCycleLosses).go();
     await delete(localShopTakings).go();
+    await delete(localInventoryCounts).go();
     await delete(syncQueueItems).go();
   }
 }

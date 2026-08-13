@@ -140,6 +140,9 @@ class SyncService {
         // Module B : la recette locale doit revenir après connexion sur un
         // autre téléphone, au même titre que les autres données métier.
         supabase.from('shop_takings').select().eq('shop_id', shopId),
+        // Module B : les comptages sont des repères historiques. Sans ce
+        // pull, un second téléphone ne peut ni reprendre ni terminer le tour.
+        supabase.from('inventory_counts').select().eq('shop_id', shopId),
       ]);
 
       final productsData = results[0];
@@ -151,6 +154,7 @@ class SyncService {
       final unitsData = results[6];
       final lossesData = results[7];
       final takingsData = results[8];
+      final inventoryCountsData = results[9];
 
       // Fusionner au lieu de vider les tables protège les écritures hors ligne.
       await db.transaction(() async {
@@ -327,6 +331,27 @@ class SyncService {
                 .toList(),
             mode: InsertMode.insertOrReplace,
           );
+          batch.insertAll(
+            db.localInventoryCounts,
+            inventoryCountsData
+                .map(
+                  (count) => LocalInventoryCount(
+                    id: count['id'],
+                    shopId: count['shop_id'],
+                    productId: count['product_id'],
+                    countedAt: DateTime.parse(count['counted_at']).toLocal(),
+                    countedQuantity: count['counted_quantity'],
+                    previousCountedAt: count['previous_counted_at'] == null
+                        ? null
+                        : DateTime.parse(
+                            count['previous_counted_at'],
+                          ).toLocal(),
+                    previousQuantity: count['previous_quantity'],
+                  ),
+                )
+                .toList(),
+            mode: InsertMode.insertOrReplace,
+          );
         });
       });
 
@@ -412,6 +437,8 @@ class SyncService {
         await supabase
             .from('shop_takings')
             .upsert(payload, onConflict: 'shop_id,date');
+      case 'ADD_INVENTORY_COUNT':
+        await supabase.from('inventory_counts').upsert(payload);
       case 'ADD_SUPPLY_CYCLE':
         await supabase.from('supply_cycles').upsert(payload);
       case 'CLOSE_SUPPLY_CYCLE':

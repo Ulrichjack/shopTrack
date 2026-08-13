@@ -33,6 +33,8 @@ import 'features/cycles/presentation/screens/loss_entry_screen.dart';
 import 'features/cycles/presentation/screens/manage_units_screen.dart';
 import 'features/inventory/presentation/screens/daily_takings_screen.dart';
 import 'features/inventory/presentation/screens/inventory_dashboard_screen.dart';
+import 'features/inventory/presentation/screens/inventory_count_screen.dart';
+import 'features/inventory/presentation/screens/inventory_hub_screen.dart';
 
 // Clés nécessaires pour le ShellRoute
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -118,6 +120,23 @@ final goRouter = GoRouter(
       path: '/shop-settings',
       builder: (context, state) => const ShopSettingsScreen(),
     ),
+    // Placeholders : le hub y renvoie déjà, mais les écrans arrivent (B3, B6).
+    // Sans route déclarée, un clic ferait planter la navigation.
+    GoRoute(
+      path: '/inventory-count',
+      builder: (context, state) => const InventoryCountScreen(),
+    ),
+    GoRoute(
+      path: '/inventory-report',
+      builder: (context, state) => const _ComingSoon(
+        titre: 'Rapport de période',
+        message: 'Le rapport arrive une fois le comptage disponible.',
+      ),
+    ),
+    GoRoute(
+      path: '/daily-takings',
+      builder: (context, state) => const DailyTakingsScreen(),
+    ),
     GoRoute(
       path: '/create-cycle',
       builder: (context, state) => const CreateCycleScreen(),
@@ -168,12 +187,9 @@ final goRouter = GoRouter(
           path: '/cycles',
           builder: (context, state) => const CyclesHubScreen(),
         ),
-        // Module B. Deviendra un tableau de bord d'inventaire quand le
-        // comptage et le rapport existeront ; pour l'instant la recette
-        // journalière est la seule saisie du module.
         GoRoute(
           path: '/inventory',
-          builder: (context, state) => const DailyTakingsScreen(),
+          builder: (context, state) => const InventoryHubScreen(),
         ),
         GoRoute(
           path: '/bilan',
@@ -195,5 +211,42 @@ class _HomeForShopMode extends ConsumerWidget {
     return periodic
         ? const InventoryDashboardScreen()
         : const DashboardScreen();
+  }
+}
+
+/// Écran d'attente pour une fonctionnalité annoncée mais pas encore livrée.
+/// Mieux vaut le dire que laisser un bouton planter.
+class _ComingSoon extends StatelessWidget {
+  const _ComingSoon({required this.titre, required this.message});
+
+  final String titre;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(titre)),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.construction_outlined,
+                size: 56,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -58,9 +58,9 @@ class MainLayout extends ConsumerWidget {
       if (isPeriodic)
         const _NavDestination(
           route: '/inventory',
-          label: 'Recette',
-          icon: Icons.payments_outlined,
-          activeIcon: Icons.payments,
+          label: 'Inventaire',
+          icon: Icons.checklist_outlined,
+          activeIcon: Icons.checklist,
         ),
       if (isBossMode)
         const _NavDestination(
