@@ -36,7 +36,16 @@ void main() {
     expect(second.previousCountedAt, first.countedAt);
     expect(second.previousQuantity, 18);
     expect(await db.select(db.localInventoryCounts).get(), hasLength(2));
-    expect(await db.getPendingCount(), 2);
+
+    // Compter aligne aussi le stock affiché sur la réalité constatée,
+    // sinon l'écran Stock continue d'annoncer l'ancienne quantité.
+    final product = await (db.select(
+      db.localProducts,
+    )..where((row) => row.id.equals('product-1'))).getSingle();
+    expect(product.quantity, 12);
+
+    // 2 comptages + 2 ajustements de stock.
+    expect(await db.getPendingCount(), 4);
   });
 
   test(
