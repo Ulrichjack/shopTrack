@@ -7,6 +7,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/providers/shop_settings_provider.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../../features/products/presentation/providers/product_provider.dart';
 import '../../../../core/backup/backup_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -89,6 +91,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // On vide aussi les SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
+
+      // Le mode Patron/Vendeur et les réglages de boutique vivent en mémoire :
+      // vider la base ne les efface pas. Sans ce reset, le compte suivant
+      // hérite de l'état du précédent — bloqué en Vendeur sur sa propre
+      // boutique neuve, ou pire, Patron sans connaître le moindre PIN.
+      bossModeAccess.value = true; // aucun PIN configuré = accès Patron
+      ref.invalidate(appModeProvider);
+      ref.invalidate(shopSettingsProvider);
+      ref.invalidate(productProvider);
+      ref.invalidate(dashboardProvider);
 
       await Supabase.instance.client.auth.signOut();
       if (mounted) context.go('/login');

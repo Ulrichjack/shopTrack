@@ -29,6 +29,7 @@ import 'features/cycles/presentation/screens/cycle_sale_screen.dart';
 import 'features/cycles/presentation/screens/cycles_hub_screen.dart';
 import 'features/cycles/presentation/screens/loss_entry_screen.dart';
 import 'features/cycles/presentation/screens/manage_units_screen.dart';
+import 'features/inventory/presentation/screens/daily_takings_screen.dart';
 
 // Clés nécessaires pour le ShellRoute
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -159,6 +160,13 @@ final goRouter = GoRouter(
         GoRoute(
           path: '/cycles',
           builder: (context, state) => const CyclesHubScreen(),
+        ),
+        // Module B. Deviendra un tableau de bord d'inventaire quand le
+        // comptage et le rapport existeront ; pour l'instant la recette
+        // journalière est la seule saisie du module.
+        GoRoute(
+          path: '/inventory',
+          builder: (context, state) => const DailyTakingsScreen(),
         ),
         GoRoute(
           path: '/bilan',

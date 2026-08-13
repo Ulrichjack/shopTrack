@@ -49,11 +49,44 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
     }
   }
 
+  Future<void> _toggleCaptureMode(bool value) async {
+    setState(() => _saving = true);
+    try {
+      await ref.read(shopSettingsProvider.notifier).setSaleCaptureMode(value);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value
+                  ? 'Inventaire périodique activé. L\'onglet Inventaire est '
+                        'apparu.'
+                  : 'Retour à la saisie des ventes au fil de l\'eau.',
+            ),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(humanSyncError(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(shopSettingsProvider);
     final isHierarchical =
         settingsAsync.value?.unitMode == 'hierarchical';
+    final isPeriodic =
+        settingsAsync.value?.saleCaptureMode == 'periodic';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -109,31 +142,51 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
                 ),
               ),
 
-            const SizedBox(height: 32),
-            Text(
-              'À VENIR',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade500,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 20),
+
             Card(
-              child: Opacity(
-                opacity: 0.5,
-                child: ListTile(
-                  leading: const Icon(Icons.store_mall_directory_outlined),
-                  title: const Text('Plusieurs points de vente'),
-                  subtitle: const Text(
-                    'Transferts entre boutiques et inventaire mensuel. '
-                    'Pas encore disponible.',
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: SwitchListTile(
+                  value: isPeriodic,
+                  onChanged: _saving ? null : _toggleCaptureMode,
+                  activeThumbColor: AppColors.primary,
+                  title: const Text(
+                    'Inventaire périodique',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  enabled: false,
+                  subtitle: const Text(
+                    'Ne plus saisir chaque vente : noter la recette du jour, '
+                    'compter le stock de temps en temps, et laisser l\'app '
+                    'déduire ce qui a été vendu.',
+                  ),
                 ),
               ),
             ),
+
+            if (isPeriodic)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Text(
+                    'Dans ce mode, les ventes ne sont plus enregistrées une '
+                    'par une : la clôture de caisse quotidienne ne peut donc '
+                    'plus être calculée. Ne bascule qu\'entre deux périodes '
+                    'terminées, sinon les ventes déjà saisies seraient '
+                    'recomptées dans l\'estimation.',
+                    style: TextStyle(
+                      color: Colors.orange.shade900,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

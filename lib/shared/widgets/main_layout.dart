@@ -19,8 +19,9 @@ class MainLayout extends ConsumerWidget {
     final isBossMode = ref.watch(appModeProvider).value ?? false;
     // Mode de la boutique : ajoute l'onglet Cycles pour les boutiques qui
     // vendent par unités (œufs, casiers...) — voir docs/ARCHITECTURE_MODULES.md
-    final isHierarchical =
-        ref.watch(shopSettingsProvider).value?.unitMode == 'hierarchical';
+    final settings = ref.watch(shopSettingsProvider).value;
+    final isHierarchical = settings?.unitMode == 'hierarchical';
+    final isPeriodic = settings?.saleCaptureMode == 'periodic';
 
     // Un seul endroit décide des onglets ET de leur ordre : impossible que
     // l'index tapé et l'index surligné se désynchronisent quand un onglet
@@ -50,6 +51,13 @@ class MainLayout extends ConsumerWidget {
           label: 'Cycles',
           icon: Icons.autorenew_outlined,
           activeIcon: Icons.autorenew,
+        ),
+      if (isPeriodic)
+        const _NavDestination(
+          route: '/inventory',
+          label: 'Recette',
+          icon: Icons.payments_outlined,
+          activeIcon: Icons.payments,
         ),
       if (isBossMode)
         const _NavDestination(

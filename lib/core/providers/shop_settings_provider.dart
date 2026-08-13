@@ -86,6 +86,41 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
     await future;
   }
 
+  /// Bascule entre vente enregistrée au fil de l'eau et inventaire périodique.
+  ///
+  /// Contrairement au mode unités, ce n'est **pas** une couche qui s'ajoute :
+  /// en périodique on ne saisit plus les ventes, on les déduit du comptage.
+  /// Mélanger les deux dans une même boutique recompterait les ventes déjà
+  /// enregistrées dans l'estimation — d'où un interrupteur exclusif.
+  Future<void> setSaleCaptureMode(bool periodic) async {
+    final db = ref.read(localDbProvider);
+    final prefs = await SharedPreferences.getInstance();
+    final shopId = prefs.getString('cached_shop_id');
+    if (shopId == null || shopId.isEmpty) {
+      throw Exception('Boutique introuvable.');
+    }
+
+    final mode = periodic ? 'periodic' : 'realtime';
+
+    await db
+        .into(db.localShopSettings)
+        .insertOnConflictUpdate(
+          LocalShopSettingsCompanion.insert(
+            shopId: shopId,
+            saleCaptureMode: drift.Value(mode),
+          ),
+        );
+
+    await db.addToQueue(
+      'SET_SHOP_SETTINGS',
+      jsonEncode({'shop_id': shopId, 'sale_capture_mode': mode}),
+    );
+    await ref.read(syncServiceProvider).processQueue();
+
+    ref.invalidateSelf();
+    await future;
+  }
+
   // Comme _runBackgroundSync dans dashboard_provider.dart : hors ligne ou en
   // erreur, on garde silencieusement le cache local existant.
   Future<void> _syncFromSupabase(AppDatabase db, String shopId) async {
