@@ -126,16 +126,67 @@ est correcte, seul l'affichage est en question).
 
 Détail des entités : `docs/ARCHITECTURE_MODULES.md` §1.
 
-**En pause volontairement (2026-08-09)** : on ne démarre pas le Module B tant
-que le Module A n'est pas testé et validé par l'utilisateur sur son
-téléphone. Ne pas reprendre l'étape 2 sans confirmation explicite.
+**Module A validé sur téléphone réel le 2026-08-12** (30 scénarios, dont le
+multi-appareils et le hors ligne — voir `docs/PLAN_TESTS_MODULES.md`). Le
+module B peut donc démarrer.
 
-### Étape 2 — Module B (multi-point/inventaire) — EN ATTENTE
+### Étape 2 — Module B (inventaire périodique multi-boutique)
 
-`stock_transfers`, `monthly_inventories`, extension `stock_movements.type`,
-`inventory_reconciliation_calculator.dart`, écrans `lib/features/inventory/`, et
-relâchement de l'hypothèse un-seul-shop-par-membre dans `sync_service.dart`. Détail :
-`docs/ARCHITECTURE_MODULES.md` §2.
+Conception figée le 2026-08-13 après échange direct avec le client :
+`docs/ARCHITECTURE_MODULES.md` §2. **Règle absolue : aucun écran du mode
+simple ni du module A n'est modifié.** Le module B vit dans
+`lib/features/inventory/` et se contente de réutiliser les données
+(produits, stock, boutiques, synchro).
+
+Ordre d'implémentation, du plus indépendant au plus risqué :
+
+- [ ] **B1 — Recette journalière.** Table `shop_takings` (shop_id, date,
+  amount, une seule par jour et par boutique), écran de saisie minimal,
+  synchro. Aucune dépendance : c'est la seule saisie quotidienne demandée au
+  commerçant, et rien ne se croise sans elle.
+- [ ] **B2 — Calculateur pur** `inventory_reconciliation_calculator.dart` +
+  tests, sur le modèle de `cycle_result_calculator.dart` : sorties totales →
+  pertes déclarées → ventes présumées → écart avec l'argent encaissé.
+- [ ] **B3 — Comptage d'inventaire.** Table `inventory_counts` (repères par
+  produit), écran de saisie **à l'aveugle** (ne jamais afficher la quantité
+  théorique), sauvegarde progressive, indicateur « 22 produits sur 30 ».
+- [ ] **B4 — Approvisionnement avec prix.** Le prix payé est enregistré **sur
+  la ligne d'achat**, pas seulement sur le produit — sinon impossible de
+  revenir sur une période passée sans que les chiffres bougent.
+- [ ] **B5 — Pertes du module B.** Déclaration propre (casse, pain invendu),
+  indépendante de `cycle_losses` qui appartient au module A.
+- [ ] **B6 — Rapport par boutique.** Réutilise la mise en page et le PDF du
+  bilan existant, alimenté par d'autres chiffres. Bilan **stocké** une fois
+  clôturé, pas recalculé (sinon il change sous les yeux du patron quand une
+  donnée arrive en retard).
+- [ ] **B7 — Multi-boutique.** Sélecteur de boutique + relâchement de
+  l'hypothèse un-seul-shop-par-membre dans `sync_service.dart`
+  (`shop_members...single()`). **La partie la plus risquée** : elle touche le
+  cœur de la synchro, donc en dernier, une fois le calcul prouvé sur une
+  seule boutique.
+- [ ] **B8 — Transferts entre boutiques.** N'a de sens qu'après B7. Stock
+  déplacé immédiatement des deux côtés, vérification à l'arrivée (le client a
+  confirmé qu'ils vérifient), écart enregistré comme perte de transport.
+
+**Décisions verrouillées** (détail dans l'architecture) : période libre,
+comptage complet, unité = simple étiquette texte par produit (pas de
+conversion, pas de `product_units`), quantités **entières**, dernier prix
+d'achat, recette par boutique, pas de vente à crédit.
+
+**Emprunts à FishCam** (`/home/jack/CODE/FishCam_backend`, même auteur, ERP
+poissonneries au Cameroun déjà en production) : le concept
+`totalVentePrevisibleMois` vs `totalVenteRealisee` y est déjà validé sur le
+terrain — c'est exactement notre croisement attendu/encaissé. À reprendre
+aussi : le prix sur la ligne d'achat (`LigneAchat.prixUnitaireCarton`), le
+rappel quotidien (`TypeNotification.RAPPORT_JOURNALIER`),
+`nombreJoursTravailles` pour ne pas compter un jour fermé comme une recette
+manquante, et le bilan figé après clôture. On reprend les **décisions
+métier**, pas le code (Java/Spring serveur contre Flutter local-first).
+
+**Limites assumées, à revoir si le terrain les remonte** : pas de décimales
+(le gramme et le litre supposeraient de passer tout le stock en décimal, ce
+qui casserait le module A) ; si le prix de vente change en cours de période,
+la valeur attendue est pondérée par les jours et reste approximative.
 
 ## Idées ouvertes issues des discussions (non tranchées)
 

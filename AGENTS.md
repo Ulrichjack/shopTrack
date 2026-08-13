@@ -40,6 +40,12 @@
   efface le champ silencieusement juste après son enregistrement.
 - Migrations Supabase appliquées dans l'ordre du nom de fichier
   (`supabase/migrations/`), et listées dans `README.md`.
+- **Module B (inventaire périodique) en cours** : il vit dans
+  `lib/features/inventory/` et ne doit modifier **aucun** écran du mode simple
+  ni du module A (`lib/features/cycles/`). Il réutilise les données
+  existantes (produits, stock, boutiques, synchro) sans les dupliquer.
+  Conception : `docs/ARCHITECTURE_MODULES.md` §2, découpage et état d'avancement :
+  `docs/PLAN_MODULES_CLIENTS.md` étape 2.
 
 ## Commandes utiles
 
