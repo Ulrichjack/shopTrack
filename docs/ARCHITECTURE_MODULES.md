@@ -77,46 +77,128 @@ features) : création de cycle, saisie de perte, écran vente adapté (sélecteu
 
 ## 2. Module B — Multi-point de vente & inventaire périodique (2e client)
 
-### Ce qui existe déjà et qu'on réutilise
+> **Révisé le 2026-08-13** après échange direct avec le client. Le modèle
+> ci-dessous remplace la première version (formule simple `stock initial +
+> entrées − restant`), qui était fausse dès qu'il existe des transferts.
 
-Le schéma Supabase est **déjà multi-boutique** au niveau RLS (`is_shop_member`
-vérifie l'appartenance par ligne, pas une seule boutique globale). La seule limite
-actuelle est côté client : `sync_service.dart` suppose un seul `shop_id` par
-utilisateur (`shop_members...single()`). Il faudra relâcher cette hypothèse (un
-patron peut appartenir à plusieurs `shop_members`) plutôt que changer le schéma.
+### Ce que le client fait, dans ses mots
+
+Il tient une épicerie sur **3 points de vente** (pain, jus, mayonnaise, sucre,
+riz). Il **ne peut pas saisir ses ventes** : pas le temps, trop de pression.
+Il note **la recette totale de chaque journée**, et **compte tout son stock**
+en fin de mois ou de trimestre. Il veut que l'app lui dise ce qui a été vendu
+et s'il a gagné.
+
+### Décisions verrouillées avec lui
+
+| Sujet | Décision |
+|-------|----------|
+| Fréquence d'inventaire | **Libre** : la période court d'un comptage au suivant, pas de mois imposé |
+| Étendue du comptage | Il compte **tous** ses produits → un résultat global est fiable |
+| Unité de suivi | **Par produit** : mayonnaise en cartons, riz en sacs, jus en bouteilles |
+| Prix d'achat | **Dernier prix connu** (il revalorise au prix du marché) — ni FIFO ni coût moyen |
+| Recette | Notée **par boutique**, sinon le bénéfice par boutique est impossible |
+| Vente à crédit | **Non gérée** : ce qui sort est considéré comme vendu |
+| Consommation personnelle | Sortie ordinaire, comptée comme vendue |
+| Transferts | Stock déplacé **immédiatement** des deux côtés ; vérification à l'arrivée facultative, l'écart devient une perte de transport |
+
+### Unités : réception ≠ comptage ≠ base
+
+Trois rôles distincts, souvent confondus :
+
+- **unité de base** = la plus petite chose qu'il vend (bouteille) — on peut
+  toujours monter vers le casier, jamais descendre depuis le casier ;
+- **unité de réception** = comment il achète (palette de 600) ;
+- **unité de comptage** = comment il compte (casier de 12).
+
+C'est exactement `product_units` du **module A**, réutilisé tel quel. Les deux
+modules partagent donc la couche de conversion — le module A a construit la
+fondation du module B sans que ce soit prévu.
+
+### Le calcul, en quatre niveaux
+
+Un comptage ne distingue **jamais** une vente d'un vol : il dit seulement que
+la marchandise n'est plus là. D'où la séparation :
+
+```
+Stock au dernier comptage          500
++ Achats de la période            +300
++ Transferts reçus                 +50
+− Transferts envoyés              −100
+− Stock compté aujourd'hui        −180
+─────────────────────────────────────
+= SORTIES TOTALES                  570     ← parti, sans savoir pourquoi
+− Pertes déclarées (casse, pain)   −20
+─────────────────────────────────────
+= VENTES PRÉSUMÉES                 550     ← présumées, jamais certaines
+```
+
+Puis le croisement avec l'argent, qui est **l'apport réel de l'app** :
+
+```
+550 × prix de vente          = 275 000 F   ← ce qu'il aurait dû encaisser
+Recettes notées              = 269 000 F   ← ce qu'il a encaissé
+─────────────────────────────────────────
+ÉCART INEXPLIQUÉ             =  −6 000 F   ⚠️
+```
+
+Ce dernier chiffre est ce qu'il ne peut pas voir aujourd'hui. L'app ne dit pas
+« tu as été volé », elle dit « 6 000 F ne s'expliquent pas ». C'est la
+**démarque inconnue** du commerce de détail, nommée au lieu d'être noyée dans
+« ventes ».
+
+Bénéfice = recettes encaissées − coût d'achat des sorties.
 
 ### Nouvelles entités
 
+- **`shop_takings`** : `id, shop_id, date, amount` — la recette du jour, par
+  boutique. Une seule saisie quotidienne, c'est toute la charge demandée.
+- **`inventory_counts`** : `id, shop_id, product_id, counted_at,
+  counted_quantity, previous_count_at, previous_quantity` — un point de repère
+  par produit. On ne reconstitue jamais le passé : **on pose des repères**.
 - **`stock_transfers`** : `id, from_shop_id, to_shop_id, product_id, quantity,
-  transferred_at, status (pending/received), created_by`. Distinct d'une vente —
-  répond au besoin §6 du client (traçabilité propre transferts vs ventes clients).
-- **`monthly_inventories`** : `id, shop_id, product_id, period_start, period_end,
-  opening_stock, stock_in (achats + transferts entrants), transfers_out, losses,
-  closing_stock_counted, estimated_sold (calculée), closed_at`.
-- **Mouvements de stock typés** (extension de `stock_movements.type`) :
-  `purchase | transfer_in | transfer_out | loss | inventory_adjustment` — permet de
-  isoler "ventes estimées" du reste plutôt que de tout mélanger dans une seule
-  soustraction (le client a explicitement demandé de gérer transferts/pertes/retours
-  séparément, §10 de son besoin).
+  transferred_at, received_quantity (nullable), created_by`.
+- **Mouvements typés** : `purchase | transfer_in | transfer_out | loss`.
 
-### Calcul (fonction pure `lib/core/utils/inventory_reconciliation_calculator.dart`)
+### Comptage à l'aveugle (règle d'interface)
 
-```
-ventes_estimées = opening_stock + stock_in − transfers_out − losses − closing_stock_counted
-```
+Pendant la saisie, **ne jamais afficher la quantité théorique**. Sinon il
+confirme le chiffre proposé au lieu de compter, et l'inventaire ne vaut plus
+rien. L'écart ne s'affiche **qu'après** validation.
 
-### Écran/dossier
+Le comptage se sauvegarde au fur et à mesure et peut s'étaler sur plusieurs
+jours (il n'est pas toujours sur place) : l'app affiche « 22 produits sur 30 »
+et ne calcule le résultat global qu'une fois tout compté.
 
-`lib/features/inventory/` : sélection du point de vente actif (si patron multi-
-boutique), saisie de transfert, clôture d'inventaire mensuelle, rapport consolidé
-tous points.
+### Multi-boutique
 
-### Point d'architecture à trancher avec le client / toi
+Un compte, 3 boutiques, un sélecteur en haut d'écran. **Pas de hiérarchie** :
+le rapport global est la somme des boutiques. Chaque boutique a son stock, ses
+recettes, ses inventaires — donc son bénéfice propre, ce qui est justement ce
+que le client ne peut pas voir aujourd'hui.
 
-Ce module change le **mode de saisie par défaut** (pas de vente unitaire enregistrée).
-Ça doit rester un mode alterné par boutique (`sale_capture_mode`), jamais mélangé avec
-le mode temps réel dans la même boutique — sinon `ventes_estimées` compterait aussi les
-ventes déjà enregistrées et fausserait le calcul.
+Le schéma Supabase le permet déjà (`shop_members` est un lien N-N). Le travail
+est **côté client** : `sync_service.dart` ne prend que la première boutique
+trouvée (`...single()`). C'est la plus grosse partie du module.
+
+### Écrans
+
+`lib/features/inventory/` : sélecteur de boutique, saisie de la recette du
+jour, saisie de transfert, comptage, rapport par boutique et consolidé.
+
+### Différence de nature avec le module A
+
+Le module A **s'ajoute** (par produit, cumulable). Le module B **remplace** le
+mode de saisie (par boutique, exclusif) : si une boutique mélangeait les deux,
+les ventes déjà enregistrées seraient recomptées dans l'estimation. Bascule
+possible seulement entre deux périodes closes.
+
+### Concurrence (relevé du 2026-08-13)
+
+FlustockX, iZi Depo, KABRAK, Avobi couvrent le marché camerounais — tous en
+**saisie temps réel**, exactement ce que ce client refuse. La dette client est
+leur fonctionnalité phare ; on ne la fait pas (décision client). Le partage
+WhatsApp d'un bilan est la seule idée à reprendre à court terme.
 
 ## 3. Ce qui NE change PAS
 
@@ -127,11 +209,14 @@ ventes déjà enregistrées et fausserait le calcul.
   tel quel ; les nouvelles tables suivent le même pattern (file locale → RPC/upsert →
   merge, jamais de suppression locale avant remplissage).
 - Le mode Patron/PIN et les routes protégées ne changent pas de mécanisme.
+- Le module A reste intact : le module B réutilise `product_units` sans le
+  modifier.
 
 ## 4. Migrations Supabase à prévoir (ordre indicatif, détaillé dans le plan)
 
 1. `shop_settings` + RLS (lecture/écriture réservée aux membres de la boutique).
 2. `product_units`, `supply_cycles`, `cycle_losses` + colonnes `sale_items.cycle_id`,
    `sale_items.unit_id`, `sale_items.quantity_in_base` + RLS.
-3. `stock_transfers`, `monthly_inventories` + RLS + relâchement de l'hypothèse
-   "un seul shop par membre" côté client Flutter.
+3. `shop_takings`, `inventory_counts`, `stock_transfers` + types de mouvements
+   étendus + RLS, puis relâchement de l'hypothèse « un seul shop par membre »
+   côté client Flutter (`sync_service.dart`).
