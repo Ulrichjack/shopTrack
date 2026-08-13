@@ -162,6 +162,16 @@ class LocalCycleLosses extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// Module B — Recette encaissée par jour et par boutique.
+class LocalShopTakings extends Table {
+  TextColumn get shopId => text()();
+  DateTimeColumn get date => dateTime()();
+  RealColumn get amount => real()();
+
+  @override
+  Set<Column> get primaryKey => {shopId, date};
+}
+
 // Table de la Salle d'attente (Sync Queue)
 class SyncQueueItems extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -184,6 +194,7 @@ class SyncQueueItems extends Table {
     LocalProductUnits,
     LocalSupplyCycles,
     LocalCycleLosses,
+    LocalShopTakings,
     SyncQueueItems,
   ],
 )
@@ -194,7 +205,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -211,6 +222,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(localSaleItems, localSaleItems.unitId);
         await m.addColumn(localSaleItems, localSaleItems.quantityInBase);
         await m.addColumn(localSaleItems, localSaleItems.unitSellPrice);
+      }
+      if (from < 4) {
+        await m.createTable(localShopTakings);
       }
     },
   );
@@ -251,6 +265,7 @@ class AppDatabase extends _$AppDatabase {
     await delete(localProductUnits).go();
     await delete(localSupplyCycles).go();
     await delete(localCycleLosses).go();
+    await delete(localShopTakings).go();
     await delete(syncQueueItems).go();
   }
 }

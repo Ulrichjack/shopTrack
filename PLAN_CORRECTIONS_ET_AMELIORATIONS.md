@@ -621,7 +621,56 @@ Remplacer le README Flutter par défaut avec :
 
 ---
 
-## 12. Idées d'amélioration fonctionnelle
+## 12. Dette d'architecture (relevé du 2026-08-13, 3 modules livrés)
+
+L'architecture a tenu à trois modules cohabitants — c'est son vrai test, et
+elle le passe. Mais elle repose beaucoup sur des **règles écrites** plutôt que
+sur des garde-fous techniques. Les quatre points ci-dessous sont classés par
+**moment où il faut agir**, pas par gravité théorique.
+
+### À faire AVANT le multi-boutique (B7) — bloquant
+
+**L'hypothèse « une seule boutique » est enfouie partout.**
+`shop_members...single()` dans `sync_service.dart`, et surtout
+`prefs.getString('cached_shop_id')` lu directement dans une douzaine de
+fichiers. Passer au multi-boutique sans centraliser cet accès obligerait à
+modifier tous ces endroits — avec la quasi-certitude d'en oublier un, qui
+continuerait silencieusement à travailler sur la mauvaise boutique. C'est le
+pire type de bug : aucune erreur affichée, des données écrites au mauvais
+endroit.
+
+→ Centraliser derrière un `activeShopProvider` unique **avant** de commencer
+B7. Environ une heure, contre un bug très difficile à diagnostiquer ensuite.
+
+### À faire quand on retouche la synchro — préventif
+
+**`sync_service.dart` est un goulot.** Toute la synchro passe par un `switch`
+qui grossit à chaque module, et c'est là que les trois bugs d'intégrité du
+2026-08-10 sont apparus. La règle « ajouter la colonne aux deux côtés du
+pull » est documentée dans `CLAUDE.md`, mais elle repose sur la discipline.
+
+→ Plutôt qu'un refactoring risqué, **un test qui compare les tables poussées
+et les tables tirées** et échoue si une table est envoyée sans être
+retéléchargée. Beaucoup moins cher, et ça transforme une règle écrite en
+garde-fou automatique.
+
+### À surveiller, sans urgence
+
+**Les tests couvrent les calculs, pas les parcours.** 31 tests pour ~14 000
+lignes, tous unitaires sur des fonctions pures. Aucun ne simule « je vends
+hors ligne puis je synchronise » — or c'est exactement là que se logeaient
+les bugs réels, tous trouvés à la main sur téléphone. Le test manuel a été
+efficace ; un test d'intégration coûterait cher pour un gain incertain tant
+qu'il y a peu de contributeurs.
+
+**`dashboard_provider.dart` fait trop de choses** : synchro, calcul de la
+journée, clôture, réouverture, détection de journée oubliée. Il grossit à
+chaque fonctionnalité. À découper **le jour où on y touche pour autre chose**,
+pas avant — un découpage pour lui-même ne rapporterait rien aujourd'hui.
+
+---
+
+## 13. Idées d'amélioration fonctionnelle
 
 ### Court terme
 
@@ -679,7 +728,7 @@ Remplacer le README Flutter par défaut avec :
 
 ---
 
-## 13. Ordre d'implémentation conseillé
+## 14. Ordre d'implémentation conseillé
 
 ### Phase 1 — Stabilisation
 
@@ -714,7 +763,7 @@ Remplacer le README Flutter par défaut avec :
 
 ---
 
-## 14. Critères avant une mise en production
+## 15. Critères avant une mise en production
 
 La version pourra être considérée comme prête lorsque :
 

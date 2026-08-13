@@ -5168,6 +5168,266 @@ class LocalCycleLossesCompanion extends UpdateCompanion<LocalCycleLossesData> {
   }
 }
 
+class $LocalShopTakingsTable extends LocalShopTakings
+    with TableInfo<$LocalShopTakingsTable, LocalShopTaking> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalShopTakingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _shopIdMeta = const VerificationMeta('shopId');
+  @override
+  late final GeneratedColumn<String> shopId = GeneratedColumn<String>(
+    'shop_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [shopId, date, amount];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_shop_takings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalShopTaking> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('shop_id')) {
+      context.handle(
+        _shopIdMeta,
+        shopId.isAcceptableOrUnknown(data['shop_id']!, _shopIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_shopIdMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {shopId, date};
+  @override
+  LocalShopTaking map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalShopTaking(
+      shopId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shop_id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalShopTakingsTable createAlias(String alias) {
+    return $LocalShopTakingsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalShopTaking extends DataClass implements Insertable<LocalShopTaking> {
+  final String shopId;
+  final DateTime date;
+  final double amount;
+  const LocalShopTaking({
+    required this.shopId,
+    required this.date,
+    required this.amount,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['shop_id'] = Variable<String>(shopId);
+    map['date'] = Variable<DateTime>(date);
+    map['amount'] = Variable<double>(amount);
+    return map;
+  }
+
+  LocalShopTakingsCompanion toCompanion(bool nullToAbsent) {
+    return LocalShopTakingsCompanion(
+      shopId: Value(shopId),
+      date: Value(date),
+      amount: Value(amount),
+    );
+  }
+
+  factory LocalShopTaking.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalShopTaking(
+      shopId: serializer.fromJson<String>(json['shopId']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      amount: serializer.fromJson<double>(json['amount']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'shopId': serializer.toJson<String>(shopId),
+      'date': serializer.toJson<DateTime>(date),
+      'amount': serializer.toJson<double>(amount),
+    };
+  }
+
+  LocalShopTaking copyWith({String? shopId, DateTime? date, double? amount}) =>
+      LocalShopTaking(
+        shopId: shopId ?? this.shopId,
+        date: date ?? this.date,
+        amount: amount ?? this.amount,
+      );
+  LocalShopTaking copyWithCompanion(LocalShopTakingsCompanion data) {
+    return LocalShopTaking(
+      shopId: data.shopId.present ? data.shopId.value : this.shopId,
+      date: data.date.present ? data.date.value : this.date,
+      amount: data.amount.present ? data.amount.value : this.amount,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalShopTaking(')
+          ..write('shopId: $shopId, ')
+          ..write('date: $date, ')
+          ..write('amount: $amount')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(shopId, date, amount);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalShopTaking &&
+          other.shopId == this.shopId &&
+          other.date == this.date &&
+          other.amount == this.amount);
+}
+
+class LocalShopTakingsCompanion extends UpdateCompanion<LocalShopTaking> {
+  final Value<String> shopId;
+  final Value<DateTime> date;
+  final Value<double> amount;
+  final Value<int> rowid;
+  const LocalShopTakingsCompanion({
+    this.shopId = const Value.absent(),
+    this.date = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalShopTakingsCompanion.insert({
+    required String shopId,
+    required DateTime date,
+    required double amount,
+    this.rowid = const Value.absent(),
+  }) : shopId = Value(shopId),
+       date = Value(date),
+       amount = Value(amount);
+  static Insertable<LocalShopTaking> custom({
+    Expression<String>? shopId,
+    Expression<DateTime>? date,
+    Expression<double>? amount,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (shopId != null) 'shop_id': shopId,
+      if (date != null) 'date': date,
+      if (amount != null) 'amount': amount,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalShopTakingsCompanion copyWith({
+    Value<String>? shopId,
+    Value<DateTime>? date,
+    Value<double>? amount,
+    Value<int>? rowid,
+  }) {
+    return LocalShopTakingsCompanion(
+      shopId: shopId ?? this.shopId,
+      date: date ?? this.date,
+      amount: amount ?? this.amount,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (shopId.present) {
+      map['shop_id'] = Variable<String>(shopId.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalShopTakingsCompanion(')
+          ..write('shopId: $shopId, ')
+          ..write('date: $date, ')
+          ..write('amount: $amount, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncQueueItemsTable extends SyncQueueItems
     with TableInfo<$SyncQueueItemsTable, SyncQueueItem> {
   @override
@@ -5485,6 +5745,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $LocalCycleLossesTable localCycleLosses = $LocalCycleLossesTable(
     this,
   );
+  late final $LocalShopTakingsTable localShopTakings = $LocalShopTakingsTable(
+    this,
+  );
   late final $SyncQueueItemsTable syncQueueItems = $SyncQueueItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -5501,6 +5764,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     localProductUnits,
     localSupplyCycles,
     localCycleLosses,
+    localShopTakings,
     syncQueueItems,
   ];
 }
@@ -8203,6 +8467,174 @@ typedef $$LocalCycleLossesTableProcessedTableManager =
       LocalCycleLossesData,
       PrefetchHooks Function()
     >;
+typedef $$LocalShopTakingsTableCreateCompanionBuilder =
+    LocalShopTakingsCompanion Function({
+      required String shopId,
+      required DateTime date,
+      required double amount,
+      Value<int> rowid,
+    });
+typedef $$LocalShopTakingsTableUpdateCompanionBuilder =
+    LocalShopTakingsCompanion Function({
+      Value<String> shopId,
+      Value<DateTime> date,
+      Value<double> amount,
+      Value<int> rowid,
+    });
+
+class $$LocalShopTakingsTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalShopTakingsTable> {
+  $$LocalShopTakingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalShopTakingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalShopTakingsTable> {
+  $$LocalShopTakingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalShopTakingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalShopTakingsTable> {
+  $$LocalShopTakingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get shopId =>
+      $composableBuilder(column: $table.shopId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+}
+
+class $$LocalShopTakingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalShopTakingsTable,
+          LocalShopTaking,
+          $$LocalShopTakingsTableFilterComposer,
+          $$LocalShopTakingsTableOrderingComposer,
+          $$LocalShopTakingsTableAnnotationComposer,
+          $$LocalShopTakingsTableCreateCompanionBuilder,
+          $$LocalShopTakingsTableUpdateCompanionBuilder,
+          (
+            LocalShopTaking,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalShopTakingsTable,
+              LocalShopTaking
+            >,
+          ),
+          LocalShopTaking,
+          PrefetchHooks Function()
+        > {
+  $$LocalShopTakingsTableTableManager(
+    _$AppDatabase db,
+    $LocalShopTakingsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalShopTakingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalShopTakingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalShopTakingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> shopId = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<double> amount = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalShopTakingsCompanion(
+                shopId: shopId,
+                date: date,
+                amount: amount,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String shopId,
+                required DateTime date,
+                required double amount,
+                Value<int> rowid = const Value.absent(),
+              }) => LocalShopTakingsCompanion.insert(
+                shopId: shopId,
+                date: date,
+                amount: amount,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalShopTakingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalShopTakingsTable,
+      LocalShopTaking,
+      $$LocalShopTakingsTableFilterComposer,
+      $$LocalShopTakingsTableOrderingComposer,
+      $$LocalShopTakingsTableAnnotationComposer,
+      $$LocalShopTakingsTableCreateCompanionBuilder,
+      $$LocalShopTakingsTableUpdateCompanionBuilder,
+      (
+        LocalShopTaking,
+        BaseReferences<_$AppDatabase, $LocalShopTakingsTable, LocalShopTaking>,
+      ),
+      LocalShopTaking,
+      PrefetchHooks Function()
+    >;
 typedef $$SyncQueueItemsTableCreateCompanionBuilder =
     SyncQueueItemsCompanion Function({
       Value<int> id,
@@ -8404,6 +8836,8 @@ class $AppDatabaseManager {
       $$LocalSupplyCyclesTableTableManager(_db, _db.localSupplyCycles);
   $$LocalCycleLossesTableTableManager get localCycleLosses =>
       $$LocalCycleLossesTableTableManager(_db, _db.localCycleLosses);
+  $$LocalShopTakingsTableTableManager get localShopTakings =>
+      $$LocalShopTakingsTableTableManager(_db, _db.localShopTakings);
   $$SyncQueueItemsTableTableManager get syncQueueItems =>
       $$SyncQueueItemsTableTableManager(_db, _db.syncQueueItems);
 }

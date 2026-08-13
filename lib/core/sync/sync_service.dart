@@ -137,6 +137,9 @@ class SyncService {
             .from('cycle_losses')
             .select('*, supply_cycles!inner(shop_id)')
             .eq('supply_cycles.shop_id', shopId),
+        // Module B : la recette locale doit revenir après connexion sur un
+        // autre téléphone, au même titre que les autres données métier.
+        supabase.from('shop_takings').select().eq('shop_id', shopId),
       ]);
 
       final productsData = results[0];
@@ -147,6 +150,7 @@ class SyncService {
       final cyclesData = results[5];
       final unitsData = results[6];
       final lossesData = results[7];
+      final takingsData = results[8];
 
       // Fusionner au lieu de vider les tables protège les écritures hors ligne.
       await db.transaction(() async {
@@ -310,6 +314,19 @@ class SyncService {
                 .toList(),
             mode: InsertMode.insertOrReplace,
           );
+          batch.insertAll(
+            db.localShopTakings,
+            takingsData
+                .map(
+                  (taking) => LocalShopTaking(
+                    shopId: taking['shop_id'],
+                    date: DateTime.parse(taking['date']),
+                    amount: (taking['amount'] as num).toDouble(),
+                  ),
+                )
+                .toList(),
+            mode: InsertMode.insertOrReplace,
+          );
         });
       });
 
@@ -391,6 +408,10 @@ class SyncService {
         await supabase
             .from('shop_settings')
             .upsert(payload, onConflict: 'shop_id');
+      case 'ADD_SHOP_TAKINGS':
+        await supabase
+            .from('shop_takings')
+            .upsert(payload, onConflict: 'shop_id,date');
       case 'ADD_SUPPLY_CYCLE':
         await supabase.from('supply_cycles').upsert(payload);
       case 'CLOSE_SUPPLY_CYCLE':

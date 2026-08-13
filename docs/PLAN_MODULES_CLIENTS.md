@@ -140,7 +140,7 @@ simple ni du module A n'est modifié.** Le module B vit dans
 
 Ordre d'implémentation, du plus indépendant au plus risqué :
 
-- [ ] **B1 — Recette journalière.** Table `shop_takings` (shop_id, date,
+- [x] **B1 — Recette journalière.** Table `shop_takings` (shop_id, date,
   amount, une seule par jour et par boutique), écran de saisie minimal,
   synchro. Aucune dépendance : c'est la seule saisie quotidienne demandée au
   commerçant, et rien ne se croise sans elle.
