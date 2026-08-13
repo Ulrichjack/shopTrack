@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -23,6 +24,7 @@ import 'features/sales/presentation/screens/sale_confirmation_screen.dart';
 import 'core/audit/activity_log_screen.dart';
 import 'core/sync/sync_status_screen.dart';
 import 'core/providers/app_mode_provider.dart';
+import 'core/providers/shop_settings_provider.dart';
 import 'features/cycles/presentation/screens/create_cycle_screen.dart';
 import 'features/cycles/presentation/screens/cycle_report_screen.dart';
 import 'features/cycles/presentation/screens/cycle_sale_screen.dart';
@@ -30,6 +32,7 @@ import 'features/cycles/presentation/screens/cycles_hub_screen.dart';
 import 'features/cycles/presentation/screens/loss_entry_screen.dart';
 import 'features/cycles/presentation/screens/manage_units_screen.dart';
 import 'features/inventory/presentation/screens/daily_takings_screen.dart';
+import 'features/inventory/presentation/screens/inventory_dashboard_screen.dart';
 
 // Clés nécessaires pour le ShellRoute
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -143,9 +146,13 @@ final goRouter = GoRouter(
         return MainLayout(child: child); // Ajoute la barre en bas
       },
       routes: [
+        // Deux accueils selon le mode : en inventaire périodique il n'y a ni
+        // vente enregistrée ni caisse calculée, donc l'accueil classique
+        // n'aurait que des zéros à montrer. Une condition ici plutôt que
+        // vingt dans un écran déjà trop chargé.
         GoRoute(
           path: '/home',
-          builder: (context, state) => const DashboardScreen(),
+          builder: (context, state) => const _HomeForShopMode(),
         ),
         GoRoute(
           path: '/products',
@@ -176,3 +183,17 @@ final goRouter = GoRouter(
     ),
   ],
 );
+
+/// Choisit l'accueil selon le mode de saisie de la boutique.
+class _HomeForShopMode extends ConsumerWidget {
+  const _HomeForShopMode();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final periodic =
+        ref.watch(shopSettingsProvider).value?.saleCaptureMode == 'periodic';
+    return periodic
+        ? const InventoryDashboardScreen()
+        : const DashboardScreen();
+  }
+}

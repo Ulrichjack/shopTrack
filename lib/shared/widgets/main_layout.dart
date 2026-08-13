@@ -33,12 +33,15 @@ class MainLayout extends ConsumerWidget {
         icon: Icons.home_outlined,
         activeIcon: Icons.home,
       ),
-      const _NavDestination(
-        route: '/sales-history',
-        label: 'Ventes',
-        icon: Icons.receipt_long_outlined,
-        activeIcon: Icons.receipt_long,
-      ),
+      // Pas d'historique des ventes en inventaire périodique : aucune vente
+      // n'y est enregistrée, l'onglet serait vide en permanence.
+      if (!isPeriodic)
+        const _NavDestination(
+          route: '/sales-history',
+          label: 'Ventes',
+          icon: Icons.receipt_long_outlined,
+          activeIcon: Icons.receipt_long,
+        ),
       const _NavDestination(
         route: '/products',
         label: 'Stock',

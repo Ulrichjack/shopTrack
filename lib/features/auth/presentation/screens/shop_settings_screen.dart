@@ -22,6 +22,11 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
   Future<void> _toggleUnitMode(bool value) async {
     setState(() => _saving = true);
     try {
+      // Les deux modes s'excluent : en inventaire périodique on n'enregistre
+      // plus aucune vente, donc « vendre au plateau » n'a plus d'objet.
+      if (value) {
+        await ref.read(shopSettingsProvider.notifier).setSaleCaptureMode(false);
+      }
       await ref.read(shopSettingsProvider.notifier).setUnitMode(value);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -52,6 +57,9 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
   Future<void> _toggleCaptureMode(bool value) async {
     setState(() => _saving = true);
     try {
+      if (value) {
+        await ref.read(shopSettingsProvider.notifier).setUnitMode(false);
+      }
       await ref.read(shopSettingsProvider.notifier).setSaleCaptureMode(value);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
