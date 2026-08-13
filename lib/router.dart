@@ -35,6 +35,7 @@ import 'features/inventory/presentation/screens/daily_takings_screen.dart';
 import 'features/inventory/presentation/screens/inventory_dashboard_screen.dart';
 import 'features/inventory/presentation/screens/inventory_count_screen.dart';
 import 'features/inventory/presentation/screens/inventory_hub_screen.dart';
+import 'features/inventory/presentation/screens/inventory_report_screen.dart';
 
 // Clés nécessaires pour le ShellRoute
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -128,10 +129,7 @@ final goRouter = GoRouter(
     ),
     GoRoute(
       path: '/inventory-report',
-      builder: (context, state) => const _ComingSoon(
-        titre: 'Rapport de période',
-        message: 'Le rapport arrive une fois le comptage disponible.',
-      ),
+      builder: (context, state) => const InventoryReportScreen(),
     ),
     GoRoute(
       path: '/daily-takings',
@@ -211,42 +209,5 @@ class _HomeForShopMode extends ConsumerWidget {
     return periodic
         ? const InventoryDashboardScreen()
         : const DashboardScreen();
-  }
-}
-
-/// Écran d'attente pour une fonctionnalité annoncée mais pas encore livrée.
-/// Mieux vaut le dire que laisser un bouton planter.
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({required this.titre, required this.message});
-
-  final String titre;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(titre)),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.construction_outlined,
-                size: 56,
-                color: Colors.grey.shade400,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade700),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
