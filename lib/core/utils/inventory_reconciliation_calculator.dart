@@ -143,14 +143,18 @@ class InventoryReconciliationCalculator {
         input.transfersOut -
         input.countedStock;
 
-    // Les pertes ne peuvent pas dépasser ce qui est sorti. On borne pour ne
-    // pas produire de ventes négatives, et `lossesExceedOutflow` signale
-    // l'incohérence à l'écran.
+    // Les pertes ne peuvent pas dépasser ce qui est sorti.
     final losses = input.declaredLosses.clamp(
       0,
       totalOutflow < 0 ? 0 : totalOutflow,
     );
-    final presumedSales = totalOutflow - losses;
+
+    // Jamais de ventes négatives dans les montants. Un comptage supérieur au
+    // stock possible (approvisionnement oublié, erreur de saisie) donnerait
+    // sinon un chiffre d'affaires négatif qui empoisonnerait le total de la
+    // boutique — un seul produit mal saisi fausserait tout le rapport.
+    // L'anomalie reste visible via `hasNegativeOutflow`.
+    final presumedSales = (totalOutflow - losses).clamp(0, 1 << 31);
 
     return InventoryProductResult(
       productId: input.productId,

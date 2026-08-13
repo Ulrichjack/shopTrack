@@ -418,7 +418,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         ),
                       ),
                       Text(
-                        '${currentProduct.quantity} unités',
+                        // « 8 sacs » quand l'unité est renseignée : « unités »
+                        // ne veut rien dire pour un sac de riz.
+                        '${currentProduct.quantity} '
+                        '${(currentProduct.unit ?? '').trim().isEmpty ? 'unités' : currentProduct.unit!.trim()}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,

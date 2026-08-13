@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../products/presentation/providers/product_provider.dart';
+import 'inventory_report_provider.dart';
 
 class InventoryCountLine {
   const InventoryCountLine({
@@ -137,10 +139,38 @@ class InventoryCountActions {
           'created_at': now.toUtc().toIso8601String(),
         }),
       );
+
+      // Compter, c'est constater la réalité : le stock affiché doit s'aligner
+      // sur ce qui a été compté. Sans ça, l'écran Stock continue d'annoncer
+      // « Rupture : 0 » alors que le commerçant vient de déclarer 8 sacs.
+      //
+      // Le type 'inventory_adjustment' n'est pas un approvisionnement : le
+      // rapport ne compte que les 'recharge', donc un ajustement n'est jamais
+      // pris pour un achat.
+      final delta = countedQuantity - product.quantity;
+      if (delta != 0) {
+        await (db.update(
+          db.localProducts,
+        )..where((row) => row.id.equals(productId))).write(
+          LocalProductsCompanion(quantity: drift.Value(countedQuantity)),
+        );
+        await db.addToQueue(
+          'ADD_STOCK',
+          jsonEncode({
+            'movement_id': const Uuid().v4(),
+            'product_id': productId,
+            'shop_id': shopId,
+            'quantity': delta,
+            'type': 'inventory_adjustment',
+          }),
+        );
+      }
     });
 
     await ref.read(syncServiceProvider).processQueue();
     ref.invalidate(inventoryCountProvider);
+    ref.invalidate(productProvider);
+    ref.invalidate(inventoryReportProvider);
     return savedCount;
   }
 }

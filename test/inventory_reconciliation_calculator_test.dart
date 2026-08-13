@@ -74,7 +74,14 @@ void main() {
       );
 
       expect(r.hasNegativeOutflow, isTrue);
-      expect(r.presumedSales, lessThanOrEqualTo(0));
+      expect(
+        r.presumedSales,
+        0,
+        reason: 'jamais de vente négative : un seul produit mal saisi '
+            'fausserait sinon tout le total de la boutique',
+      );
+      expect(r.expectedRevenue, 0);
+      expect(r.costOfGoodsSold, 0);
     });
 
     test('signale des pertes supérieures aux sorties', () {
@@ -153,6 +160,29 @@ void main() {
 
       expect(r.unexplainedGap, 0);
       expect(r.hasUnexplainedGap, isFalse);
+    });
+
+    test('un produit incohérent ne fausse pas le total de la boutique', () {
+      // Cas réel du 13/08 : comptage 5 puis 10 sans approvisionnement
+      // enregistré entre les deux. Sans borne, ce produit retirait
+      // 140 000 F du chiffre d'affaires attendu de toute la boutique.
+      final r = InventoryReconciliationCalculator.calculatePeriod(
+        products: [
+          _produit(nom: 'Riz', debut: 5, compte: 10, cout: 25000, vente: 28000),
+          _produit(
+            nom: 'Mayonnaise',
+            debut: 8,
+            compte: 5,
+            cout: 20000,
+            vente: 22000,
+          ),
+        ],
+        actualTakings: 66000,
+      );
+
+      expect(r.expectedRevenue, 66000, reason: 'seule la mayonnaise compte');
+      expect(r.unexplainedGap, 0);
+      expect(r.inconsistentProducts.map((p) => p.productName), ['Riz']);
     });
 
     test('remonte les produits dont la saisie est incohérente', () {
