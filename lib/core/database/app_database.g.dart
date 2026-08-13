@@ -102,6 +102,15 @@ class $LocalProductsTable extends LocalProducts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
+  @override
+  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
+    'unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -113,6 +122,7 @@ class $LocalProductsTable extends LocalProducts
     minQuantity,
     barcode,
     photoUrl,
+    unit,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -194,6 +204,12 @@ class $LocalProductsTable extends LocalProducts
         photoUrl.isAcceptableOrUnknown(data['photo_url']!, _photoUrlMeta),
       );
     }
+    if (data.containsKey('unit')) {
+      context.handle(
+        _unitMeta,
+        unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
+      );
+    }
     return context;
   }
 
@@ -239,6 +255,10 @@ class $LocalProductsTable extends LocalProducts
         DriftSqlType.string,
         data['${effectivePrefix}photo_url'],
       ),
+      unit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit'],
+      ),
     );
   }
 
@@ -258,6 +278,10 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
   final int minQuantity;
   final String? barcode;
   final String? photoUrl;
+
+  /// Étiquette d'affichage (sac, bouteille, casier, g, l…). N'entre dans
+  /// aucun calcul : le commerçant compte dans une seule unité par produit.
+  final String? unit;
   const LocalProduct({
     required this.id,
     required this.shopId,
@@ -268,6 +292,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     required this.minQuantity,
     this.barcode,
     this.photoUrl,
+    this.unit,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -284,6 +309,9 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     }
     if (!nullToAbsent || photoUrl != null) {
       map['photo_url'] = Variable<String>(photoUrl);
+    }
+    if (!nullToAbsent || unit != null) {
+      map['unit'] = Variable<String>(unit);
     }
     return map;
   }
@@ -303,6 +331,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
       photoUrl: photoUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(photoUrl),
+      unit: unit == null && nullToAbsent ? const Value.absent() : Value(unit),
     );
   }
 
@@ -321,6 +350,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
       minQuantity: serializer.fromJson<int>(json['minQuantity']),
       barcode: serializer.fromJson<String?>(json['barcode']),
       photoUrl: serializer.fromJson<String?>(json['photoUrl']),
+      unit: serializer.fromJson<String?>(json['unit']),
     );
   }
   @override
@@ -336,6 +366,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
       'minQuantity': serializer.toJson<int>(minQuantity),
       'barcode': serializer.toJson<String?>(barcode),
       'photoUrl': serializer.toJson<String?>(photoUrl),
+      'unit': serializer.toJson<String?>(unit),
     };
   }
 
@@ -349,6 +380,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     int? minQuantity,
     Value<String?> barcode = const Value.absent(),
     Value<String?> photoUrl = const Value.absent(),
+    Value<String?> unit = const Value.absent(),
   }) => LocalProduct(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
@@ -359,6 +391,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     minQuantity: minQuantity ?? this.minQuantity,
     barcode: barcode.present ? barcode.value : this.barcode,
     photoUrl: photoUrl.present ? photoUrl.value : this.photoUrl,
+    unit: unit.present ? unit.value : this.unit,
   );
   LocalProduct copyWithCompanion(LocalProductsCompanion data) {
     return LocalProduct(
@@ -373,6 +406,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
           : this.minQuantity,
       barcode: data.barcode.present ? data.barcode.value : this.barcode,
       photoUrl: data.photoUrl.present ? data.photoUrl.value : this.photoUrl,
+      unit: data.unit.present ? data.unit.value : this.unit,
     );
   }
 
@@ -387,7 +421,8 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
           ..write('quantity: $quantity, ')
           ..write('minQuantity: $minQuantity, ')
           ..write('barcode: $barcode, ')
-          ..write('photoUrl: $photoUrl')
+          ..write('photoUrl: $photoUrl, ')
+          ..write('unit: $unit')
           ..write(')'))
         .toString();
   }
@@ -403,6 +438,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     minQuantity,
     barcode,
     photoUrl,
+    unit,
   );
   @override
   bool operator ==(Object other) =>
@@ -416,7 +452,8 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
           other.quantity == this.quantity &&
           other.minQuantity == this.minQuantity &&
           other.barcode == this.barcode &&
-          other.photoUrl == this.photoUrl);
+          other.photoUrl == this.photoUrl &&
+          other.unit == this.unit);
 }
 
 class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
@@ -429,6 +466,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
   final Value<int> minQuantity;
   final Value<String?> barcode;
   final Value<String?> photoUrl;
+  final Value<String?> unit;
   final Value<int> rowid;
   const LocalProductsCompanion({
     this.id = const Value.absent(),
@@ -440,6 +478,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     this.minQuantity = const Value.absent(),
     this.barcode = const Value.absent(),
     this.photoUrl = const Value.absent(),
+    this.unit = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalProductsCompanion.insert({
@@ -452,6 +491,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     required int minQuantity,
     this.barcode = const Value.absent(),
     this.photoUrl = const Value.absent(),
+    this.unit = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
@@ -470,6 +510,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     Expression<int>? minQuantity,
     Expression<String>? barcode,
     Expression<String>? photoUrl,
+    Expression<String>? unit,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -482,6 +523,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
       if (minQuantity != null) 'min_quantity': minQuantity,
       if (barcode != null) 'barcode': barcode,
       if (photoUrl != null) 'photo_url': photoUrl,
+      if (unit != null) 'unit': unit,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -496,6 +538,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     Value<int>? minQuantity,
     Value<String?>? barcode,
     Value<String?>? photoUrl,
+    Value<String?>? unit,
     Value<int>? rowid,
   }) {
     return LocalProductsCompanion(
@@ -508,6 +551,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
       minQuantity: minQuantity ?? this.minQuantity,
       barcode: barcode ?? this.barcode,
       photoUrl: photoUrl ?? this.photoUrl,
+      unit: unit ?? this.unit,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -542,6 +586,9 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     if (photoUrl.present) {
       map['photo_url'] = Variable<String>(photoUrl.value);
     }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -560,6 +607,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
           ..write('minQuantity: $minQuantity, ')
           ..write('barcode: $barcode, ')
           ..write('photoUrl: $photoUrl, ')
+          ..write('unit: $unit, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6271,6 +6319,7 @@ typedef $$LocalProductsTableCreateCompanionBuilder =
       required int minQuantity,
       Value<String?> barcode,
       Value<String?> photoUrl,
+      Value<String?> unit,
       Value<int> rowid,
     });
 typedef $$LocalProductsTableUpdateCompanionBuilder =
@@ -6284,6 +6333,7 @@ typedef $$LocalProductsTableUpdateCompanionBuilder =
       Value<int> minQuantity,
       Value<String?> barcode,
       Value<String?> photoUrl,
+      Value<String?> unit,
       Value<int> rowid,
     });
 
@@ -6338,6 +6388,11 @@ class $$LocalProductsTableFilterComposer
 
   ColumnFilters<String> get photoUrl => $composableBuilder(
     column: $table.photoUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get unit => $composableBuilder(
+    column: $table.unit,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6395,6 +6450,11 @@ class $$LocalProductsTableOrderingComposer
     column: $table.photoUrl,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalProductsTableAnnotationComposer
@@ -6434,6 +6494,9 @@ class $$LocalProductsTableAnnotationComposer
 
   GeneratedColumn<String> get photoUrl =>
       $composableBuilder(column: $table.photoUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
 }
 
 class $$LocalProductsTableTableManager
@@ -6476,6 +6539,7 @@ class $$LocalProductsTableTableManager
                 Value<int> minQuantity = const Value.absent(),
                 Value<String?> barcode = const Value.absent(),
                 Value<String?> photoUrl = const Value.absent(),
+                Value<String?> unit = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalProductsCompanion(
                 id: id,
@@ -6487,6 +6551,7 @@ class $$LocalProductsTableTableManager
                 minQuantity: minQuantity,
                 barcode: barcode,
                 photoUrl: photoUrl,
+                unit: unit,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6500,6 +6565,7 @@ class $$LocalProductsTableTableManager
                 required int minQuantity,
                 Value<String?> barcode = const Value.absent(),
                 Value<String?> photoUrl = const Value.absent(),
+                Value<String?> unit = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalProductsCompanion.insert(
                 id: id,
@@ -6511,6 +6577,7 @@ class $$LocalProductsTableTableManager
                 minQuantity: minQuantity,
                 barcode: barcode,
                 photoUrl: photoUrl,
+                unit: unit,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

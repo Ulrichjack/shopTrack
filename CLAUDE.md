@@ -62,4 +62,5 @@ Bêta contrôlée, pas encore production (tests multi-téléphones réels et sc�
 |-------|-----------|
 | Modifier CLAUDE.md / AGENTS.md / skills / docs projet | `.claude/skills/context-governance/SKILL.md` |
 | Architecture des modules métier custom (cycles œufs, multi-point/inventaire) | `docs/ARCHITECTURE_MODULES.md` · avancement `docs/PLAN_MODULES_CLIENTS.md` · tests `docs/PLAN_TESTS_MODULES.md` |
+| Ajouter un champ propre à un module | Le poser sur la table partagée en **nullable**, et n'afficher le champ que dans le mode concerné (`shopSettingsProvider`). Dupliquer un écran ne se justifie que si son **contenu** diffère (l'accueil), pas pour un champ de plus |
 | Écrire un écran | Valider sur **petit écran** (Pixel 4a) : 3 bugs de contenu masqué en bas déjà rencontrés. Toute liste sous un bouton flottant réserve ~96px en bas ; tout formulaire est scrollable (le clavier réduit la hauteur). Direction visuelle cible : `PLAN_CORRECTIONS_ET_AMELIORATIONS.md` §12 (long terme) |

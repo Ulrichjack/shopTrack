@@ -19,6 +19,9 @@ class LocalProducts extends Table {
   IntColumn get minQuantity => integer()();
   TextColumn get barcode => text().nullable()();
   TextColumn get photoUrl => text().nullable()();
+  /// Étiquette d'affichage (sac, bouteille, casier, g, l…). N'entre dans
+  /// aucun calcul : le commerçant compte dans une seule unité par produit.
+  TextColumn get unit => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -220,7 +223,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -243,6 +246,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await m.createTable(localInventoryCounts);
+      }
+      if (from < 6) {
+        await m.addColumn(localProducts, localProducts.unit);
       }
     },
   );

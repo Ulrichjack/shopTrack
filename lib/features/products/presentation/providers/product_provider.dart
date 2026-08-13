@@ -52,6 +52,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
             minQuantity: data['min_quantity'] as int,
             barcode: data['barcode'] as String?,
             photoUrl: data['photo_url'] as String?,
+            unit: data['unit'] as String?,
           ),
           mode: drift.InsertMode.insertOrReplace,
         );
@@ -145,6 +146,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     required int quantity,
     required int minQuantity,
     String? barcode,
+    String? unit,
     import_io.File? imageFile,
   }) async {
     final previousProducts = state.value ?? await _fetchProducts();
@@ -206,6 +208,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
         'min_quantity': minQuantity,
         'barcode': finalBarcode,
         'photo_url': photoUrl,
+        if (unit != null && unit.trim().isNotEmpty) 'unit': unit.trim(),
       };
 
       await db
@@ -221,6 +224,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
               minQuantity: minQuantity,
               barcode: finalBarcode,
               photoUrl: photoUrl,
+              unit: (unit == null || unit.trim().isEmpty) ? null : unit.trim(),
             ),
           );
 
@@ -241,6 +245,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     required int quantity,
     required int minQuantity,
     String? barcode,
+    String? unit,
     String? existingPhotoUrl,
     import_io.File? newImageFile,
   }) async {
@@ -288,6 +293,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
         'min_quantity': minQuantity,
         'barcode': finalBarcode,
         'photo_url': finalPhotoUrl,
+        if (unit != null && unit.trim().isNotEmpty) 'unit': unit.trim(),
       };
 
       await (db.update(db.localProducts)..where((t) => t.id.equals(id))).write(
@@ -299,6 +305,9 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
           minQuantity: drift.Value(minQuantity),
           barcode: drift.Value(finalBarcode),
           photoUrl: drift.Value(finalPhotoUrl),
+          unit: drift.Value(
+            (unit == null || unit.trim().isEmpty) ? null : unit.trim(),
+          ),
         ),
       );
 

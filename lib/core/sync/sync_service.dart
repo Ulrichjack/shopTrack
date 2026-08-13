@@ -173,6 +173,7 @@ class SyncService {
                     minQuantity: p['min_quantity'],
                     barcode: p['barcode'],
                     photoUrl: p['photo_url'],
+                    unit: p['unit'] as String?,
                   ),
                 )
                 .toList(),

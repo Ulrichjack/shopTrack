@@ -106,7 +106,9 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
     inputs.add(
       InventoryProductInput(
         productId: product.id,
-        productName: product.name,
+        productName: (product.unit ?? '').trim().isEmpty
+            ? product.name
+            : '${product.name} (${product.unit!.trim()})',
         openingStock: last.previousQuantity!,
         countedStock: last.countedQuantity,
         purchases: purchases,

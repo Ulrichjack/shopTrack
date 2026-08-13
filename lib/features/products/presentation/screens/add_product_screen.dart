@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/shop_settings_provider.dart';
 import '../providers/product_provider.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
@@ -23,6 +24,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _quantityController = TextEditingController();
   final _minQuantityController = TextEditingController(text: '2');
   final _barcodeController = TextEditingController();
+  final _unitController = TextEditingController();
 
   File? _imageFile;
 
@@ -59,6 +61,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _quantityController.dispose();
     _minQuantityController.dispose();
     _barcodeController.dispose();
+    _unitController.dispose();
     super.dispose();
   }
 
@@ -112,6 +115,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(productProvider).isLoading;
+    // L'unité ne sert qu'en inventaire périodique (afficher « 12 sacs »).
+    // Le mode simple n'en a pas besoin : un champ de plus à remplir pour
+    // rien découragerait les boutiques qui n'utilisent aucun module.
+    final isPeriodic =
+        ref.watch(shopSettingsProvider).value?.saleCaptureMode == 'periodic';
 
     return Scaffold(
       backgroundColor: AppColors.background, // Fond gris très clair
@@ -213,6 +221,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   ],
                 ),
 
+                if (isPeriodic) ...[
+                  _buildFieldLabel("Unité (sac, bouteille, casier…)"),
+                  TextFormField(
+                    controller: _unitController,
+                    decoration: _buildInputDecoration(
+                      'Ex: sac — comment tu comptes ce produit',
+                      prefixIcon: const Icon(
+                        Icons.straighten,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
+
                 _buildFieldLabel("Code-barres (Optionnel)"),
                 Row(
                   children: [
@@ -308,6 +330,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           quantity: int.parse(_quantityController.text),
                           minQuantity: int.parse(_minQuantityController.text),
                           barcode: code,
+                          unit: _unitController.text.trim().isEmpty
+                              ? null
+                              : _unitController.text.trim(),
                           imageFile: _imageFile,
                         );
 

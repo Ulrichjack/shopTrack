@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/entities/product_entity.dart';
+import '../../../../core/providers/shop_settings_provider.dart';
 import '../providers/product_provider.dart';
 
 class EditProductScreen extends ConsumerStatefulWidget {
@@ -24,6 +25,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   late TextEditingController _quantityController;
   late TextEditingController _minQuantityController;
   late TextEditingController _barcodeController;
+  late TextEditingController _unitController;
 
   File? _newImageFile;
 
@@ -37,6 +39,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _quantityController = TextEditingController(text: widget.product.quantity.toString());
     _minQuantityController = TextEditingController(text: widget.product.minQuantity.toString());
     _barcodeController = TextEditingController(text: widget.product.barcode ?? '');
+    _unitController = TextEditingController(text: widget.product.unit ?? '');
   }
 
   Future<void> _takePhoto() async {
@@ -72,6 +75,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _quantityController.dispose();
     _minQuantityController.dispose();
     _barcodeController.dispose();
+    _unitController.dispose();
     super.dispose();
   }
 
@@ -99,6 +103,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(productProvider).isLoading;
+    final isPeriodic =
+        ref.watch(shopSettingsProvider).value?.saleCaptureMode == 'periodic';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -192,6 +198,16 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   ],
                 ),
 
+                if (isPeriodic) ...[
+                  _buildFieldLabel("Unité (sac, bouteille, casier…)"),
+                  TextFormField(
+                    controller: _unitController,
+                    decoration: _buildInputDecoration(
+                      'Ex: sac — comment tu comptes ce produit',
+                    ),
+                  ),
+                ],
+
                 _buildFieldLabel("Code-barres"),
                 Row(
                   children: [
@@ -256,6 +272,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           quantity: int.parse(_quantityController.text),
                           minQuantity: int.parse(_minQuantityController.text),
                           barcode: _barcodeController.text.trim().isEmpty ? null : _barcodeController.text.trim(),
+                          unit: _unitController.text.trim().isEmpty
+                              ? null
+                              : _unitController.text.trim(),
                           existingPhotoUrl: widget.product.photoUrl,
                           newImageFile: _newImageFile,
                         );

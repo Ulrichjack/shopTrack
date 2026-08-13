@@ -341,6 +341,17 @@ class _ProductCountCard extends StatelessWidget {
                   const Icon(Icons.check_circle, color: AppColors.primary),
               ],
             ),
+            // Rappelle dans quoi il compte ce produit : « en sacs », « en
+            // bouteilles ». Sans ça il peut compter des unités là où il
+            // suivait des cartons.
+            if ((line.product.unit ?? '').trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  'en ${line.product.unit!.trim()}',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ),
             const SizedBox(height: 14),
             if (showInput)
               Row(
@@ -357,7 +368,9 @@ class _ProductCountCard extends StatelessWidget {
                         if (!isSaving) onSave();
                       },
                       decoration: InputDecoration(
-                        labelText: 'Quantité comptée',
+                        labelText: (line.product.unit ?? '').trim().isEmpty
+                            ? 'Quantité comptée'
+                            : 'Quantité comptée (${line.product.unit!.trim()})',
                         hintText: '0',
                         filled: true,
                         fillColor: AppColors.background,

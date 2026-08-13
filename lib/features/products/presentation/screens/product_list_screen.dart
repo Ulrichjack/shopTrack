@@ -23,6 +23,13 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     return products.fold(0, (total, product) => total + (product.buyPrice * product.quantity));
   }
 
+  /// « 20 sacs » plutôt que « 20 » : le nombre seul ne dit pas dans quoi il
+  /// compte, et un carton n'est pas une bouteille.
+  static String _unitSuffix(ProductEntity product) {
+    final unit = product.unit?.trim();
+    return (unit == null || unit.isEmpty) ? '' : ' $unit';
+  }
+
   @override
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(productProvider);
@@ -235,7 +242,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                     child: Text(
                                       isOutOfStock
                                           ? 'Rupture : 0'
-                                          : (isLowStock ? 'Stock bas : ${product.quantity}' : 'En stock : ${product.quantity}'),
+                                          : (isLowStock
+                                              ? 'Stock bas : ${product.quantity}${_unitSuffix(product)}'
+                                              : 'En stock : ${product.quantity}${_unitSuffix(product)}'),
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,

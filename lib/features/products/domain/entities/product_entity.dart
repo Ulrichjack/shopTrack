@@ -9,6 +9,8 @@ class ProductEntity {
   final int minQuantity;
   final String? barcode;
   final String? photoUrl;
+  /// Étiquette d'affichage en mode inventaire (sac, bouteille, casier…).
+  final String? unit;
 
   ProductEntity({
     required this.id,
@@ -20,6 +22,7 @@ class ProductEntity {
     required this.minQuantity,
     this.barcode,
     this.photoUrl,
+    this.unit,
   });
 
   ProductEntity copyWith({
@@ -32,6 +35,7 @@ class ProductEntity {
     int? minQuantity,
     String? barcode,
     String? photoUrl,
+    String? unit,
   }) {
     return ProductEntity(
       id: id ?? this.id,
@@ -43,6 +47,7 @@ class ProductEntity {
       minQuantity: minQuantity ?? this.minQuantity,
       barcode: barcode ?? this.barcode,
       photoUrl: photoUrl ?? this.photoUrl,
+      unit: unit ?? this.unit,
     );
   }
 }
