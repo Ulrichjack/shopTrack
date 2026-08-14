@@ -6,7 +6,8 @@ import '../../../../core/sync/sync_service.dart';
 class ProductHistoryItem {
   final String id;
   final DateTime date;
-  final String type; // 'recharge' ou 'vente'
+  /// 'recharge', 'vente', 'comptage' ou 'ajustement'.
+  final String type;
   final int quantity;
   final double? totalAmount;
 
@@ -16,7 +17,12 @@ class ProductHistoryItem {
     required this.type,
     required this.quantity,
     this.totalAmount,
+    this.label,
   });
+
+  /// Texte prêt à afficher quand le type ne suffit pas (comptage : on veut
+  /// voir le stock constaté, pas un delta).
+  final String? label;
 }
 
 final productHistoryProvider = FutureProvider.family<List<ProductHistoryItem>, String>((ref, productId) async {
@@ -31,6 +37,25 @@ final productHistoryProvider = FutureProvider.family<List<ProductHistoryItem>, S
       date: r.createdAt,
       type: 'recharge',
       quantity: r.quantity,
+    ));
+  }
+
+  // 1 bis. Les comptages d'inventaire. Sans eux, l'historique d'une boutique
+  // en mode inventaire est presque vide (aucune vente n'y est enregistrée) et
+  // le commerçant ne peut pas retracer d'où vient son stock actuel.
+  final counts = await (db.select(
+    db.localInventoryCounts,
+  )..where((t) => t.productId.equals(productId))).get();
+  for (final c in counts) {
+    final previous = c.previousQuantity;
+    history.add(ProductHistoryItem(
+      id: c.id,
+      date: c.countedAt,
+      type: 'comptage',
+      quantity: c.countedQuantity,
+      label: previous == null
+          ? 'Comptage de départ'
+          : 'Comptage — ${previous - c.countedQuantity >= 0 ? "${previous - c.countedQuantity} sorti(s)" : "écart à vérifier"}',
     ));
   }
 

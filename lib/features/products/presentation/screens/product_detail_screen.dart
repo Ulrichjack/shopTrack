@@ -508,6 +508,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   itemBuilder: (context, index) {
                     final item = history[index];
                     final isRecharge = item.type == 'recharge';
+                    final isComptage = item.type == 'comptage';
                     final dateStr = DateFormat(
                       'dd/MM/yy HH:mm',
                     ).format(item.date);
@@ -522,16 +523,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       child: Row(
                         children: [
                           CircleAvatar(
-                            backgroundColor: isRecharge
-                                ? Colors.blue.shade50
-                                : AppColors.primaryLight,
+                            backgroundColor: isComptage
+                                ? Colors.orange.shade50
+                                : (isRecharge
+                                      ? Colors.blue.shade50
+                                      : AppColors.primaryLight),
                             child: Icon(
-                              isRecharge
-                                  ? Icons.add_shopping_cart
-                                  : Icons.point_of_sale,
-                              color: isRecharge
-                                  ? Colors.blue
-                                  : AppColors.primaryDark,
+                              isComptage
+                                  ? Icons.checklist
+                                  : (isRecharge
+                                        ? Icons.add_shopping_cart
+                                        : Icons.point_of_sale),
+                              color: isComptage
+                                  ? Colors.orange.shade800
+                                  : (isRecharge
+                                        ? Colors.blue
+                                        : AppColors.primaryDark),
                               size: 20,
                             ),
                           ),
@@ -541,7 +548,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  isRecharge ? 'Recharge de stock' : 'Vente',
+                                  item.label ??
+                                      (isRecharge
+                                          ? 'Recharge de stock'
+                                          : 'Vente'),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -560,18 +570,25 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                isRecharge
-                                    ? '+ ${item.quantity}'
-                                    : '- ${item.quantity}',
+                                // Un comptage n'est pas un mouvement : il
+                                // constate un stock, il ne l'augmente ni ne
+                                // le diminue. D'où l'absence de + ou −.
+                                isComptage
+                                    ? '${item.quantity}'
+                                    : (isRecharge
+                                          ? '+ ${item.quantity}'
+                                          : '- ${item.quantity}'),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
-                                  color: isRecharge
-                                      ? Colors.blue
-                                      : AppColors.primaryDark,
+                                  color: isComptage
+                                      ? Colors.orange.shade800
+                                      : (isRecharge
+                                            ? Colors.blue
+                                            : AppColors.primaryDark),
                                 ),
                               ),
-                              if (!isRecharge && item.totalAmount != null)
+                              if (!isRecharge && !isComptage && item.totalAmount != null)
                                 Text(
                                   CurrencyFormatter.format(item.totalAmount!),
                                   style: const TextStyle(
