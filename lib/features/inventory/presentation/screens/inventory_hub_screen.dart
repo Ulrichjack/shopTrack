@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/providers/app_mode_provider.dart';
+import 'declare_loss_screen.dart';
 import '../providers/takings_provider.dart';
 
 /// Regroupe les opérations du mode inventaire, comme l'onglet Cycles le fait
@@ -64,19 +64,11 @@ class InventoryHubScreen extends ConsumerWidget {
             icon: Icons.report_gmailerrorred_outlined,
             title: 'Déclarer une perte',
             subtitle: 'Casse, périmé, invendu — sinon compté comme vendu',
-            onTap: () => context.push('/declare-loss'),
+            onTap: () => showDeclareLossSheet(context),
           ),
-          // Réservé au Patron, comme le bilan : la barrière est dans
-          // router.dart, on évite juste au vendeur de taper pour être renvoyé.
-          if (ref.watch(appModeProvider).value ?? false) ...[
-            const SizedBox(height: 12),
-            _ActionTile(
-              icon: Icons.summarize_outlined,
-              title: 'Rapport de période',
-              subtitle: 'Ce qui est sorti, et si l\'argent correspond',
-              onTap: () => context.push('/inventory-report'),
-            ),
-          ],
+          // Le rapport a son propre onglet en bas depuis qu'il remplace le
+          // bilan : le proposer ici en plus donnait deux chemins et deux noms
+          // pour le même écran.
 
           const SizedBox(height: 28),
           Container(

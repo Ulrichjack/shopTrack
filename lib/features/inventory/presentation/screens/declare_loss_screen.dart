@@ -9,6 +9,21 @@ import '../../../products/domain/entities/product_entity.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/inventory_loss_provider.dart';
 
+/// Ouvre la déclaration de perte en feuille, comme « Nouvel arrivage ».
+///
+/// Une page entière pour trois champs coupait le commerçant de son écran
+/// Inventaire ; la feuille se referme et il est resté où il était.
+Future<void> showDeclareLossSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => const DeclareLossScreen(),
+  );
+}
+
 /// Déclarer ce qui est sorti du stock sans être vendu.
 ///
 /// Sans cet écran, la casse tombe dans l'écart inexpliqué du rapport et l'app
@@ -94,15 +109,21 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
     final products = ref.watch(productProvider).value ?? const [];
     final losses = ref.watch(inventoryLossesProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Déclarer une perte')),
-      body: SafeArea(
+    return Padding(
+      // Le clavier remonte la feuille, sinon il recouvre le bouton.
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.85,
         // Formulaire scrollable : le clavier mange la moitié de la hauteur sur
         // un petit écran, et le bouton doit rester atteignable.
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
           children: [
+            const Text(
+              'Déclarer une perte',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
             Form(
               key: _formKey,
               child: Column(
