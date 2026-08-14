@@ -26,8 +26,7 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
   final _quantityController = TextEditingController();
   final _noteController = TextEditingController();
 
-  String? _productId;
-  String? _productName;
+  ProductEntity? _product;
   String _reason = 'casse';
   DateTime _occurredAt = DateTime.now();
   bool _saving = false;
@@ -69,7 +68,7 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
       await ref
           .read(inventoryLossActionsProvider)
           .declareLoss(
-            productId: _productId!,
+            productId: _product!.id,
             quantity: int.parse(_quantityController.text.trim()),
             reason: _reason,
             occurredAt: _occurredAt,
@@ -114,17 +113,14 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
                   // comptage. Le champ reste un champ de formulaire pour
                   // garder la validation.
                   FormField<String>(
-                    initialValue: _productId,
+                    initialValue: _product?.id,
                     validator: (value) =>
                         value == null ? 'Choisis un produit' : null,
                     builder: (field) => InkWell(
                       onTap: () async {
                         final chosen = await _pickProduct(products);
                         if (chosen == null) return;
-                        setState(() {
-                          _productId = chosen.id;
-                          _productName = chosen.name;
-                        });
+                        setState(() => _product = chosen);
                         field.didChange(chosen.id);
                       },
                       child: InputDecorator(
@@ -136,10 +132,10 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
                           suffixIcon: const Icon(Icons.search),
                         ),
                         child: Text(
-                          _productName ?? 'Choisir un produit',
+                          _product?.name ?? 'Choisir un produit',
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: _productName == null
+                            color: _product == null
                                 ? Colors.grey.shade600
                                 : AppColors.textPrimary,
                           ),
@@ -152,8 +148,11 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
                     controller: _quantityController,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Combien ?',
+                      helperText: _product == null
+                          ? null
+                          : 'Maximum ${_product!.quantity}',
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -161,6 +160,13 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
                       final quantity = int.tryParse((value ?? '').trim());
                       if (quantity == null || quantity <= 0) {
                         return 'Saisis un nombre supérieur à zéro';
+                      }
+                      // Perdre plus que ce qui a pu exister est impossible ;
+                      // et une perte gonflée efface des ventes réelles du
+                      // rapport, donc invente un excédent de caisse.
+                      final max = _product?.quantity;
+                      if (max != null && quantity > max) {
+                        return 'Pas plus de $max';
                       }
                       return null;
                     },

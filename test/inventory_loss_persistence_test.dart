@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shoptrack/core/database/app_database.dart';
+import 'package:shoptrack/core/utils/inventory_reconciliation_calculator.dart';
 
 void main() {
   late AppDatabase db;
@@ -72,5 +73,32 @@ void main() {
       isIn(['casse', 'peremption', 'invendu', 'vol', 'autre']),
     );
     expect(payload['quantity'], greaterThan(0));
+  });
+
+  test('on ne peut pas perdre plus que ce qui a pu exister', () {
+    // Le calculateur borne déjà les pertes au moment du rapport, mais une
+    // saisie absurde acceptée ferait disparaître des ventes réelles et
+    // inventerait un excédent de caisse. On refuse à l'entrée.
+    final produit = InventoryProductInput(
+      productId: 'p',
+      productName: 'Bidon huile 5L',
+      openingStock: 100,
+      countedStock: 85,
+      purchases: 0,
+      transfersIn: 0,
+      transfersOut: 0,
+      declaredLosses: 40,
+      unitCost: 6500,
+      unitSellPrice: 7500,
+    );
+
+    final r = InventoryReconciliationCalculator.calculateProduct(produit);
+    expect(r.totalOutflow, 15);
+    expect(r.lossesExceedOutflow, isTrue);
+    expect(
+      r.presumedSales,
+      0,
+      reason: 'jamais de ventes négatives, même sur perte surdéclarée',
+    );
   });
 }

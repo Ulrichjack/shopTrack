@@ -90,6 +90,22 @@ class InventoryLossActions {
     }
 
     final db = ref.read(localDbProvider);
+
+    // On ne peut pas perdre plus que ce qui a pu exister. `quantity` vaut le
+    // dernier comptage augmenté des recharges : c'est le maximum qui soit
+    // passé par l'étagère depuis le dernier repère. Au-delà, c'est une faute
+    // de frappe — et une perte gonflée fait disparaître des ventes réelles du
+    // rapport, donc accuse la caisse d'un excédent qui n'existe pas.
+    final product = await (db.select(
+      db.localProducts,
+    )..where((row) => row.id.equals(productId))).getSingleOrNull();
+    if (product != null && quantity > product.quantity) {
+      throw ArgumentError(
+        'Tu ne peux pas déclarer plus de ${product.quantity} '
+        '${product.name} : c\'est tout ce qui a pu passer par le stock.',
+      );
+    }
+
     final loss = LocalInventoryLoss(
       id: const Uuid().v4(),
       shopId: shopId,
