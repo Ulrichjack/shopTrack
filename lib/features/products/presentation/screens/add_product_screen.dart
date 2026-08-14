@@ -118,8 +118,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     // L'unité ne sert qu'en inventaire périodique (afficher « 12 sacs »).
     // Le mode simple n'en a pas besoin : un champ de plus à remplir pour
     // rien découragerait les boutiques qui n'utilisent aucun module.
-    final isPeriodic =
-        ref.watch(shopSettingsProvider).value?.saleCaptureMode == 'periodic';
+    final settings = ref.watch(shopSettingsProvider).value;
+    final isPeriodic = settings?.saleCaptureMode == 'periodic';
+    // La quantité de départ n'a pas de sens dans les modules : en cycles
+    // c'est l'arrivage qui alimente le stock, en inventaire c'est le
+    // comptage. Un champ qu'on remplit pour rien induit en erreur.
+    final stockGereParModule =
+        isPeriodic || settings?.unitMode == 'hierarchical';
 
     return Scaffold(
       backgroundColor: AppColors.background, // Fond gris très clair
@@ -189,21 +194,23 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
                 Row(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildFieldLabel("Quantité en stock"),
-                          TextFormField(
-                            controller: _quantityController,
-                            keyboardType: TextInputType.number,
-                            decoration: _buildInputDecoration('Ex: 3'),
-                            validator: (value) => value == null || value.isEmpty ? 'Obligatoire' : null,
-                          ),
-                        ],
+                    if (!stockGereParModule) ...[
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFieldLabel("Quantité en stock"),
+                            TextFormField(
+                              controller: _quantityController,
+                              keyboardType: TextInputType.number,
+                              decoration: _buildInputDecoration('Ex: 3'),
+                              validator: (value) => value == null || value.isEmpty ? 'Obligatoire' : null,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
+                      const SizedBox(width: 16),
+                    ],
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,6 +227,29 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     ),
                   ],
                 ),
+
+                if (stockGereParModule)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        isPeriodic
+                            ? 'Le stock partira de ton prochain comptage '
+                                  'd\'inventaire.'
+                            : 'Le stock sera alimenté par ton prochain '
+                                  'arrivage (cycle).',
+                        style: TextStyle(
+                          color: Colors.blue.shade900,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
 
                 if (isPeriodic) ...[
                   _buildFieldLabel("Unité (sac, bouteille, casier…)"),
@@ -327,7 +357,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           name: _nameController.text.trim(),
                           buyPrice: double.parse(_buyPriceController.text),
                           sellPrice: double.parse(_sellPriceController.text),
-                          quantity: int.parse(_quantityController.text),
+                          quantity: stockGereParModule
+                              ? 0
+                              : int.parse(_quantityController.text),
                           minQuantity: int.parse(_minQuantityController.text),
                           barcode: code,
                           unit: _unitController.text.trim().isEmpty

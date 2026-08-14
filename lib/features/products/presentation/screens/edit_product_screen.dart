@@ -103,8 +103,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(productProvider).isLoading;
-    final isPeriodic =
-        ref.watch(shopSettingsProvider).value?.saleCaptureMode == 'periodic';
+    final settings = ref.watch(shopSettingsProvider).value;
+    final isPeriodic = settings?.saleCaptureMode == 'periodic';
+    // Modifier la quantité à la main court-circuiterait le module qui la
+    // gère (arrivage en cycles, comptage en inventaire) : le chiffre saisi
+    // serait écrasé au prochain mouvement, sans que personne comprenne.
+    final stockGereParModule =
+        isPeriodic || settings?.unitMode == 'hierarchical';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -166,21 +171,23 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
                 Row(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildFieldLabel("Quantité en stock"),
-                          TextFormField(
-                            controller: _quantityController,
-                            keyboardType: TextInputType.number,
-                            decoration: _buildInputDecoration('Ex: 3'),
-                            validator: (value) => value == null || value.isEmpty ? 'Obligatoire' : null,
-                          ),
-                        ],
+                    if (!stockGereParModule) ...[
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFieldLabel("Quantité en stock"),
+                            TextFormField(
+                              controller: _quantityController,
+                              keyboardType: TextInputType.number,
+                              decoration: _buildInputDecoration('Ex: 3'),
+                              validator: (value) => value == null || value.isEmpty ? 'Obligatoire' : null,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
+                      const SizedBox(width: 16),
+                    ],
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,7 +276,11 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           name: _nameController.text.trim(),
                           buyPrice: double.parse(_buyPriceController.text),
                           sellPrice: double.parse(_sellPriceController.text),
-                          quantity: int.parse(_quantityController.text),
+                          // Le stock reste celui géré par le module : on ne
+                          // le réécrit pas depuis cet écran.
+                          quantity: stockGereParModule
+                              ? widget.product.quantity
+                              : int.parse(_quantityController.text),
                           minQuantity: int.parse(_minQuantityController.text),
                           barcode: _barcodeController.text.trim().isEmpty ? null : _barcodeController.text.trim(),
                           unit: _unitController.text.trim().isEmpty

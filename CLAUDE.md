@@ -27,6 +27,8 @@ lib/
 
 Synchro (`lib/core/sync/sync_service.dart`) : `processQueue()` (push) puis `pullDataFromSupabase()` **seulement si** la file locale est vide — sinon un stock local non envoyé est écrasé. La garde vit **dans** `pullDataFromSupabase()` : ne jamais la remonter chez l'appelant, des écrans appellent le pull directement. Mouvements de stock : RPC atomique `apply_stock_movement` (idempotent via `stock_sync_operations.id`).
 
+Cette garde vaut pour **tout** téléchargement, pas seulement `pullDataFromSupabase()` : `shop_settings_provider` la contournait et faisait revenir un module désactivé, le serveur renvoyant l'ancien réglage encore en file.
+
 **Toute nouvelle colonne/table synchronisée doit être ajoutée aux DEUX côtés de `pullDataFromSupabase()`** (le `select` distant *et* le mapping vers Drift). Oubli = le pull réécrit la ligne locale sans le champ et l'efface silencieusement quelques secondes après sa création — vu sur `sale_items.cycle_id`, invisible sur un seul téléphone.
 
 ## Règles CRITIQUES
@@ -62,5 +64,6 @@ Bêta contrôlée, pas encore production (tests multi-téléphones réels et sc�
 |-------|-----------|
 | Modifier CLAUDE.md / AGENTS.md / skills / docs projet | `.claude/skills/context-governance/SKILL.md` |
 | Architecture des modules métier custom (cycles œufs, multi-point/inventaire) | `docs/ARCHITECTURE_MODULES.md` · avancement `docs/PLAN_MODULES_CLIENTS.md` · tests `docs/PLAN_TESTS_MODULES.md` |
+| Stock d'un produit | En mode cycles ou inventaire, le stock est géré par le module (arrivage, comptage) : les écrans produit **masquent** la quantité et ne la réécrivent jamais |
 | Ajouter un champ propre à un module | Le poser sur la table partagée en **nullable**, et n'afficher le champ que dans le mode concerné (`shopSettingsProvider`). Dupliquer un écran ne se justifie que si son **contenu** diffère (l'accueil), pas pour un champ de plus |
 | Écrire un écran | Valider sur **petit écran** (Pixel 4a) : 3 bugs de contenu masqué en bas déjà rencontrés. Toute liste sous un bouton flottant réserve ~96px en bas ; tout formulaire est scrollable (le clavier réduit la hauteur). Direction visuelle cible : `PLAN_CORRECTIONS_ET_AMELIORATIONS.md` §12 (long terme) |

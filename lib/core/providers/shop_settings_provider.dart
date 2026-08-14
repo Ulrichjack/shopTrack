@@ -124,6 +124,12 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
   // Comme _runBackgroundSync dans dashboard_provider.dart : hors ligne ou en
   // erreur, on garde silencieusement le cache local existant.
   Future<void> _syncFromSupabase(AppDatabase db, String shopId) async {
+    // Même règle que pullDataFromSupabase : tant qu'une écriture locale n'est
+    // pas partie, le serveur est périmé et ne doit rien écraser. Sans cette
+    // garde, désactiver un module revenait en arrière tout seul — le serveur
+    // renvoyait l'ancien réglage parce que le changement était encore en file.
+    if (await db.getPendingCount() > 0) return;
+
     try {
       final response = await Supabase.instance.client
           .from('shop_settings')
