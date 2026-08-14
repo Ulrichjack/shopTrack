@@ -654,6 +654,14 @@ et les tables tirées** et échoue si une table est envoyée sans être
 retéléchargée. Beaucoup moins cher, et ça transforme une règle écrite en
 garde-fou automatique.
 
+**FAIT le 2026-08-14** — `test/sync_pull_coverage_test.dart` : toute table
+Drift absente de `pullDataFromSupabase()` fait échouer le test, exceptions
+documentées dans le test lui-même. Écrit après avoir trouvé le quatrième bug
+de cette famille : `stock_movements` était poussée par le RPC mais jamais
+tirée, donc le rapport de période perdait ses recharges après réinstallation
+et annonçait un bénéfice surévalué. Le refactoring de `sync_service.dart`
+reste inutile tant que ce test tient.
+
 ### À surveiller, sans urgence
 
 **Les tests couvrent les calculs, pas les parcours.** 31 tests pour ~14 000

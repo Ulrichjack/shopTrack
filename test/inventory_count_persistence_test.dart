@@ -84,6 +84,46 @@ void main() {
       expect(complete.isRoundComplete, isTrue);
     },
   );
+
+  test('le rôle du tour est déduit, jamais demandé au commerçant', () async {
+    final container = ProviderContainer(
+      overrides: [localDbProvider.overrideWithValue(db)],
+    );
+    addTearDown(container.dispose);
+    final actions = container.read(inventoryCountActionsProvider);
+
+    await db.batch((batch) {
+      batch.insertAll(db.localProducts, [
+        _product('product-1', 'Riz'),
+        _product('product-2', 'Sucre'),
+      ]);
+    });
+
+    final premier = await loadInventoryCountOverview(db, 'shop-1');
+    expect(premier.roundNumber, 1);
+    expect(premier.isFirstRound, isTrue);
+    expect(premier.periodStartedAt, isNull);
+
+    await actions.saveCount(productId: 'product-1', countedQuantity: 8);
+    await actions.saveCount(productId: 'product-2', countedQuantity: 5);
+
+    // Deuxième tour : le même geste ferme désormais une période, et l'app sait
+    // depuis quand elle est ouverte sans qu'on le lui déclare.
+    await actions.saveCount(productId: 'product-1', countedQuantity: 3);
+
+    final second = await loadInventoryCountOverview(db, 'shop-1');
+    expect(second.roundNumber, 2);
+    expect(second.isFirstRound, isFalse);
+    expect(second.periodStartedAt, isNotNull);
+
+    // Le repère ne bouge pas pendant la saisie : produit déjà compté ou non,
+    // on remonte au même tour précédent, sinon le bandeau changerait de date
+    // au fil du comptage.
+    await actions.saveCount(productId: 'product-2', countedQuantity: 1);
+    final fini = await loadInventoryCountOverview(db, 'shop-1');
+    expect(fini.roundNumber, 2);
+    expect(fini.periodStartedAt, second.periodStartedAt);
+  });
 }
 
 LocalProduct _product(String id, String name) => LocalProduct(

@@ -33,10 +33,22 @@ class InventoryCountOverview {
     required this.lines,
     required this.countedProducts,
     required this.isRoundComplete,
+    this.roundNumber = 1,
+    this.periodStartedAt,
   });
 
   final List<InventoryCountLine> lines;
   final int countedProducts;
+
+  /// Numéro du tour en cours. Le 1er pose le point de départ, les suivants
+  /// ferment une période — c'est le même geste, l'app en déduit le rôle plutôt
+  /// que de demander au commerçant de le déclarer.
+  final int roundNumber;
+
+  /// Début de la période que ce tour va fermer. Null au tout premier comptage.
+  final DateTime? periodStartedAt;
+
+  bool get isFirstRound => roundNumber <= 1;
   final bool isRoundComplete;
 
   int get totalProducts => lines.length;
@@ -219,17 +231,29 @@ Future<InventoryCountOverview> loadInventoryCountOverview(
 
   var countedProducts = 0;
   final lines = <InventoryCountLine>[];
+  DateTime? periodStartedAt;
   for (var index = 0; index < products.length; index++) {
     final product = products[index];
     final number = countNumbers[index];
     final isCounted = isComplete ? number == maximum : number > minimum;
     if (isCounted) countedProducts++;
 
+    final last = countsByProduct[product.id]?.firstOrNull;
+    // Le repère du tour précédent : pour un produit déjà compté ce tour-ci
+    // c'est le comptage d'avant, pour les autres c'est leur dernier comptage.
+    // Dans les deux cas on remonte au même tour, donc l'affichage ne change
+    // pas au fil de la saisie.
+    final previous = isCounted ? last?.previousCountedAt : last?.countedAt;
+    if (previous != null &&
+        (periodStartedAt == null || previous.isAfter(periodStartedAt))) {
+      periodStartedAt = previous;
+    }
+
     lines.add(
       InventoryCountLine(
         product: product,
         isCounted: isCounted,
-        count: isCounted ? countsByProduct[product.id]?.firstOrNull : null,
+        count: isCounted ? last : null,
       ),
     );
   }
@@ -238,5 +262,7 @@ Future<InventoryCountOverview> loadInventoryCountOverview(
     lines: lines,
     countedProducts: countedProducts,
     isRoundComplete: isComplete,
+    roundNumber: isComplete ? maximum : minimum + 1,
+    periodStartedAt: periodStartedAt,
   );
 }

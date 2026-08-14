@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/errors/sync_error_message.dart';
@@ -52,7 +53,7 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
 
     setState(() => _savingProductIds.add(line.product.id));
     try {
-      final saved = await ref
+      await ref
           .read(inventoryCountActionsProvider)
           .saveCount(productId: line.product.id, countedQuantity: quantity);
       if (!mounted) return;
@@ -61,18 +62,11 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
       _recountingProductIds.remove(line.product.id);
       FocusScope.of(context).unfocus();
 
-      final difference = saved.countedQuantity - line.product.quantity;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${line.product.name} enregistré. '
-            'Écart après comptage : ${_formatDifference(difference)}.',
-          ),
-          backgroundColor: difference == 0
-              ? AppColors.primary
-              : AppColors.warningDark,
-        ),
-      );
+      // Pas de message de confirmation : la carte du produit affiche déjà
+      // « X compté(s) » et l'écart, et la barre de progression avance. Sur un
+      // tour de 15 produits, un bandeau par validation masquait le bas de
+      // l'écran à chaque fois sans rien apprendre de plus. Les erreurs, elles,
+      // gardent leur message — il faut interrompre.
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,6 +135,8 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
                       counted: overview.countedProducts,
                       total: overview.totalProducts,
                       isComplete: overview.isRoundComplete,
+                      isFirstRound: overview.isFirstRound,
+                      periodStartedAt: overview.periodStartedAt,
                     ),
                   ),
                 ],
@@ -223,18 +219,29 @@ class _ProgressCard extends StatelessWidget {
     required this.counted,
     required this.total,
     required this.isComplete,
+    this.isFirstRound = true,
+    this.periodStartedAt,
   }) : isLoading = false;
 
   const _ProgressCard.loading()
     : counted = 0,
       total = 0,
       isComplete = false,
+      isFirstRound = true,
+      periodStartedAt = null,
       isLoading = true;
 
   final int counted;
   final int total;
   final bool isComplete;
   final bool isLoading;
+
+  /// Le geste est le même à chaque tour ; seul le rôle du comptage change.
+  /// L'app l'annonce au lieu de demander au commerçant de le déclarer : deux
+  /// boutons « départ » / « reste » l'obligeraient à trancher une question
+  /// comptable, et un mauvais choix casserait sa période sans qu'il le voie.
+  final bool isFirstRound;
+  final DateTime? periodStartedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -284,6 +291,20 @@ class _ProgressCard extends StatelessWidget {
           ),
           if (!isLoading && !isComplete) ...[
             const SizedBox(height: 8),
+            Text(
+              isFirstRound
+                  ? 'Premier comptage : tu poses ton point de départ.'
+                  : periodStartedAt == null
+                  ? 'Ce comptage ferme la période en cours.'
+                  : 'Ce comptage ferme la période ouverte le '
+                        '${DateFormat('dd/MM').format(periodStartedAt!)}.',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
             const Text(
               'Compte ce que tu vois. Le stock enregistré reste caché.',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
