@@ -22,9 +22,31 @@ class _DailyTakingsScreenState extends ConsumerState<DailyTakingsScreen> {
   bool _isSaving = false;
   bool _amountInitialized = false;
 
+  /// Jour saisi. Modifiable : oublier un soir arrive, et sans possibilité de
+  /// rattraper, la journée manquante ressemble à un manquant d'argent dans le
+  /// rapport — quelqu'un finirait par être soupçonné pour un simple oubli.
+  DateTime? _selectedDate;
+
   DateTime get _today {
     final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day);
+    return _selectedDate ?? DateTime(now.year, now.month, now.day);
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _today,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year, now.month, now.day),
+      helpText: 'Recette de quel jour ?',
+    );
+    if (picked == null) return;
+    setState(() {
+      _selectedDate = DateTime(picked.year, picked.month, picked.day);
+      _amountInitialized = false;
+      _amountController.clear();
+    });
   }
 
   @override
@@ -104,6 +126,7 @@ class _DailyTakingsScreenState extends ConsumerState<DailyTakingsScreen> {
                 isCorrection: todayTaking != null,
                 isSaving: _isSaving,
                 onSave: _save,
+                onChangeDate: _pickDate,
               ),
               const SizedBox(height: 28),
               const Text(
@@ -160,6 +183,7 @@ class _TakingFormCard extends StatelessWidget {
     required this.isCorrection,
     required this.isSaving,
     required this.onSave,
+    required this.onChangeDate,
   });
 
   final GlobalKey<FormState> formKey;
@@ -168,6 +192,14 @@ class _TakingFormCard extends StatelessWidget {
   final bool isCorrection;
   final bool isSaving;
   final VoidCallback onSave;
+  final VoidCallback onChangeDate;
+
+  static bool _estAujourdhui(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,18 +231,34 @@ class _TakingFormCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Combien as-tu encaissé aujourd’hui ?',
-                          style: TextStyle(
+                        Text(
+                          _estAujourdhui(date)
+                              ? 'Combien as-tu encaissé aujourd’hui ?'
+                              : 'Recette d’un jour passé',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 3),
-                        Text(
-                          DateFormat('dd/MM/yyyy').format(date),
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
+                        InkWell(
+                          onTap: onChangeDate,
+                          child: Row(
+                            children: [
+                              Text(
+                                DateFormat('dd/MM/yyyy').format(date),
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.edit_calendar_outlined,
+                                size: 16,
+                                color: AppColors.textSecondary,
+                              ),
+                            ],
                           ),
                         ),
                       ],
