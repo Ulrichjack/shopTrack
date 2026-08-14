@@ -143,6 +143,13 @@ class SyncService {
         // Module B : les comptages sont des repères historiques. Sans ce
         // pull, un second téléphone ne peut ni reprendre ni terminer le tour.
         supabase.from('inventory_counts').select().eq('shop_id', shopId),
+        // Les recharges sont poussées par apply_stock_movement mais n'étaient
+        // jamais retéléchargées. Le rapport de période en tire ses `purchases` :
+        // sans elles, les sorties valent « stock de départ − stock compté », le
+        // réapprovisionnement disparaît du calcul et l'app annonce un bénéfice
+        // surévalué avec un faux « tu as encaissé plus ». Le stock, lui, restait
+        // juste : le bug était invisible sur l'écran Stock.
+        supabase.from('stock_movements').select().eq('shop_id', shopId),
       ]);
 
       final productsData = results[0];
@@ -155,6 +162,7 @@ class SyncService {
       final lossesData = results[7];
       final takingsData = results[8];
       final inventoryCountsData = results[9];
+      final stockMovementsData = results[10];
 
       // Fusionner au lieu de vider les tables protège les écritures hors ligne.
       await db.transaction(() async {
@@ -348,6 +356,22 @@ class SyncService {
                             count['previous_counted_at'],
                           ).toLocal(),
                     previousQuantity: count['previous_quantity'],
+                  ),
+                )
+                .toList(),
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.localStockMovements,
+            stockMovementsData
+                .map(
+                  (m) => LocalStockMovement(
+                    id: m['id'],
+                    shopId: m['shop_id'],
+                    productId: m['product_id'],
+                    quantity: m['quantity'],
+                    type: m['type'],
+                    createdAt: DateTime.parse(m['created_at']).toLocal(),
                   ),
                 )
                 .toList(),
