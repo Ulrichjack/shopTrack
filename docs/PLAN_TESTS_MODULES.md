@@ -144,3 +144,33 @@ D6, E1/E2, F3–F5.
 3. **F2–F5** — clôtures rattrapées, livrées mais jamais utilisées.
 4. **E, G** — non-régression et arbitrage sur la visibilité des coûts d'achat
    pour un vendeur.
+
+## Scénario de bout en bout validé le 2026-08-14
+
+Épicerie de 15 produits, gros et détail mélangés, sur un téléphone réel
+(Android 8.1, armeabi-v7a). Le seul test qui prouve quelque chose : chiffres
+calculés à l'avance depuis la base du téléphone, puis comparés à l'écran.
+
+| Étape | Contenu |
+|-------|---------|
+| Comptage de départ | 15 produits |
+| Arrivages | riz +8 à 24 000/27 000 (hausse), Maggi +200, sardines +48 |
+| Pertes | 2 bidons (casse), 5 sardines (périmé) |
+| Recette | 636 000 F |
+| Comptage de fin | 15 produits |
+
+**Résultat, exact au franc près :** valeur sortie 643 830 · il manque 7 830 ·
+coût 537 000 · pertes 15 250 · **bénéfice 83 750**.
+
+Le chiffre décisif est le **gain du riz : 46 200 F** = 11 × (27 000 − 22 800).
+Il ne tombe juste que si trois mécanismes fonctionnent ensemble : prix de
+vente au nouveau tarif, coût en moyenne pondérée (12 à 22 000 + 8 à 24 000),
+et **stock d'ouverture qui garde son prix d'achat** malgré une hausse
+enregistrée le même jour. Ce dernier point était cassé : `buyPriceAt`
+comparait au jour et non à l'instant, donc les 12 sacs déjà en rayon
+passaient à 24 000. Trouvé par ce scénario, pas par les tests unitaires.
+
+**Ce que le scénario ne couvre pas encore :** période sur plusieurs jours
+(donc pondération réelle du prix de vente par les jours), transferts (B8),
+multi-boutique (B7), et le retour des pertes/achats/tarifs sur un second
+téléphone.

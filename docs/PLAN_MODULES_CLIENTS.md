@@ -152,7 +152,9 @@ Ordre d'implémentation, du plus indépendant au plus risqué :
 - [x] **B3 — Comptage d'inventaire.** Table `inventory_counts` (repères par
   produit), écran de saisie **à l'aveugle** (ne jamais afficher la quantité
   théorique), sauvegarde progressive, indicateur « 22 produits sur 30 ».
-- [x] **B4 — Approvisionnement avec prix.** Table `stock_purchases` (déjà en
+- [x] **B4 — Approvisionnement avec prix + tarif de vente figé.** Tables
+  `stock_purchases` et `product_prices` (migration 202608140001). Table
+  `stock_purchases` (déjà en
   base), champ « Prix d'achat unitaire » dans la recharge, affiché uniquement
   en mode périodique et pré-rempli au dernier prix connu. Le rapport valorise
   par **moyenne pondérée mobile** (`weightedUnitCost`) : stock d'ouverture au
@@ -166,7 +168,9 @@ Ordre d'implémentation, du plus indépendant au plus risqué :
   branchée dans le rapport sur la fenêtre de la période. **Ne touche pas au
   stock** : en périodique le stock ne bouge qu'au comptage, la marchandise
   cassée a déjà quitté l'étagère.
-- [~] **B6 — Rapport par boutique.** Écran fait et vérifié sur 15 produits :
+- [~] **B6 — Rapport par boutique.** Écran + PDF (`inventory_report_pdf.dart`,
+  aperçu natif `Printing.layoutPdf` comme le bilan). **Reste** le bilan stocké
+  une fois clôturé, pas recalculé. Écran vérifié sur 15 produits :
   sorties, valeur, gain par produit, écart nommé, bénéfice parti des recettes
   réelles. **Restent** le PDF (réutiliser celui du bilan existant) et le
   stockage du bilan une fois clôturé, pas recalculé — sinon il change sous les
