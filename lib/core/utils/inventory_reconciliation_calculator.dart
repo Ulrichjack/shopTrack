@@ -76,6 +76,12 @@ class InventoryProductResult {
   final double costOfGoodsSold;
   final double lossValue;
 
+  /// Ce que ce produit a rapporté : ce qu'il vaut moins ce qu'il a coûté.
+  /// Par produit, contrairement au bénéfice de la boutique qui part des
+  /// recettes réelles — ici on ne sait pas quelle part de l'argent encaissé
+  /// vient de quel produit.
+  double get margin => expectedRevenue - costOfGoodsSold;
+
   /// Signale une incohérence de saisie : on a compté plus que ce qui pouvait
   /// rester (achat oublié, comptage erroné). Le résultat n'est pas fiable.
   bool get hasNegativeOutflow => totalOutflow < 0;

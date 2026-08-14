@@ -213,6 +213,30 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       'Ex: sac — comment tu comptes ce produit',
                     ),
                   ),
+                  // Mêmes raccourcis qu'à la création : c'est souvent ici
+                  // qu'on vient corriger une unité mal tapée, autant proposer
+                  // celles qui existent déjà plutôt que d'en créer une de plus.
+                  Builder(
+                    builder: (context) {
+                      final units = ref.watch(knownUnitsProvider);
+                      if (units.isEmpty) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: units
+                              .map(
+                                (unit) => ActionChip(
+                                  label: Text(unit),
+                                  onPressed: () => _unitController.text = unit,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
 
                 _buildFieldLabel("Code-barres"),

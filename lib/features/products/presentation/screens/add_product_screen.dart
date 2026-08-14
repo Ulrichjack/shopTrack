@@ -240,6 +240,31 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       ),
                     ),
                   ),
+                  // Réutiliser une unité déjà employée évite de la retaper et
+                  // évite surtout les doublons (« carton » / « Carton »), qui
+                  // rendraient l'affichage incohérent d'un produit à l'autre.
+                  Builder(
+                    builder: (context) {
+                      final units = ref.watch(knownUnitsProvider);
+                      if (units.isEmpty) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: units
+                              .map(
+                                (unit) => ActionChip(
+                                  label: Text(unit),
+                                  onPressed: () =>
+                                      _unitController.text = unit,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
 
                 _buildFieldLabel("Code-barres (Optionnel)"),

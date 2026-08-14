@@ -204,7 +204,8 @@ class _ProductLine extends StatelessWidget {
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       subtitle: Text(
-        'Valeur : ${CurrencyFormatter.format(product.expectedRevenue)}',
+        '${CurrencyFormatter.format(product.expectedRevenue)} · '
+        'gain ${CurrencyFormatter.format(product.margin)}',
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,

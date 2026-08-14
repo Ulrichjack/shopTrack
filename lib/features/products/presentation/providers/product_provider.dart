@@ -365,6 +365,25 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
   }
 }
 
+/// Unités déjà utilisées dans cette boutique, les plus fréquentes d'abord.
+/// Propre à la boutique par construction (les produits le sont), donc un
+/// dépôt de boissons et une épicerie n'auront jamais les mêmes suggestions.
+final knownUnitsProvider = Provider<List<String>>((ref) {
+  final products = ref.watch(productProvider).value ?? const [];
+  final counts = <String, int>{};
+  for (final product in products) {
+    final unit = product.unit?.trim();
+    if (unit == null || unit.isEmpty) continue;
+    counts[unit] = (counts[unit] ?? 0) + 1;
+  }
+  final units = counts.keys.toList()
+    ..sort((a, b) {
+      final byUse = counts[b]!.compareTo(counts[a]!);
+      return byUse != 0 ? byUse : a.compareTo(b);
+    });
+  return units;
+});
+
 final productProvider =
     AsyncNotifierProvider<ProductNotifier, List<ProductEntity>>(() {
       return ProductNotifier();
