@@ -63,4 +63,41 @@ void main() {
     expect(bytes, isNotEmpty);
     expect(bytes.take(4), orderedEquals('%PDF'.codeUnits));
   });
+
+  test('les pertes déclarées apparaissent dans le PDF', () async {
+    // Sans cette ligne, Recettes − Coût ne redonne pas le Bénéfice imprimé :
+    // 13 000 F d'écart pour qui refait l'addition sur le document partagé.
+    final report = InventoryPeriodReport(
+      result: const InventoryPeriodResult(
+        products: [
+          InventoryProductResult(
+            productId: 'huile',
+            productName: 'Bidon huile 5L (bidon)',
+            totalOutflow: 15,
+            declaredLosses: 2,
+            presumedSales: 13,
+            expectedRevenue: 97500,
+            costOfGoodsSold: 84500,
+            lossValue: 13000,
+          ),
+        ],
+        expectedRevenue: 97500,
+        actualTakings: 110000,
+        unexplainedGap: 12500,
+        costOfGoodsSold: 84500,
+        lossValue: 13000,
+        profit: 12500,
+        daysWithoutTakings: 0,
+      ),
+      periodStart: DateTime(2026, 8, 1),
+      periodEnd: DateTime(2026, 8, 14),
+      productsAwaitingSecondCount: 0,
+      productsNeverCounted: 0,
+      daysWithoutTakings: [],
+    );
+
+    final bytes = await buildInventoryReportPdf(report);
+    expect(bytes, isNotEmpty);
+    expect(bytes.take(4), orderedEquals('%PDF'.codeUnits));
+  });
 }

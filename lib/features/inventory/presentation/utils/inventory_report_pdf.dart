@@ -22,12 +22,23 @@ Future<Uint8List> buildInventoryReportPdf(
       ? 'Du ${formatDate.format(report.periodStart!)} '
             'au ${formatDate.format(report.periodEnd!)}'
       : 'Période non disponible';
+  final morceaux = <String>[
+    if (report.productsNeverCounted > 0)
+      '${report.productsNeverCounted} jamais compté(s)',
+    if (report.productsAwaitingSecondCount > 0)
+      '${report.productsAwaitingSecondCount} en attente d\'un 2e comptage',
+  ];
+
+  // Les mêmes réserves qu'à l'écran : un PDF présenté comme complet alors
+  // qu'il ne l'est pas circule ensuite sans son contexte.
   final reserves = <String>[
-    if (!report.isComplete)
-      'Résultat partiel : ${[if (report.productsNeverCounted > 0) '${report.productsNeverCounted} jamais compté(s)', if (report.productsAwaitingSecondCount > 0) '${report.productsAwaitingSecondCount} en attente d\'un 2e comptage'].join(', ')}.',
+    if (!report.isComplete) 'Résultat partiel : ${morceaux.join(', ')}.',
     if (report.daysWithoutTakings.isNotEmpty)
       '${report.daysWithoutTakings.length} jour(s) sans recette notée : '
           'l\'écart peut venir de là.',
+    if (result.inconsistentProducts.isNotEmpty)
+      'Compté plus que possible sur : '
+          '${result.inconsistentProducts.map((p) => p.productName).join(', ')}.',
   ];
 
   pdf.addPage(
@@ -118,6 +129,10 @@ Future<Uint8List> buildInventoryReportPdf(
             'Coût de la marchandise sortie',
             -result.costOfGoodsSold,
           ),
+          // Sans cette ligne, un lecteur qui refait l'addition trouve un autre
+          // bénéfice que celui imprimé — sur un document qui se partage.
+          if (result.lossValue > 0)
+            _ligneMontant('Pertes déclarées', -result.lossValue),
           pw.Divider(color: PdfColors.grey300),
           _ligneMontant(
             'Bénéfice',
