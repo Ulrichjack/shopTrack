@@ -446,6 +446,23 @@ class _ProductCountCard extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
+                        // Avertir, jamais refuser : un comptage est une
+                        // observation, on ne discute pas avec ce que le
+                        // commerçant a sous les yeux. Compter plus que
+                        // possible est d'ailleurs une information — un
+                        // arrivage n'a pas été enregistré — et bloquer la
+                        // saisie la ferait disparaître au profit d'un chiffre
+                        // inventé pour passer le formulaire.
+                        if (line.difference! > 0) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Plus que possible : arrivage oublié ?',
+                            style: TextStyle(
+                              color: Colors.orange.shade900,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

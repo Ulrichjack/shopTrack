@@ -399,17 +399,43 @@ class _InconsistentWarning extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Deux causes très différentes : compter plus que possible accuse un
+    // arrivage oublié, déclarer trop de pertes accuse la saisie de pertes.
+    // Un seul message pour les deux envoyait le commerçant chercher au mauvais
+    // endroit.
+    final comptes = products
+        .where((p) => p.hasNegativeOutflow)
+        .map((p) => p.productName)
+        .toList();
+    final pertes = products
+        .where((p) => !p.hasNegativeOutflow && p.lossesExceedOutflow)
+        .map((p) => p.productName)
+        .toList();
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.orange.shade50,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(
-        'Compté plus que possible sur : '
-        '${products.map((p) => p.productName).join(', ')}. '
-        'Un arrivage n\'a pas été enregistré.',
-        style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (comptes.isNotEmpty)
+            Text(
+              'Compté plus que possible sur : ${comptes.join(', ')}. '
+              'Un arrivage n\'a pas été enregistré.',
+              style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+            ),
+          if (comptes.isNotEmpty && pertes.isNotEmpty)
+            const SizedBox(height: 6),
+          if (pertes.isNotEmpty)
+            Text(
+              'Plus de pertes que de marchandise sortie sur : '
+              '${pertes.join(', ')}.',
+              style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+            ),
+        ],
       ),
     );
   }
