@@ -286,12 +286,19 @@ class _GapLine extends StatelessWidget {
             ),
           ],
         ),
-        if (rounded < 0) ...[
+        // Les deux écarts méritent une explication. Un excédent inexpliqué
+        // n'est pas une bonne nouvelle : il signale une saisie fausse, et le
+        // commerçant qui le prend pour un gain se trompe sur son stock.
+        if (rounded != 0) ...[
           const SizedBox(height: 8),
           Text(
-            'Vol, casse non déclarée, oubli de note ou erreur de comptage — '
-            'l\'application ne peut pas dire lequel, seulement que cet argent '
-            'ne s\'explique pas.',
+            rounded < 0
+                ? 'Vol, casse non déclarée, oubli de note ou erreur de '
+                      'comptage — l\'application ne peut pas dire lequel, '
+                      'seulement que cet argent ne s\'explique pas.'
+                : 'Tu as plus d\'argent que ta marchandise sortie ne '
+                      'l\'explique : marchandise reçue sans être enregistrée, '
+                      'erreur de comptage, ou vente au-dessus du prix affiché.',
             style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
           ),
         ],

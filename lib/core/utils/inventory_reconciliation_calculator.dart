@@ -179,7 +179,11 @@ class InventoryReconciliationCalculator {
     required double actualTakings,
     int daysWithoutTakings = 0,
   }) {
-    final results = products.map(calculateProduct).toList();
+    final results = products.map(calculateProduct).toList()
+      // Les plus gros en premier : sur une centaine de produits, le commerçant
+      // ne lit que le haut de la liste, et c'est là que doit se trouver ce qui
+      // pèse sur son résultat. L'ordre d'entrée ne veut rien dire pour lui.
+      ..sort((a, b) => b.expectedRevenue.compareTo(a.expectedRevenue));
 
     final expectedRevenue = results.fold<double>(
       0,

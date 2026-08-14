@@ -162,6 +162,20 @@ void main() {
       expect(r.hasUnexplainedGap, isFalse);
     });
 
+    test('les produits sortent triés du plus gros au plus petit', () {
+      final r = InventoryReconciliationCalculator.calculatePeriod(
+        products: produits,
+        actualTakings: 681500,
+      );
+
+      final valeurs = r.products.map((p) => p.expectedRevenue).toList();
+      expect(
+        valeurs,
+        orderedEquals(List.of(valeurs)..sort((a, b) => b.compareTo(a))),
+        reason: 'le commerçant ne lit que le haut de la liste',
+      );
+    });
+
     test('un produit incohérent ne fausse pas le total de la boutique', () {
       // Cas réel du 13/08 : comptage 5 puis 10 sans approvisionnement
       // enregistré entre les deux. Sans borne, ce produit retirait
