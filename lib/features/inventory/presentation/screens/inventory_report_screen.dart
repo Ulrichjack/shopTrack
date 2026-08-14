@@ -173,19 +173,6 @@ class _Body extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            'Le bénéfice part de l\'argent que tu as réellement encaissé, '
-            'pas de ce qui était attendu.',
-            style: TextStyle(color: Colors.blue.shade900, fontSize: 13),
-          ),
-        ),
       ],
     );
   }
@@ -286,19 +273,15 @@ class _GapLine extends StatelessWidget {
             ),
           ],
         ),
-        // Les deux écarts méritent une explication. Un excédent inexpliqué
-        // n'est pas une bonne nouvelle : il signale une saisie fausse, et le
-        // commerçant qui le prend pour un gain se trompe sur son stock.
+        // Une ligne, pas un paragraphe : le commerçant veut le chiffre et ce
+        // qu'il doit vérifier, pas un cours de comptabilité. Mais l'écart ne
+        // reste jamais nu — sans un mot, « il manque » se lit « on m'a volé ».
         if (rounded != 0) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             rounded < 0
-                ? 'Vol, casse non déclarée, oubli de note ou erreur de '
-                      'comptage — l\'application ne peut pas dire lequel, '
-                      'seulement que cet argent ne s\'explique pas.'
-                : 'Tu as plus d\'argent que ta marchandise sortie ne '
-                      'l\'explique : marchandise reçue sans être enregistrée, '
-                      'erreur de comptage, ou vente au-dessus du prix affiché.',
+                ? 'Vol, casse ou oubli de note : à vérifier.'
+                : 'Arrivage oublié ou comptage à revoir.',
             style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
           ),
         ],
@@ -334,8 +317,7 @@ class _IncompleteWarning extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Résultat partiel : ${morceaux.join(', ')}. '
-              'Compte tous tes produits pour connaître ton vrai bénéfice.',
+              'Résultat partiel : ${morceaux.join(', ')}.',
               style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
             ),
           ),
@@ -365,8 +347,8 @@ class _MissingTakingsWarning extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '${days.length} jour(s) sans recette notée. '
-              'L\'écart ci-dessous peut venir de là, pas d\'un vol.',
+              '${days.length} jour(s) sans recette notée : l\'écart peut '
+              'venir de là.',
               style: const TextStyle(fontSize: 13),
             ),
           ),
@@ -390,10 +372,9 @@ class _InconsistentWarning extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
-        'Saisie incohérente sur : '
+        'Compté plus que possible sur : '
         '${products.map((p) => p.productName).join(', ')}. '
-        'Tu as compté plus que ce qui pouvait rester — un approvisionnement '
-        'n\'a probablement pas été enregistré.',
+        'Un arrivage n\'a pas été enregistré.',
         style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
       ),
     );

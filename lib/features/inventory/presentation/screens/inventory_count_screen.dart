@@ -304,11 +304,15 @@ class _ProgressCard extends StatelessWidget {
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'Compte ce que tu vois. Le stock enregistré reste caché.',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
+            // Le rappel du comptage à l'aveugle n'a de valeur que la première
+            // fois : ensuite c'est du texte que personne ne relit.
+            if (isFirstRound) ...[
+              const SizedBox(height: 4),
+              const Text(
+                'Compte ce que tu vois. Le stock enregistré reste caché.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
           ],
         ],
       ),

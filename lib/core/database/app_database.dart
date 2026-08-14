@@ -189,6 +189,26 @@ class LocalInventoryCounts extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// Module B — Casse, péremption, invendu : ce qui est sorti du stock sans être
+// vendu. Séparé de `LocalCycleLosses`, qui appartient au module A et se
+// rattache à un cycle d'arrivage : ici la perte se rattache à une date, la
+// seule chose que le commerçant connaisse.
+//
+// Une perte déclarée ne touche PAS le stock enregistré : en inventaire
+// périodique, le stock ne bouge qu'au comptage. Elle sert uniquement à dire
+// « ces 3 bouteilles n'ont pas été volées, elles sont cassées ».
+class LocalInventoryLosses extends Table {
+  TextColumn get id => text()();
+  TextColumn get shopId => text()();
+  TextColumn get productId => text()();
+  IntColumn get quantity => integer()();
+  TextColumn get reason => text().nullable()();
+  DateTimeColumn get occurredAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // Table de la Salle d'attente (Sync Queue)
 class SyncQueueItems extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -213,6 +233,7 @@ class SyncQueueItems extends Table {
     LocalCycleLosses,
     LocalShopTakings,
     LocalInventoryCounts,
+    LocalInventoryLosses,
     SyncQueueItems,
   ],
 )
@@ -223,7 +244,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -249,6 +270,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 6) {
         await m.addColumn(localProducts, localProducts.unit);
+      }
+      if (from < 7) {
+        await m.createTable(localInventoryLosses);
       }
     },
   );
