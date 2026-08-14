@@ -62,10 +62,13 @@ class MainLayout extends ConsumerWidget {
           icon: Icons.checklist_outlined,
           activeIcon: Icons.checklist,
         ),
+      // Le bilan mensuel se nourrit des ventes enregistrées : en inventaire
+      // périodique il n'y en a aucune, l'onglet affichait des zéros. Le vrai
+      // bilan de ce mode, c'est le rapport de période.
       if (isBossMode)
-        const _NavDestination(
-          route: '/bilan',
-          label: 'Bilan',
+        _NavDestination(
+          route: isPeriodic ? '/inventory-report' : '/bilan',
+          label: isPeriodic ? 'Rapport' : 'Bilan',
           icon: Icons.bar_chart_outlined,
           activeIcon: Icons.bar_chart,
         ),

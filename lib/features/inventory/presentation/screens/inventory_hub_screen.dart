@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 import '../providers/takings_provider.dart';
 
 /// Regroupe les opérations du mode inventaire, comme l'onglet Cycles le fait
@@ -65,13 +66,17 @@ class InventoryHubScreen extends ConsumerWidget {
             subtitle: 'Casse, périmé, invendu — sinon compté comme vendu',
             onTap: () => context.push('/declare-loss'),
           ),
-          const SizedBox(height: 12),
-          _ActionTile(
-            icon: Icons.summarize_outlined,
-            title: 'Rapport de période',
-            subtitle: 'Ce qui est sorti, et si l\'argent correspond',
-            onTap: () => context.push('/inventory-report'),
-          ),
+          // Réservé au Patron, comme le bilan : la barrière est dans
+          // router.dart, on évite juste au vendeur de taper pour être renvoyé.
+          if (ref.watch(appModeProvider).value ?? false) ...[
+            const SizedBox(height: 12),
+            _ActionTile(
+              icon: Icons.summarize_outlined,
+              title: 'Rapport de période',
+              subtitle: 'Ce qui est sorti, et si l\'argent correspond',
+              onTap: () => context.push('/inventory-report'),
+            ),
+          ],
 
           const SizedBox(height: 28),
           Container(

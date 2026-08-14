@@ -55,7 +55,14 @@ final goRouter = GoRouter(
 
     if (isLoggedIn && isOnAuth) return '/home';
     if (!isLoggedIn && !isOnAuth) return '/login';
-    const bossOnlyRoutes = {'/bilan', '/activity-log', '/shop-settings'};
+    // '/inventory-report' y figure aussi : il donne le bénéfice et l'écart
+    // inexpliqué, exactement ce que le bilan protège en mode simple.
+    const bossOnlyRoutes = {
+      '/bilan',
+      '/activity-log',
+      '/shop-settings',
+      '/inventory-report',
+    };
     if (isLoggedIn &&
         bossOnlyRoutes.contains(state.matchedLocation) &&
         !bossModeAccess.value) {
