@@ -228,29 +228,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   ],
                 ),
 
-                if (stockGereParModule)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        isPeriodic
-                            ? 'Le stock partira de ton prochain comptage '
-                                  'd\'inventaire.'
-                            : 'Le stock sera alimenté par ton prochain '
-                                  'arrivage (cycle).',
-                        style: TextStyle(
-                          color: Colors.blue.shade900,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
-
                 if (isPeriodic) ...[
                   _buildFieldLabel("Unité (sac, bouteille, casier…)"),
                   TextFormField(
