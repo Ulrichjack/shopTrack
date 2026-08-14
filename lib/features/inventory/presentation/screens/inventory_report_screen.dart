@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/errors/sync_error_message.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/inventory_reconciliation_calculator.dart';
 import '../providers/inventory_report_provider.dart';
+import '../utils/inventory_report_pdf.dart';
 
 /// Le verdict de la période : ce qui est sorti, et si l'argent correspond.
 class InventoryReportScreen extends ConsumerWidget {
@@ -18,7 +21,32 @@ class InventoryReportScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Rapport de période')),
+      appBar: AppBar(
+        title: const Text('Rapport de période'),
+        actions: [
+          IconButton(
+            tooltip: 'Partager le rapport PDF',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: reportAsync.value?.hasData != true
+                ? null
+                : () async {
+                    final report = reportAsync.value!;
+                    final prefs = await SharedPreferences.getInstance();
+                    final pdf = await buildInventoryReportPdf(
+                      report,
+                      shopName: prefs.getString('cached_shop_name'),
+                    );
+                    final finPeriode = DateFormat(
+                      'yyyyMMdd',
+                    ).format(report.periodEnd!);
+                    await Printing.sharePdf(
+                      bytes: pdf,
+                      filename: 'Rapport_ShopTrack_$finPeriode.pdf',
+                    );
+                  },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: reportAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -175,7 +203,6 @@ class _Body extends StatelessWidget {
             ),
           ),
         ),
-
       ],
     );
   }
@@ -261,10 +288,7 @@ class _GapLine extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 17,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
             ),
             Text(
               CurrencyFormatter.format(gap.abs()),
