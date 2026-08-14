@@ -25,12 +25,18 @@ final takingsProvider = FutureProvider<List<LocalShopTaking>>((ref) async {
 
 final takingActionsProvider = Provider((ref) => TakingActions(ref));
 
+class ResultatEnregistrementRecette {
+  const ResultatEnregistrementRecette({required this.avantPremierComptage});
+
+  final bool avantPremierComptage;
+}
+
 class TakingActions {
   TakingActions(this.ref);
 
   final Ref ref;
 
-  Future<void> saveTaking({
+  Future<ResultatEnregistrementRecette> saveTaking({
     required DateTime date,
     required double amount,
   }) async {
@@ -48,6 +54,19 @@ class TakingActions {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     final remoteDate = _dateForSupabase(normalizedDate);
     final now = DateTime.now();
+    final premierComptage =
+        await (db.select(db.localInventoryCounts)
+              ..where((count) => count.shopId.equals(shopId))
+              ..orderBy([(count) => drift.OrderingTerm.asc(count.countedAt)])
+              ..limit(1))
+            .getSingleOrNull();
+    final jourPremierComptage = premierComptage == null
+        ? null
+        : DateTime(
+            premierComptage.countedAt.year,
+            premierComptage.countedAt.month,
+            premierComptage.countedAt.day,
+          );
 
     // L'écriture locale et la mise en file forment une seule opération : un
     // arrêt de l'app entre les deux ne doit jamais laisser une recette non
@@ -78,7 +97,38 @@ class TakingActions {
 
     await ref.read(syncServiceProvider).processQueue();
     ref.invalidate(takingsProvider);
+
+    return ResultatEnregistrementRecette(
+      avantPremierComptage:
+          jourPremierComptage != null &&
+          normalizedDate.isBefore(jourPremierComptage),
+    );
   }
+}
+
+/// Le jour en cours reste saisissable jusqu'au soir ; le signaler avant sa
+/// fin créerait une fausse alerte pendant toute la journée.
+List<DateTime> calculerJoursSansRecette({
+  required Iterable<DateTime> datesNotees,
+  required DateTime debut,
+  required DateTime finExclue,
+}) {
+  final premierJour = DateTime(debut.year, debut.month, debut.day);
+  final dernierJour = DateTime(finExclue.year, finExclue.month, finExclue.day);
+  final joursNotes = datesNotees
+      .map((date) => DateTime(date.year, date.month, date.day))
+      .toSet();
+  final joursManquants = <DateTime>[];
+
+  for (
+    var jour = premierJour;
+    jour.isBefore(dernierJour);
+    jour = jour.add(const Duration(days: 1))
+  ) {
+    if (!joursNotes.contains(jour)) joursManquants.add(jour);
+  }
+
+  return joursManquants;
 }
 
 /// Identifiant **stable** d'une recette, dérivé de la boutique et de la date.

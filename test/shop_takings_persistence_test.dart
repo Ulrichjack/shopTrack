@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:uuid/uuid.dart';
 import 'package:shoptrack/core/database/app_database.dart';
+import 'package:shoptrack/features/inventory/presentation/providers/takings_provider.dart';
 
 void main() {
   late AppDatabase db;
@@ -46,10 +47,8 @@ void main() {
     // Une recette est identifiée par « cette boutique, ce jour-là ». Corriger
     // le montant ne doit pas changer la ligne côté serveur, sinon l'upsert
     // réécrit la clé primaire à chaque saisie.
-    String idPour(String shop, String date) => const Uuid().v5(
-      Namespace.url.value,
-      'shoptrack:takings:$shop:$date',
-    );
+    String idPour(String shop, String date) =>
+        const Uuid().v5(Namespace.url.value, 'shoptrack:takings:$shop:$date');
 
     expect(idPour('shop-1', '2026-08-13'), idPour('shop-1', '2026-08-13'));
     expect(
@@ -60,5 +59,15 @@ void main() {
       idPour('shop-1', '2026-08-13'),
       isNot(idPour('shop-2', '2026-08-13')),
     );
+  });
+
+  test('les jours manquants excluent les jours notés et le jour en cours', () {
+    final jours = calculerJoursSansRecette(
+      datesNotees: [DateTime(2026, 8, 1, 20), DateTime(2026, 8, 3, 8)],
+      debut: DateTime(2026, 8, 1, 12),
+      finExclue: DateTime(2026, 8, 5, 18),
+    );
+
+    expect(jours, [DateTime(2026, 8, 2), DateTime(2026, 8, 4)]);
   });
 }

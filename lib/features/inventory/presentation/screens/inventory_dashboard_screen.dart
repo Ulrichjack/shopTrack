@@ -39,12 +39,12 @@ class InventoryDashboardScreen extends ConsumerWidget {
     // On ne compte que depuis la première recette notée : avant elle, la
     // boutique n'existait pas ou n'avait rien à déclarer. Sinon une boutique
     // créée le 13 s'entend dire « 12 jours sans recette ».
-    final missingDays = takings.isEmpty
+    final joursManquants = takings.isEmpty
         ? const <DateTime>[]
-        : _missingDays(
-            takings,
-            _laterOf(_earliestDay(takings), monthStart),
-            today,
+        : calculerJoursSansRecette(
+            datesNotees: takings.map((taking) => taking.date),
+            debut: _laterOf(_earliestDay(takings), monthStart),
+            finExclue: today,
           );
 
     return Scaffold(
@@ -87,11 +87,13 @@ class InventoryDashboardScreen extends ConsumerWidget {
               onTap: () => context.push('/daily-takings'),
             ),
 
-            if (missingDays.isNotEmpty) ...[
+            if (joursManquants.isNotEmpty) ...[
               const SizedBox(height: 16),
-              _MissingDaysBanner(
-                days: missingDays,
-                onTap: () => context.push('/daily-takings'),
+              _BandeauJoursManquants(
+                jours: joursManquants,
+                onJourChoisi: (date) => context.push(
+                  '/daily-takings?date=${DateFormat('yyyy-MM-dd').format(date)}',
+                ),
               ),
             ],
 
@@ -147,30 +149,6 @@ class InventoryDashboardScreen extends ConsumerWidget {
     );
   }
 
-  /// Jours écoulés du mois sans recette notée. Un oubli ressemble à un
-  /// manquant au moment du bilan : mieux vaut le signaler tout de suite.
-  static List<DateTime> _missingDays(
-    List<LocalShopTaking> takings,
-    DateTime from,
-    DateTime today,
-  ) {
-    final noted = takings.map((t) => DateTime(
-      t.date.year,
-      t.date.month,
-      t.date.day,
-    )).toSet();
-
-    final missing = <DateTime>[];
-    for (var day = from; day.isBefore(today); day = day.add(
-      const Duration(days: 1),
-    )) {
-      if (!noted.contains(DateTime(day.year, day.month, day.day))) {
-        missing.add(day);
-      }
-    }
-    return missing;
-  }
-
   /// Premier jour où une recette a été notée.
   static DateTime _earliestDay(List<LocalShopTaking> takings) {
     var earliest = takings.first.date;
@@ -180,8 +158,7 @@ class InventoryDashboardScreen extends ConsumerWidget {
     return DateTime(earliest.year, earliest.month, earliest.day);
   }
 
-  static DateTime _laterOf(DateTime a, DateTime b) =>
-      a.isAfter(b) ? a : b;
+  static DateTime _laterOf(DateTime a, DateTime b) => a.isAfter(b) ? a : b;
 
   static bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
@@ -242,57 +219,82 @@ class _TakingsCard extends StatelessWidget {
   }
 }
 
-class _MissingDaysBanner extends StatelessWidget {
-  const _MissingDaysBanner({required this.days, required this.onTap});
+class _BandeauJoursManquants extends StatelessWidget {
+  const _BandeauJoursManquants({
+    required this.jours,
+    required this.onJourChoisi,
+  });
 
-  final List<DateTime> days;
-  final VoidCallback onTap;
+  final List<DateTime> jours;
+  final ValueChanged<DateTime> onJourChoisi;
 
   @override
   Widget build(BuildContext context) {
     final format = DateFormat('d MMMM', 'fr_FR');
-    final apercu = days.take(3).map(format.format).join(', ');
-    final reste = days.length > 3 ? ' et ${days.length - 3} autre(s)' : '';
+    final joursVisibles = jours.take(3).toList();
+    final joursRestants = jours.skip(3).toList();
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.error),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.error_outline, color: AppColors.error),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    days.length == 1
-                        ? '1 jour sans recette notée'
-                        : '${days.length} jours sans recette notée',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.error,
-                    ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.error),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Icon(Icons.error_outline, color: AppColors.error),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  jours.length == 1
+                      ? '1 jour sans recette notée'
+                      : '${jours.length} jours sans recette notée',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.error,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$apercu$reste — ces jours fausseront le calcul des ventes.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final jour in joursVisibles)
+                      ActionChip(
+                        visualDensity: VisualDensity.compact,
+                        label: Text(format.format(jour)),
+                        onPressed: () => onJourChoisi(jour),
+                      ),
+                    if (joursRestants.isNotEmpty)
+                      PopupMenuButton<DateTime>(
+                        tooltip: 'Voir les autres jours',
+                        onSelected: onJourChoisi,
+                        itemBuilder: (context) => [
+                          for (final jour in joursRestants)
+                            PopupMenuItem(
+                              value: jour,
+                              child: Text(format.format(jour)),
+                            ),
+                        ],
+                        child: Chip(
+                          visualDensity: VisualDensity.compact,
+                          label: Text('et ${joursRestants.length} autre(s)'),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -21,6 +22,7 @@ class _DailyTakingsScreenState extends ConsumerState<DailyTakingsScreen> {
   final _amountController = TextEditingController();
   bool _isSaving = false;
   bool _amountInitialized = false;
+  bool _dateDeRouteInitialisee = false;
 
   /// Jour saisi. Modifiable : oublier un soir arrive, et sans possibilité de
   /// rattraper, la journée manquante ressemble à un manquant d'argent dans le
@@ -30,6 +32,19 @@ class _DailyTakingsScreenState extends ConsumerState<DailyTakingsScreen> {
   DateTime get _today {
     final now = DateTime.now();
     return _selectedDate ?? DateTime(now.year, now.month, now.day);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_dateDeRouteInitialisee) return;
+    _dateDeRouteInitialisee = true;
+
+    final valeur = GoRouterState.of(context).uri.queryParameters['date'];
+    final date = valeur == null ? null : DateTime.tryParse(valeur);
+    if (date != null) {
+      _selectedDate = DateTime(date.year, date.month, date.day);
+    }
   }
 
   Future<void> _pickDate() async {
@@ -62,16 +77,22 @@ class _DailyTakingsScreenState extends ConsumerState<DailyTakingsScreen> {
     setState(() => _isSaving = true);
 
     try {
-      await ref
+      final resultat = await ref
           .read(takingActionsProvider)
           .saveTaking(date: _today, amount: amount);
       if (!mounted) return;
 
       FocusScope.of(context).unfocus();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Recette du jour enregistrée'),
-          backgroundColor: AppColors.primary,
+        SnackBar(
+          content: Text(
+            resultat.avantPremierComptage
+                ? 'Recette gardée, mais le rapport commence au premier comptage.'
+                : 'Recette du jour enregistrée',
+          ),
+          backgroundColor: resultat.avantPremierComptage
+              ? AppColors.warningDark
+              : AppColors.primary,
         ),
       );
     } catch (error) {
@@ -303,8 +324,7 @@ class _TakingFormCard extends StatelessWidget {
               if (isCorrection) ...[
                 const SizedBox(height: 10),
                 const Text(
-                  'Une recette existe déjà aujourd’hui. Enregistrer remplace '
-                  'son montant sans créer de doublon.',
+                  'Une recette existe déjà pour ce jour. Elle sera remplacée.',
                   style: TextStyle(color: AppColors.warningDark, fontSize: 13),
                 ),
               ],
