@@ -113,13 +113,32 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
     // Pertes déclarées sur la même fenêtre. Sans elles, la casse se retrouve
     // dans les ventes présumées : l'app réclame l'argent d'une bouteille
     // cassée et le manquant ressemble à un vol.
+    //
+    // Comparaison au JOUR, comme les recettes : le commerçant déclare « j'ai
+    // cassé 3 bouteilles le 14 », pas « à 12h07 ». À la seconde près, une
+    // perte notée après le comptage du matin tombait dans la période suivante
+    // et le rapport ne bougeait pas — et une date choisie au calendrier vaut
+    // minuit, donc avant le comptage, donc exclue elle aussi.
+    final debutJour = DateTime(
+      previousAt.year,
+      previousAt.month,
+      previousAt.day,
+    );
+    final finJour = DateTime(
+      last.countedAt.year,
+      last.countedAt.month,
+      last.countedAt.day,
+    );
     final declaredLosses = losses
-        .where(
-          (l) =>
-              l.productId == product.id &&
-              l.occurredAt.isAfter(previousAt) &&
-              !l.occurredAt.isAfter(last.countedAt),
-        )
+        .where((l) {
+          if (l.productId != product.id) return false;
+          final jour = DateTime(
+            l.occurredAt.year,
+            l.occurredAt.month,
+            l.occurredAt.day,
+          );
+          return !jour.isBefore(debutJour) && !jour.isAfter(finJour);
+        })
         .fold<int>(0, (sum, l) => sum + l.quantity);
 
     // Le prix payé, pas le prix affiché aujourd'hui : sinon revaloriser un
