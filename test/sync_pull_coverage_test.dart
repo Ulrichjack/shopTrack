@@ -20,11 +20,19 @@ void main() {
     final sync = File('lib/core/sync/sync_service.dart').readAsStringSync();
 
     // Le corps du pull uniquement : `.from('x')` ailleurs dans le fichier sert
-    // à pousser, pas à télécharger.
+    // à pousser, pas à télécharger. La borne est la méthode suivante, pas un
+    // `} catch` — il y en a désormais un à l'intérieur, dans le tirage table
+    // par table, et couper là masquait tous les selects.
     final pullStart = sync.indexOf('Future<void> pullDataFromSupabase()');
     expect(pullStart, isNot(-1), reason: 'pullDataFromSupabase() introuvable');
-    final pullBody = sync.substring(pullStart, sync.indexOf('} catch', pullStart));
+    final suivante = sync.indexOf('\n  Future<', pullStart + 1);
+    final pullBody = sync.substring(
+      pullStart,
+      suivante == -1 ? sync.length : suivante,
+    );
 
+    // Les selects sont enveloppés dans tirer('table', ...) depuis que le pull
+    // survit à une table absente : on lit les deux formes.
     final pulled = RegExp(r"\.from\('([a-z_]+)'\)")
         .allMatches(pullBody)
         .map((m) => m.group(1)!)

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -117,45 +118,107 @@ class SyncService {
           .single();
       final shopId = memberResponse['shop_id'] as String;
 
+      // Une table absente côté serveur ne doit pas emporter tout le
+      // téléchargement. Vu en vrai : la migration `product_prices` pas encore
+      // appliquée, et plus aucun produit ni comptage ne descendait. Le pull
+      // fusionne sans jamais vider, donc une table vide est sans danger — on
+      // note l'échec et on continue avec les autres.
+      final tablesEnEchec = <String>[];
+      Future<List<dynamic>> tirer(String nom, Future<dynamic> requete) async {
+        try {
+          return (await requete) as List<dynamic>;
+        } catch (erreur) {
+          // Bruyant dans les logs : depuis que le pull survit à une table
+          // absente, un échec ne casse plus rien de visible — l'app affiche
+          // juste des données manquantes sans dire pourquoi. Sans cette trace,
+          // le diagnostic redevient de la devinette.
+          debugPrint('[SYNC] échec du téléchargement de $nom : $erreur');
+          tablesEnEchec.add(nom);
+          return const [];
+        }
+      }
+
       final results = await Future.wait([
-        supabase.from('products').select().eq('shop_id', shopId),
-        supabase.from('cash_movements').select().eq('shop_id', shopId),
-        supabase.from('sales').select().eq('shop_id', shopId),
-        supabase
-            .from('sale_items')
-            .select('*, sales!inner(shop_id)')
-            .eq('sales.shop_id', shopId),
-        supabase.from('daily_closings').select().eq('shop_id', shopId),
+        tirer(
+          'products',
+          supabase.from('products').select().eq('shop_id', shopId),
+        ),
+        tirer(
+          'cash_movements',
+          supabase.from('cash_movements').select().eq('shop_id', shopId),
+        ),
+        tirer('sales', supabase.from('sales').select().eq('shop_id', shopId)),
+        tirer(
+          'sale_items',
+          supabase
+              .from('sale_items')
+              .select('*, sales!inner(shop_id)')
+              .eq('sales.shop_id', shopId),
+        ),
+        tirer(
+          'daily_closings',
+          supabase.from('daily_closings').select().eq('shop_id', shopId),
+        ),
         // Module A : sans ces trois-là, un 2e téléphone ne voit ni les
         // cycles ni les unités, donc ne peut pas vendre au plateau.
-        supabase.from('supply_cycles').select().eq('shop_id', shopId),
-        supabase
-            .from('product_units')
-            .select('*, products!inner(shop_id)')
-            .eq('products.shop_id', shopId),
-        supabase
-            .from('cycle_losses')
-            .select('*, supply_cycles!inner(shop_id)')
-            .eq('supply_cycles.shop_id', shopId),
+        tirer(
+          'supply_cycles',
+          supabase.from('supply_cycles').select().eq('shop_id', shopId),
+        ),
+        tirer(
+          'product_units',
+          supabase
+              .from('product_units')
+              .select('*, products!inner(shop_id)')
+              .eq('products.shop_id', shopId),
+        ),
+        tirer(
+          'cycle_losses',
+          supabase
+              .from('cycle_losses')
+              .select('*, supply_cycles!inner(shop_id)')
+              .eq('supply_cycles.shop_id', shopId),
+        ),
         // Module B : la recette locale doit revenir après connexion sur un
         // autre téléphone, au même titre que les autres données métier.
-        supabase.from('shop_takings').select().eq('shop_id', shopId),
+        tirer(
+          'shop_takings',
+          supabase.from('shop_takings').select().eq('shop_id', shopId),
+        ),
         // Module B : les comptages sont des repères historiques. Sans ce
         // pull, un second téléphone ne peut ni reprendre ni terminer le tour.
-        supabase.from('inventory_counts').select().eq('shop_id', shopId),
+        tirer(
+          'inventory_counts',
+          supabase.from('inventory_counts').select().eq('shop_id', shopId),
+        ),
         // Les recharges sont poussées par apply_stock_movement mais n'étaient
         // jamais retéléchargées. Le rapport de période en tire ses `purchases` :
         // sans elles, les sorties valent « stock de départ − stock compté », le
         // réapprovisionnement disparaît du calcul et l'app annonce un bénéfice
         // surévalué avec un faux « tu as encaissé plus ». Le stock, lui, restait
         // juste : le bug était invisible sur l'écran Stock.
-        supabase.from('stock_movements').select().eq('shop_id', shopId),
+        tirer(
+          'stock_movements',
+          supabase.from('stock_movements').select().eq('shop_id', shopId),
+        ),
         // Module B : sans les pertes déclarées, la casse d'un téléphone
         // redevient de l'inexpliqué sur l'autre — donc du vol présumé.
-        supabase.from('inventory_losses').select().eq('shop_id', shopId),
+        tirer(
+          'inventory_losses',
+          supabase.from('inventory_losses').select().eq('shop_id', shopId),
+        ),
         // Le prix payé voyage avec l'achat : sans ce pull, un second téléphone
         // revaloriserait tout au prix actuel du produit.
-        supabase.from('stock_purchases').select().eq('shop_id', shopId),
+        tirer(
+          'stock_purchases',
+          supabase.from('stock_purchases').select().eq('shop_id', shopId),
+        ),
+        // Le tarif pratiqué pendant la période : sans lui, un second
+        // téléphone revaloriserait tout au prix du jour.
+        tirer(
+          'product_prices',
+          supabase.from('product_prices').select().eq('shop_id', shopId),
+        ),
       ]);
 
       final productsData = results[0];
@@ -171,6 +234,7 @@ class SyncService {
       final stockMovementsData = results[10];
       final inventoryLossesData = results[11];
       final stockPurchasesData = results[12];
+      final productPricesData = results[13];
 
       // Fusionner au lieu de vider les tables protège les écritures hors ligne.
       await db.transaction(() async {
@@ -370,6 +434,22 @@ class SyncService {
             mode: InsertMode.insertOrReplace,
           );
           batch.insertAll(
+            db.localProductPrices,
+            productPricesData
+                .map(
+                  (p) => LocalProductPrice(
+                    id: p['id'],
+                    shopId: p['shop_id'],
+                    productId: p['product_id'],
+                    buyPrice: (p['buy_price'] as num).toDouble(),
+                    sellPrice: (p['sell_price'] as num).toDouble(),
+                    effectiveAt: DateTime.parse(p['effective_at']).toLocal(),
+                  ),
+                )
+                .toList(),
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
             db.localStockPurchases,
             stockPurchasesData
                 .map(
@@ -422,10 +502,20 @@ class SyncService {
         });
       });
 
+      debugPrint(
+        '[SYNC] téléchargement terminé — '
+        '${productsData.length} produits, ${inventoryCountsData.length} '
+        'comptages, ${takingsData.length} recettes'
+        '${tablesEnEchec.isEmpty ? '' : ' — ÉCHECS : ${tablesEnEchec.join(', ')}'}',
+      );
       _emit(
-        phase: SyncPhase.success,
+        phase: tablesEnEchec.isEmpty ? SyncPhase.success : SyncPhase.error,
         pendingCount: await db.getPendingCount(),
-        lastSyncAt: DateTime.now(),
+        lastSyncAt: tablesEnEchec.isEmpty ? DateTime.now() : null,
+        lastError: tablesEnEchec.isEmpty
+            ? null
+            : 'Tables non téléchargées : ${tablesEnEchec.join(', ')}. '
+                  'Une migration Supabase n\'a probablement pas été appliquée.',
       );
     } catch (error) {
       _emit(
@@ -510,6 +600,8 @@ class SyncService {
         await supabase.from('inventory_losses').upsert(payload);
       case 'ADD_STOCK_PURCHASE':
         await supabase.from('stock_purchases').upsert(payload);
+      case 'ADD_PRODUCT_PRICE':
+        await supabase.from('product_prices').upsert(payload);
       case 'ADD_SUPPLY_CYCLE':
         await supabase.from('supply_cycles').upsert(payload);
       case 'CLOSE_SUPPLY_CYCLE':
