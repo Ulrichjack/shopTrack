@@ -144,9 +144,11 @@ Ordre d'implémentation, du plus indépendant au plus risqué :
   amount, une seule par jour et par boutique), écran de saisie minimal,
   synchro. Aucune dépendance : c'est la seule saisie quotidienne demandée au
   commerçant, et rien ne se croise sans elle.
-- [ ] **B2 — Calculateur pur** `inventory_reconciliation_calculator.dart` +
+- [x] **B2 — Calculateur pur** `inventory_reconciliation_calculator.dart` +
   tests, sur le modèle de `cycle_result_calculator.dart` : sorties totales →
   pertes déclarées → ventes présumées → écart avec l'argent encaissé.
+  Fait, avec le garde-fou des ventes négatives (un produit mal compté ne peut
+  plus empoisonner le total de la boutique) et la marge par produit.
 - [x] **B3 — Comptage d'inventaire.** Table `inventory_counts` (repères par
   produit), écran de saisie **à l'aveugle** (ne jamais afficher la quantité
   théorique), sauvegarde progressive, indicateur « 22 produits sur 30 ».
@@ -155,10 +157,11 @@ Ordre d'implémentation, du plus indépendant au plus risqué :
   revenir sur une période passée sans que les chiffres bougent.
 - [ ] **B5 — Pertes du module B.** Déclaration propre (casse, pain invendu),
   indépendante de `cycle_losses` qui appartient au module A.
-- [ ] **B6 — Rapport par boutique.** Réutilise la mise en page et le PDF du
-  bilan existant, alimenté par d'autres chiffres. Bilan **stocké** une fois
-  clôturé, pas recalculé (sinon il change sous les yeux du patron quand une
-  donnée arrive en retard).
+- [~] **B6 — Rapport par boutique.** Écran fait et vérifié sur 15 produits :
+  sorties, valeur, gain par produit, écart nommé, bénéfice parti des recettes
+  réelles. **Restent** le PDF (réutiliser celui du bilan existant) et le
+  stockage du bilan une fois clôturé, pas recalculé — sinon il change sous les
+  yeux du patron quand une donnée arrive en retard.
 - [ ] **B7 — Multi-boutique.** Sélecteur de boutique + relâchement de
   l'hypothèse un-seul-shop-par-membre dans `sync_service.dart`
   (`shop_members...single()`). **La partie la plus risquée** : elle touche le
