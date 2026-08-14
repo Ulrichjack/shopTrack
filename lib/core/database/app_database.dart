@@ -189,6 +189,25 @@ class LocalInventoryCounts extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// Module B — Historique des prix d'un produit, une ligne par changement.
+//
+// Le prix d'achat est figé sur la ligne d'achat, mais le prix de VENTE
+// restait celui d'aujourd'hui : une période close se revalorisait toute seule
+// dès que le commerçant changeait son tarif, et l'écart avec sa caisse
+// devenait faux sans que rien ne le signale.
+@DataClassName('LocalProductPrice')
+class LocalProductPrices extends Table {
+  TextColumn get id => text()();
+  TextColumn get shopId => text()();
+  TextColumn get productId => text()();
+  RealColumn get buyPrice => real()();
+  RealColumn get sellPrice => real()();
+  DateTimeColumn get effectiveAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // Module B — Ce qui a été acheté, avec le prix payé ce jour-là.
 //
 // Le prix vit sur la ligne d'achat et pas seulement sur le produit : sinon
@@ -260,6 +279,7 @@ class SyncQueueItems extends Table {
     LocalInventoryCounts,
     LocalInventoryLosses,
     LocalStockPurchases,
+    LocalProductPrices,
     SyncQueueItems,
   ],
 )
@@ -270,7 +290,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -302,6 +322,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 8) {
         await m.createTable(localStockPurchases);
+      }
+      if (from < 9) {
+        await m.createTable(localProductPrices);
       }
     },
   );

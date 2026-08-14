@@ -77,6 +77,10 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
     db.localStockPurchases,
   )..where((row) => row.shopId.equals(shopId))).get();
 
+  final priceLines = await (db.select(
+    db.localProductPrices,
+  )..where((row) => row.shopId.equals(shopId))).get();
+
   final inputs = <InventoryProductInput>[];
   var awaitingSecond = 0;
   var neverCounted = 0;
@@ -146,6 +150,16 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
     final productPurchases = purchaseLines.where(
       (p) => p.productId == product.id,
     );
+    final historique = priceLines
+        .where((p) => p.productId == product.id)
+        .map(
+          (p) => PricePoint(
+            effectiveAt: p.effectiveAt,
+            sellPrice: p.sellPrice,
+            buyPrice: p.buyPrice,
+          ),
+        )
+        .toList();
     final unitCost = weightedUnitCost(
       openingStock: last.previousQuantity!,
       purchasesInPeriod: productPurchases
@@ -160,7 +174,20 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
           .where((p) => !p.purchasedAt.isAfter(previousAt))
           .map((p) => PurchaseLine(quantity: p.quantity, unitCost: p.unitCost))
           .toList(),
-      productBuyPrice: product.buyPrice,
+      // Le stock déjà en rayon garde le prix auquel il a été acheté, pas
+      // celui du dernier arrivage : c'est le gros du volume, et le laisser
+      // suivre le prix du jour faisait bouger toute la période close.
+      openingCost: buyPriceAt(previousAt, historique, product.buyPrice),
+    );
+
+    // Le tarif pratiqué pendant la période, pas celui d'aujourd'hui : sinon
+    // remonter un prix réévalue tout seul les périodes déjà closes et l'écart
+    // avec la caisse devient faux sans que rien ne le signale.
+    final unitSellPrice = weightedSellPrice(
+      periodStart: previousAt,
+      periodEnd: last.countedAt,
+      priceHistory: historique,
+      productSellPrice: product.sellPrice,
     );
 
     inputs.add(
@@ -178,7 +205,7 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
         transfersOut: 0,
         declaredLosses: declaredLosses,
         unitCost: unitCost,
-        unitSellPrice: product.sellPrice,
+        unitSellPrice: unitSellPrice,
       ),
     );
 

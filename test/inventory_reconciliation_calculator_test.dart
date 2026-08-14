@@ -248,7 +248,7 @@ void main() {
           openingStock: 10,
           purchasesInPeriod: const [],
           purchasesBefore: const [],
-          productBuyPrice: 22000,
+          openingCost: 22000,
         ),
         22000,
       );
@@ -260,7 +260,7 @@ void main() {
         openingStock: 10,
         purchasesInPeriod: const [PurchaseLine(quantity: 5, unitCost: 24000)],
         purchasesBefore: const [],
-        productBuyPrice: 22000,
+        openingCost: 22000,
       );
       expect(cost, closeTo(22666.67, 0.01));
     });
@@ -273,7 +273,7 @@ void main() {
         openingStock: 10,
         purchasesInPeriod: const [PurchaseLine(quantity: 5, unitCost: 24000)],
         purchasesBefore: const [PurchaseLine(quantity: 10, unitCost: 22000)],
-        productBuyPrice: 30000,
+        openingCost: 30000,
       );
       expect(cost, closeTo(22666.67, 0.01));
     });
@@ -284,9 +284,134 @@ void main() {
           openingStock: 4,
           purchasesInPeriod: const [],
           purchasesBefore: const [PurchaseLine(quantity: 10, unitCost: 21000)],
-          productBuyPrice: 30000,
+          openingCost: 30000,
         ),
         21000,
+      );
+    });
+  });
+
+  group('prix de vente figé sur la période', () {
+    test('sans historique, on garde le prix du produit', () {
+      expect(
+        weightedSellPrice(
+          periodStart: DateTime(2026, 8, 1),
+          periodEnd: DateTime(2026, 8, 31),
+          priceHistory: const [],
+          productSellPrice: 350,
+        ),
+        350,
+      );
+    });
+
+    test('un tarif changé en cours de période est pondéré par les jours', () {
+      // 350 F du 1er au 10 (10 jours), 400 F du 11 au 20 (10 jours) → 375.
+      final prix = weightedSellPrice(
+        periodStart: DateTime(2026, 8, 1),
+        periodEnd: DateTime(2026, 8, 20),
+        priceHistory: [
+          PricePoint(effectiveAt: DateTime(2026, 8, 1), sellPrice: 350),
+          PricePoint(effectiveAt: DateTime(2026, 8, 11), sellPrice: 400),
+        ],
+        productSellPrice: 999,
+      );
+      expect(prix, closeTo(375, 0.01));
+    });
+
+    test('deux tarifs le même jour : le plus récent gagne', () {
+      // Le prix de départ et celui saisi à l'arrivage tombent le même jour.
+      // Sans l'heure pour départager, le tarif retenu dépendait de l'ordre
+      // des lignes en base — donc du hasard.
+      final prix = weightedSellPrice(
+        periodStart: DateTime(2026, 8, 14),
+        periodEnd: DateTime(2026, 8, 14),
+        priceHistory: [
+          PricePoint(
+            effectiveAt: DateTime(2026, 8, 14, 16, 30),
+            sellPrice: 27000,
+          ),
+          PricePoint(
+            effectiveAt: DateTime(2026, 8, 14, 9, 0),
+            sellPrice: 25000,
+          ),
+        ],
+        productSellPrice: 999,
+      );
+      expect(prix, 27000);
+    });
+
+    test('une hausse postérieure ne réévalue pas la période close', () {
+      // Le savon passe à 400 F le 5 septembre : août reste valorisé à 350.
+      final prix = weightedSellPrice(
+        periodStart: DateTime(2026, 8, 1),
+        periodEnd: DateTime(2026, 8, 31),
+        priceHistory: [
+          PricePoint(effectiveAt: DateTime(2026, 8, 1), sellPrice: 350),
+          PricePoint(effectiveAt: DateTime(2026, 9, 5), sellPrice: 400),
+        ],
+        productSellPrice: 400,
+      );
+      expect(prix, 350);
+    });
+  });
+
+  group('coût du stock d\'ouverture', () {
+    test('le stock en rayon garde le prix auquel il a été acheté', () {
+      // 12 sacs achetés 22 000, 8 rachetés 24 000 pendant la période.
+      // Sans historique des tarifs, les 12 se réévaluaient à 24 000 et toute
+      // la période close bougeait avec le dernier arrivage.
+      final ouverture = buyPriceAt(
+        DateTime(2026, 8, 1),
+        [
+          PricePoint(
+            effectiveAt: DateTime(2026, 7, 1),
+            buyPrice: 22000,
+            sellPrice: 25000,
+          ),
+          PricePoint(
+            effectiveAt: DateTime(2026, 8, 15),
+            buyPrice: 24000,
+            sellPrice: 27000,
+          ),
+        ],
+        99999,
+      );
+      expect(ouverture, 22000);
+
+      final cout = weightedUnitCost(
+        openingStock: 12,
+        purchasesInPeriod: const [PurchaseLine(quantity: 8, unitCost: 24000)],
+        purchasesBefore: const [],
+        openingCost: ouverture,
+      );
+      expect(cout, closeTo(22800, 0.01));
+    });
+
+    test('sans historique, on retombe sur le prix du produit', () {
+      expect(buyPriceAt(DateTime(2026, 8, 1), const [], 22000), 22000);
+    });
+
+    test('une hausse du même jour ne revalorise pas le stock d\'ouverture', () {
+      // Période ouverte à 15h35, hausse enregistrée à 15h41 avec l'arrivage.
+      // Au jour près, les 12 sacs déjà en rayon passaient à 24 000.
+      expect(
+        buyPriceAt(
+          DateTime(2026, 8, 14, 15, 35),
+          [
+            PricePoint(
+              effectiveAt: DateTime(2026, 8, 14, 15, 35),
+              buyPrice: 22000,
+              sellPrice: 25000,
+            ),
+            PricePoint(
+              effectiveAt: DateTime(2026, 8, 14, 15, 41),
+              buyPrice: 24000,
+              sellPrice: 27000,
+            ),
+          ],
+          99999,
+        ),
+        22000,
       );
     });
   });

@@ -69,6 +69,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final costController = TextEditingController(
       text: currentProduct.buyPrice.toInt().toString(),
     );
+    final sellController = TextEditingController(
+      text: currentProduct.sellPrice.toInt().toString(),
+    );
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -92,7 +95,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Ajouter du stock',
+                    'Nouvel arrivage',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -115,23 +118,45 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Le prix payé pour CET arrivage. En inventaire périodique
-                  // c'est lui qui valorise la marchandise sortie : sans lui,
-                  // changer le prix du produit réécrirait les bilans passés.
-                  if (isPeriodic)
-                    TextField(
-                      controller: costController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Prix d\'achat unitaire (F)',
-                        helperText: 'Ce que tu as payé cette fois-ci',
-                        prefixIcon: const Icon(Icons.payments_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
+                  // Les deux prix au même endroit : celui qui paie plus cher
+                  // remonte son prix de vente dans la foulée. C'est un seul
+                  // geste, et c'est le moment où il connaît les deux chiffres.
+                  // Chacun est figé sur l'arrivage, donc les périodes déjà
+                  // closes ne bougent plus quand un tarif change ensuite.
+                  if (isPeriodic) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: costController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Prix d\'achat (F)',
+                              helperText: 'Ce que tu as payé',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: sellController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Prix de vente (F)',
+                              helperText: 'Ce que tu demandes',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  if (isPeriodic) const SizedBox(height: 20) else
+                    const SizedBox(height: 20),
+                  ] else
                     const SizedBox(height: 4),
 
                   ElevatedButton(
@@ -152,6 +177,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                     unitCost: isPeriodic
                                         ? double.tryParse(
                                             costController.text.trim(),
+                                          )
+                                        : null,
+                                    sellPrice: isPeriodic
+                                        ? double.tryParse(
+                                            sellController.text.trim(),
                                           )
                                         : null,
                                   );

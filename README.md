@@ -25,6 +25,7 @@ supabase/migrations/202608090002_module_a_cycles.sql
 supabase/migrations/202608130001_shop_takings.sql
 supabase/migrations/202608130002_module_b_inventory.sql
 supabase/migrations/202608130003_product_unit.sql
+supabase/migrations/202608140001_product_prices.sql
 ```
 
 Avec Supabase CLI sur un projet déjà lié :

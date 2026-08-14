@@ -312,6 +312,23 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
       );
 
       await db.addToQueue('UPDATE_PRODUCT', jsonEncode(productData));
+
+      // Modifier les prix depuis la fiche trace aussi le tarif : sinon un
+      // changement fait ici échapperait à l'historique et réévaluerait les
+      // périodes closes, exactement ce que cet historique évite.
+      final ancien = previousProducts.where((p) => p.id == id).firstOrNull;
+      if (ancien != null) {
+        await _recordPriceChange(
+          db,
+          productId: id,
+          shopId: ancien.shopId,
+          buyPrice: buyPrice,
+          sellPrice: sellPrice,
+          previousBuyPrice: ancien.buyPrice,
+          previousSellPrice: ancien.sellPrice,
+        );
+      }
+
       await ref.read(syncServiceProvider).processQueue();
 
       state = AsyncValue.data(await _fetchProducts());
@@ -319,6 +336,49 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
       state = AsyncValue.data(await _fetchProducts());
       rethrow;
     }
+  }
+
+  /// Enregistre le tarif du jour si l'un des deux prix a changé.
+  ///
+  /// Une ligne par changement, avec sa date : le rapport de période valorise
+  /// ensuite au prix réellement pratiqué. Sans cet historique, remonter un
+  /// prix réévalue tout seul les périodes déjà closes.
+  Future<void> _recordPriceChange(
+    AppDatabase db, {
+    required String productId,
+    required String shopId,
+    required double buyPrice,
+    required double sellPrice,
+    required double previousBuyPrice,
+    required double previousSellPrice,
+  }) async {
+    if (buyPrice == previousBuyPrice && sellPrice == previousSellPrice) return;
+
+    final id = const Uuid().v4();
+    final effectiveAt = DateTime.now();
+    await db
+        .into(db.localProductPrices)
+        .insert(
+          LocalProductPrice(
+            id: id,
+            shopId: shopId,
+            productId: productId,
+            buyPrice: buyPrice,
+            sellPrice: sellPrice,
+            effectiveAt: effectiveAt,
+          ),
+        );
+    await db.addToQueue(
+      'ADD_PRODUCT_PRICE',
+      jsonEncode({
+        'id': id,
+        'shop_id': shopId,
+        'product_id': productId,
+        'buy_price': buyPrice,
+        'sell_price': sellPrice,
+        'effective_at': effectiveAt.toUtc().toIso8601String(),
+      }),
+    );
   }
 
   // 👇 NOUVEAU : Fonction pour ajouter du stock (100% Local + File d'attente)
@@ -330,6 +390,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     ProductEntity product,
     int addedQuantity, {
     double? unitCost,
+    double? sellPrice,
   }) async {
     try {
       final db = ref.read(localDbProvider);
@@ -365,6 +426,40 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
       await db.addToQueue('ADD_STOCK', jsonEncode(payload));
 
       if (unitCost != null) {
+        // Le prix affiché sur la fiche suit le dernier prix payé : sinon le
+        // commerçant lit 22 000 alors qu'il vient d'en payer 24 000, et il
+        // fixe son prix de vente sur un coût périmé. L'historique, lui, est
+        // protégé par les lignes d'achat qui gardent chacune leur prix.
+        final nouveauPrixVente = sellPrice ?? product.sellPrice;
+        if (unitCost != product.buyPrice ||
+            nouveauPrixVente != product.sellPrice) {
+          await (db.update(
+            db.localProducts,
+          )..where((t) => t.id.equals(product.id))).write(
+            LocalProductsCompanion(
+              buyPrice: drift.Value(unitCost),
+              sellPrice: drift.Value(nouveauPrixVente),
+            ),
+          );
+          await db.addToQueue(
+            'UPDATE_PRODUCT',
+            jsonEncode({
+              'id': product.id,
+              'buy_price': unitCost,
+              'sell_price': nouveauPrixVente,
+            }),
+          );
+          await _recordPriceChange(
+            db,
+            productId: product.id,
+            shopId: product.shopId,
+            buyPrice: unitCost,
+            sellPrice: nouveauPrixVente,
+            previousBuyPrice: product.buyPrice,
+            previousSellPrice: product.sellPrice,
+          );
+        }
+
         final purchaseId = const Uuid().v4();
         final purchasedAt = DateTime.now();
         await db

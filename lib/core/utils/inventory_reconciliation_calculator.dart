@@ -24,13 +24,14 @@ class PurchaseLine {
 /// FIFO — on ne sait pas quel exemplaire est parti — mais c'est stable : une
 /// fois la période close, aucun changement de prix ne peut la réécrire.
 ///
-/// Sans ligne d'achat, on retombe exactement sur le prix du produit, donc
-/// l'historique déjà saisi garde le comportement d'avant.
+/// `openingCost` est le prix d'achat en vigueur au début de la période — voir
+/// `buyPriceAt`. Sans ligne d'achat ni historique, c'est le prix du produit,
+/// donc les données déjà saisies gardent le comportement d'avant.
 double weightedUnitCost({
   required int openingStock,
   required List<PurchaseLine> purchasesInPeriod,
   required List<PurchaseLine> purchasesBefore,
-  required double productBuyPrice,
+  required double openingCost,
 }) {
   double averageOf(List<PurchaseLine> lines, double fallback) {
     var quantity = 0;
@@ -42,16 +43,108 @@ double weightedUnitCost({
     return quantity > 0 ? total / quantity : fallback;
   }
 
-  final openingCost = averageOf(purchasesBefore, productBuyPrice);
-  if (purchasesInPeriod.isEmpty) return openingCost;
+  // Les achats antérieurs affinent le coût d'ouverture quand ils existent ;
+  // sinon on garde le tarif en vigueur au début de la période.
+  final coutOuverture = averageOf(purchasesBefore, openingCost);
+  if (purchasesInPeriod.isEmpty) return coutOuverture;
 
   var quantity = openingStock < 0 ? 0 : openingStock;
-  var total = quantity * openingCost;
+  var total = quantity * coutOuverture;
   for (final line in purchasesInPeriod) {
     quantity += line.quantity;
     total += line.quantity * line.unitCost;
   }
-  return quantity > 0 ? total / quantity : openingCost;
+  return quantity > 0 ? total / quantity : coutOuverture;
+}
+
+/// Un tarif et sa date d'entrée en vigueur.
+class PricePoint {
+  const PricePoint({
+    required this.effectiveAt,
+    required this.sellPrice,
+    this.buyPrice = 0,
+  });
+
+  final DateTime effectiveAt;
+  final double sellPrice;
+  final double buyPrice;
+}
+
+/// Prix d'achat en vigueur à un instant donné.
+///
+/// Sert à valoriser le stock d'ouverture : sans lui, on retombait sur le prix
+/// actuel du produit, et le stock déjà en rayon se réévaluait au prix du
+/// dernier arrivage. Or c'est le gros du volume — la période close bougeait
+/// donc pour l'essentiel de sa valeur.
+double buyPriceAt(
+  DateTime moment,
+  List<PricePoint> priceHistory,
+  double fallback,
+) {
+  if (priceHistory.isEmpty) return fallback;
+
+  // Comparaison à l'instant, pas au jour : le coût d'ouverture est celui qui
+  // valait quand la période a commencé. Au jour près, une hausse saisie plus
+  // tard dans la même journée revalorisait rétroactivement le stock déjà en
+  // rayon — exactement ce que cet historique existe pour empêcher.
+  final anterieurs =
+      priceHistory.where((p) => !p.effectiveAt.isAfter(moment)).toList()
+        ..sort((a, b) => a.effectiveAt.compareTo(b.effectiveAt));
+
+  if (anterieurs.isEmpty) {
+    // Période antérieure à tout tarif connu : le plus ancien fait référence.
+    final plusAncien = [...priceHistory]
+      ..sort((a, b) => a.effectiveAt.compareTo(b.effectiveAt));
+    return plusAncien.first.buyPrice;
+  }
+  return anterieurs.last.buyPrice;
+}
+
+/// Prix de vente à retenir pour valoriser ce qui est sorti sur une période.
+///
+/// Pondéré par le nombre de jours pendant lesquels chaque tarif s'appliquait.
+/// On ne sait pas quel jour chaque unité est partie — c'est la limite du mode
+/// — donc on répartit uniformément plutôt que d'affirmer un prix unique.
+///
+/// Sans historique, on retombe sur le prix actuel du produit : les données
+/// déjà saisies gardent leur valorisation d'avant.
+double weightedSellPrice({
+  required DateTime periodStart,
+  required DateTime periodEnd,
+  required List<PricePoint> priceHistory,
+  required double productSellPrice,
+}) {
+  if (priceHistory.isEmpty) return productSellPrice;
+
+  // Tri à l'heure près, comparaison au jour. L'heure départage deux
+  // changements du même jour — sinon le tarif retenu dépendait de l'ordre des
+  // lignes en base. Le jour, lui, décide de l'application : un tarif saisi le
+  // 11 à 15h vaut pour le 11 entier, pas à partir du 10.
+  final points = [...priceHistory]
+    ..sort((a, b) => a.effectiveAt.compareTo(b.effectiveAt));
+
+  var jours = 0;
+  var total = 0.0;
+  for (
+    var jour = DateTime(periodStart.year, periodStart.month, periodStart.day);
+    !jour.isAfter(DateTime(periodEnd.year, periodEnd.month, periodEnd.day));
+    jour = jour.add(const Duration(days: 1))
+  ) {
+    // Le dernier tarif entré en vigueur ce jour-là ou avant. Si la période
+    // commence avant tout historique, le premier tarif connu fait référence.
+    final applicable = points.lastWhere(
+      (p) => !DateTime(
+        p.effectiveAt.year,
+        p.effectiveAt.month,
+        p.effectiveAt.day,
+      ).isAfter(jour),
+      orElse: () => points.first,
+    );
+    jours++;
+    total += applicable.sellPrice;
+  }
+
+  return jours > 0 ? total / jours : productSellPrice;
 }
 
 /// Ce qu'on sait d'un produit sur une période, entre deux comptages.
