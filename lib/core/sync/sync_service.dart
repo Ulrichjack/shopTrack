@@ -150,6 +150,9 @@ class SyncService {
         // surévalué avec un faux « tu as encaissé plus ». Le stock, lui, restait
         // juste : le bug était invisible sur l'écran Stock.
         supabase.from('stock_movements').select().eq('shop_id', shopId),
+        // Module B : sans les pertes déclarées, la casse d'un téléphone
+        // redevient de l'inexpliqué sur l'autre — donc du vol présumé.
+        supabase.from('inventory_losses').select().eq('shop_id', shopId),
       ]);
 
       final productsData = results[0];
@@ -163,6 +166,7 @@ class SyncService {
       final takingsData = results[8];
       final inventoryCountsData = results[9];
       final stockMovementsData = results[10];
+      final inventoryLossesData = results[11];
 
       // Fusionner au lieu de vider les tables protège les écritures hors ligne.
       await db.transaction(() async {
@@ -362,6 +366,23 @@ class SyncService {
             mode: InsertMode.insertOrReplace,
           );
           batch.insertAll(
+            db.localInventoryLosses,
+            inventoryLossesData
+                .map(
+                  (l) => LocalInventoryLoss(
+                    id: l['id'],
+                    shopId: l['shop_id'],
+                    productId: l['product_id'],
+                    quantity: l['quantity'],
+                    reason: l['reason'],
+                    note: l['note'] as String?,
+                    occurredAt: DateTime.parse(l['occurred_at']).toLocal(),
+                  ),
+                )
+                .toList(),
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
             db.localStockMovements,
             stockMovementsData
                 .map(
@@ -464,6 +485,8 @@ class SyncService {
             .upsert(payload, onConflict: 'shop_id,date');
       case 'ADD_INVENTORY_COUNT':
         await supabase.from('inventory_counts').upsert(payload);
+      case 'ADD_INVENTORY_LOSS':
+        await supabase.from('inventory_losses').upsert(payload);
       case 'ADD_SUPPLY_CYCLE':
         await supabase.from('supply_cycles').upsert(payload);
       case 'CLOSE_SUPPLY_CYCLE':

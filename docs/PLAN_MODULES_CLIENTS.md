@@ -155,8 +155,12 @@ Ordre d'implémentation, du plus indépendant au plus risqué :
 - [ ] **B4 — Approvisionnement avec prix.** Le prix payé est enregistré **sur
   la ligne d'achat**, pas seulement sur le produit — sinon impossible de
   revenir sur une période passée sans que les chiffres bougent.
-- [ ] **B5 — Pertes du module B.** Déclaration propre (casse, pain invendu),
-  indépendante de `cycle_losses` qui appartient au module A.
+- [x] **B5 — Pertes du module B.** Table `inventory_losses` (déjà en base),
+  écran « Déclarer une perte » (produit, quantité, raison parmi casse ·
+  périmé · invendu · vol · autre, date, note), synchro dans les deux sens,
+  branchée dans le rapport sur la fenêtre de la période. **Ne touche pas au
+  stock** : en périodique le stock ne bouge qu'au comptage, la marchandise
+  cassée a déjà quitté l'étagère.
 - [~] **B6 — Rapport par boutique.** Écran fait et vérifié sur 15 produits :
   sorties, valeur, gain par produit, écart nommé, bénéfice parti des recettes
   réelles. **Restent** le PDF (réutiliser celui du bilan existant) et le

@@ -60,6 +60,13 @@ class InventoryHubScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           _ActionTile(
+            icon: Icons.report_gmailerrorred_outlined,
+            title: 'Déclarer une perte',
+            subtitle: 'Casse, périmé, invendu — sinon compté comme vendu',
+            onTap: () => context.push('/declare-loss'),
+          ),
+          const SizedBox(height: 12),
+          _ActionTile(
             icon: Icons.summarize_outlined,
             title: 'Rapport de période',
             subtitle: 'Ce qui est sorti, et si l\'argent correspond',

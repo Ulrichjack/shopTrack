@@ -5965,7 +5965,7 @@ class LocalInventoryCountsCompanion
 }
 
 class $LocalInventoryLossesTable extends LocalInventoryLosses
-    with TableInfo<$LocalInventoryLossesTable, LocalInventoryLossesData> {
+    with TableInfo<$LocalInventoryLossesTable, LocalInventoryLoss> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -6015,6 +6015,15 @@ class $LocalInventoryLossesTable extends LocalInventoryLosses
   late final GeneratedColumn<String> reason = GeneratedColumn<String>(
     'reason',
     aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
@@ -6037,6 +6046,7 @@ class $LocalInventoryLossesTable extends LocalInventoryLosses
     productId,
     quantity,
     reason,
+    note,
     occurredAt,
   ];
   @override
@@ -6046,7 +6056,7 @@ class $LocalInventoryLossesTable extends LocalInventoryLosses
   static const String $name = 'local_inventory_losses';
   @override
   VerificationContext validateIntegrity(
-    Insertable<LocalInventoryLossesData> instance, {
+    Insertable<LocalInventoryLoss> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -6085,6 +6095,14 @@ class $LocalInventoryLossesTable extends LocalInventoryLosses
         _reasonMeta,
         reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
       );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
     }
     if (data.containsKey('occurred_at')) {
       context.handle(
@@ -6100,12 +6118,9 @@ class $LocalInventoryLossesTable extends LocalInventoryLosses
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  LocalInventoryLossesData map(
-    Map<String, dynamic> data, {
-    String? tablePrefix,
-  }) {
+  LocalInventoryLoss map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return LocalInventoryLossesData(
+    return LocalInventoryLoss(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -6125,6 +6140,10 @@ class $LocalInventoryLossesTable extends LocalInventoryLosses
       reason: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reason'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
       ),
       occurredAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -6139,20 +6158,25 @@ class $LocalInventoryLossesTable extends LocalInventoryLosses
   }
 }
 
-class LocalInventoryLossesData extends DataClass
-    implements Insertable<LocalInventoryLossesData> {
+class LocalInventoryLoss extends DataClass
+    implements Insertable<LocalInventoryLoss> {
   final String id;
   final String shopId;
   final String productId;
   final int quantity;
-  final String? reason;
+
+  /// casse · peremption · invendu · vol · autre — mêmes valeurs que la
+  /// contrainte SQL de `inventory_losses`, sinon le push est rejeté.
+  final String reason;
+  final String? note;
   final DateTime occurredAt;
-  const LocalInventoryLossesData({
+  const LocalInventoryLoss({
     required this.id,
     required this.shopId,
     required this.productId,
     required this.quantity,
-    this.reason,
+    required this.reason,
+    this.note,
     required this.occurredAt,
   });
   @override
@@ -6162,8 +6186,9 @@ class LocalInventoryLossesData extends DataClass
     map['shop_id'] = Variable<String>(shopId);
     map['product_id'] = Variable<String>(productId);
     map['quantity'] = Variable<int>(quantity);
-    if (!nullToAbsent || reason != null) {
-      map['reason'] = Variable<String>(reason);
+    map['reason'] = Variable<String>(reason);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
     }
     map['occurred_at'] = Variable<DateTime>(occurredAt);
     return map;
@@ -6175,24 +6200,24 @@ class LocalInventoryLossesData extends DataClass
       shopId: Value(shopId),
       productId: Value(productId),
       quantity: Value(quantity),
-      reason: reason == null && nullToAbsent
-          ? const Value.absent()
-          : Value(reason),
+      reason: Value(reason),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       occurredAt: Value(occurredAt),
     );
   }
 
-  factory LocalInventoryLossesData.fromJson(
+  factory LocalInventoryLoss.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return LocalInventoryLossesData(
+    return LocalInventoryLoss(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
       productId: serializer.fromJson<String>(json['productId']),
       quantity: serializer.fromJson<int>(json['quantity']),
-      reason: serializer.fromJson<String?>(json['reason']),
+      reason: serializer.fromJson<String>(json['reason']),
+      note: serializer.fromJson<String?>(json['note']),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
     );
   }
@@ -6204,35 +6229,37 @@ class LocalInventoryLossesData extends DataClass
       'shopId': serializer.toJson<String>(shopId),
       'productId': serializer.toJson<String>(productId),
       'quantity': serializer.toJson<int>(quantity),
-      'reason': serializer.toJson<String?>(reason),
+      'reason': serializer.toJson<String>(reason),
+      'note': serializer.toJson<String?>(note),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
     };
   }
 
-  LocalInventoryLossesData copyWith({
+  LocalInventoryLoss copyWith({
     String? id,
     String? shopId,
     String? productId,
     int? quantity,
-    Value<String?> reason = const Value.absent(),
+    String? reason,
+    Value<String?> note = const Value.absent(),
     DateTime? occurredAt,
-  }) => LocalInventoryLossesData(
+  }) => LocalInventoryLoss(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
     productId: productId ?? this.productId,
     quantity: quantity ?? this.quantity,
-    reason: reason.present ? reason.value : this.reason,
+    reason: reason ?? this.reason,
+    note: note.present ? note.value : this.note,
     occurredAt: occurredAt ?? this.occurredAt,
   );
-  LocalInventoryLossesData copyWithCompanion(
-    LocalInventoryLossesCompanion data,
-  ) {
-    return LocalInventoryLossesData(
+  LocalInventoryLoss copyWithCompanion(LocalInventoryLossesCompanion data) {
+    return LocalInventoryLoss(
       id: data.id.present ? data.id.value : this.id,
       shopId: data.shopId.present ? data.shopId.value : this.shopId,
       productId: data.productId.present ? data.productId.value : this.productId,
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
       reason: data.reason.present ? data.reason.value : this.reason,
+      note: data.note.present ? data.note.value : this.note,
       occurredAt: data.occurredAt.present
           ? data.occurredAt.value
           : this.occurredAt,
@@ -6241,12 +6268,13 @@ class LocalInventoryLossesData extends DataClass
 
   @override
   String toString() {
-    return (StringBuffer('LocalInventoryLossesData(')
+    return (StringBuffer('LocalInventoryLoss(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
           ..write('productId: $productId, ')
           ..write('quantity: $quantity, ')
           ..write('reason: $reason, ')
+          ..write('note: $note, ')
           ..write('occurredAt: $occurredAt')
           ..write(')'))
         .toString();
@@ -6254,26 +6282,28 @@ class LocalInventoryLossesData extends DataClass
 
   @override
   int get hashCode =>
-      Object.hash(id, shopId, productId, quantity, reason, occurredAt);
+      Object.hash(id, shopId, productId, quantity, reason, note, occurredAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LocalInventoryLossesData &&
+      (other is LocalInventoryLoss &&
           other.id == this.id &&
           other.shopId == this.shopId &&
           other.productId == this.productId &&
           other.quantity == this.quantity &&
           other.reason == this.reason &&
+          other.note == this.note &&
           other.occurredAt == this.occurredAt);
 }
 
 class LocalInventoryLossesCompanion
-    extends UpdateCompanion<LocalInventoryLossesData> {
+    extends UpdateCompanion<LocalInventoryLoss> {
   final Value<String> id;
   final Value<String> shopId;
   final Value<String> productId;
   final Value<int> quantity;
-  final Value<String?> reason;
+  final Value<String> reason;
+  final Value<String?> note;
   final Value<DateTime> occurredAt;
   final Value<int> rowid;
   const LocalInventoryLossesCompanion({
@@ -6282,6 +6312,7 @@ class LocalInventoryLossesCompanion
     this.productId = const Value.absent(),
     this.quantity = const Value.absent(),
     this.reason = const Value.absent(),
+    this.note = const Value.absent(),
     this.occurredAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -6290,20 +6321,23 @@ class LocalInventoryLossesCompanion
     required String shopId,
     required String productId,
     required int quantity,
-    this.reason = const Value.absent(),
+    required String reason,
+    this.note = const Value.absent(),
     required DateTime occurredAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
        productId = Value(productId),
        quantity = Value(quantity),
+       reason = Value(reason),
        occurredAt = Value(occurredAt);
-  static Insertable<LocalInventoryLossesData> custom({
+  static Insertable<LocalInventoryLoss> custom({
     Expression<String>? id,
     Expression<String>? shopId,
     Expression<String>? productId,
     Expression<int>? quantity,
     Expression<String>? reason,
+    Expression<String>? note,
     Expression<DateTime>? occurredAt,
     Expression<int>? rowid,
   }) {
@@ -6313,6 +6347,7 @@ class LocalInventoryLossesCompanion
       if (productId != null) 'product_id': productId,
       if (quantity != null) 'quantity': quantity,
       if (reason != null) 'reason': reason,
+      if (note != null) 'note': note,
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -6323,7 +6358,8 @@ class LocalInventoryLossesCompanion
     Value<String>? shopId,
     Value<String>? productId,
     Value<int>? quantity,
-    Value<String?>? reason,
+    Value<String>? reason,
+    Value<String?>? note,
     Value<DateTime>? occurredAt,
     Value<int>? rowid,
   }) {
@@ -6333,6 +6369,7 @@ class LocalInventoryLossesCompanion
       productId: productId ?? this.productId,
       quantity: quantity ?? this.quantity,
       reason: reason ?? this.reason,
+      note: note ?? this.note,
       occurredAt: occurredAt ?? this.occurredAt,
       rowid: rowid ?? this.rowid,
     );
@@ -6356,6 +6393,9 @@ class LocalInventoryLossesCompanion
     if (reason.present) {
       map['reason'] = Variable<String>(reason.value);
     }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
     if (occurredAt.present) {
       map['occurred_at'] = Variable<DateTime>(occurredAt.value);
     }
@@ -6373,6 +6413,7 @@ class LocalInventoryLossesCompanion
           ..write('productId: $productId, ')
           ..write('quantity: $quantity, ')
           ..write('reason: $reason, ')
+          ..write('note: $note, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -9878,7 +9919,8 @@ typedef $$LocalInventoryLossesTableCreateCompanionBuilder =
       required String shopId,
       required String productId,
       required int quantity,
-      Value<String?> reason,
+      required String reason,
+      Value<String?> note,
       required DateTime occurredAt,
       Value<int> rowid,
     });
@@ -9888,7 +9930,8 @@ typedef $$LocalInventoryLossesTableUpdateCompanionBuilder =
       Value<String> shopId,
       Value<String> productId,
       Value<int> quantity,
-      Value<String?> reason,
+      Value<String> reason,
+      Value<String?> note,
       Value<DateTime> occurredAt,
       Value<int> rowid,
     });
@@ -9924,6 +9967,11 @@ class $$LocalInventoryLossesTableFilterComposer
 
   ColumnFilters<String> get reason => $composableBuilder(
     column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9967,6 +10015,11 @@ class $$LocalInventoryLossesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
     builder: (column) => ColumnOrderings(column),
@@ -9997,6 +10050,9 @@ class $$LocalInventoryLossesTableAnnotationComposer
   GeneratedColumn<String> get reason =>
       $composableBuilder(column: $table.reason, builder: (column) => column);
 
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
   GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
     builder: (column) => column,
@@ -10008,21 +10064,21 @@ class $$LocalInventoryLossesTableTableManager
         RootTableManager<
           _$AppDatabase,
           $LocalInventoryLossesTable,
-          LocalInventoryLossesData,
+          LocalInventoryLoss,
           $$LocalInventoryLossesTableFilterComposer,
           $$LocalInventoryLossesTableOrderingComposer,
           $$LocalInventoryLossesTableAnnotationComposer,
           $$LocalInventoryLossesTableCreateCompanionBuilder,
           $$LocalInventoryLossesTableUpdateCompanionBuilder,
           (
-            LocalInventoryLossesData,
+            LocalInventoryLoss,
             BaseReferences<
               _$AppDatabase,
               $LocalInventoryLossesTable,
-              LocalInventoryLossesData
+              LocalInventoryLoss
             >,
           ),
-          LocalInventoryLossesData,
+          LocalInventoryLoss,
           PrefetchHooks Function()
         > {
   $$LocalInventoryLossesTableTableManager(
@@ -10050,7 +10106,8 @@ class $$LocalInventoryLossesTableTableManager
                 Value<String> shopId = const Value.absent(),
                 Value<String> productId = const Value.absent(),
                 Value<int> quantity = const Value.absent(),
-                Value<String?> reason = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalInventoryLossesCompanion(
@@ -10059,6 +10116,7 @@ class $$LocalInventoryLossesTableTableManager
                 productId: productId,
                 quantity: quantity,
                 reason: reason,
+                note: note,
                 occurredAt: occurredAt,
                 rowid: rowid,
               ),
@@ -10068,7 +10126,8 @@ class $$LocalInventoryLossesTableTableManager
                 required String shopId,
                 required String productId,
                 required int quantity,
-                Value<String?> reason = const Value.absent(),
+                required String reason,
+                Value<String?> note = const Value.absent(),
                 required DateTime occurredAt,
                 Value<int> rowid = const Value.absent(),
               }) => LocalInventoryLossesCompanion.insert(
@@ -10077,6 +10136,7 @@ class $$LocalInventoryLossesTableTableManager
                 productId: productId,
                 quantity: quantity,
                 reason: reason,
+                note: note,
                 occurredAt: occurredAt,
                 rowid: rowid,
               ),
@@ -10092,21 +10152,21 @@ typedef $$LocalInventoryLossesTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
       $LocalInventoryLossesTable,
-      LocalInventoryLossesData,
+      LocalInventoryLoss,
       $$LocalInventoryLossesTableFilterComposer,
       $$LocalInventoryLossesTableOrderingComposer,
       $$LocalInventoryLossesTableAnnotationComposer,
       $$LocalInventoryLossesTableCreateCompanionBuilder,
       $$LocalInventoryLossesTableUpdateCompanionBuilder,
       (
-        LocalInventoryLossesData,
+        LocalInventoryLoss,
         BaseReferences<
           _$AppDatabase,
           $LocalInventoryLossesTable,
-          LocalInventoryLossesData
+          LocalInventoryLoss
         >,
       ),
-      LocalInventoryLossesData,
+      LocalInventoryLoss,
       PrefetchHooks Function()
     >;
 typedef $$SyncQueueItemsTableCreateCompanionBuilder =

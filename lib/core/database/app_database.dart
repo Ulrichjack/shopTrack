@@ -197,12 +197,17 @@ class LocalInventoryCounts extends Table {
 // Une perte déclarée ne touche PAS le stock enregistré : en inventaire
 // périodique, le stock ne bouge qu'au comptage. Elle sert uniquement à dire
 // « ces 3 bouteilles n'ont pas été volées, elles sont cassées ».
+@DataClassName('LocalInventoryLoss')
 class LocalInventoryLosses extends Table {
   TextColumn get id => text()();
   TextColumn get shopId => text()();
   TextColumn get productId => text()();
   IntColumn get quantity => integer()();
-  TextColumn get reason => text().nullable()();
+
+  /// casse · peremption · invendu · vol · autre — mêmes valeurs que la
+  /// contrainte SQL de `inventory_losses`, sinon le push est rejeté.
+  TextColumn get reason => text()();
+  TextColumn get note => text().nullable()();
   DateTimeColumn get occurredAt => dateTime()();
 
   @override

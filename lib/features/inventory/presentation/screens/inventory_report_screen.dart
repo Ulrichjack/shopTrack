@@ -145,6 +145,9 @@ class _Body extends StatelessWidget {
               children: [
                 _Line('Recettes encaissées', r.actualTakings),
                 _Line('Coût de la marchandise sortie', -r.costOfGoodsSold),
+                // Sans cette ligne le total ne tomberait pas juste dès qu'une
+                // perte est déclarée, et le bénéfice paraîtrait faux.
+                if (r.lossValue > 0) _Line('Pertes déclarées', -r.lossValue),
                 const Divider(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

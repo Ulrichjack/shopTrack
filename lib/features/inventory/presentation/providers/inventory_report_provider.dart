@@ -69,6 +69,10 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
     db.localStockMovements,
   )..where((row) => row.shopId.equals(shopId))).get();
 
+  final losses = await (db.select(
+    db.localInventoryLosses,
+  )..where((row) => row.shopId.equals(shopId))).get();
+
   final inputs = <InventoryProductInput>[];
   var awaitingSecond = 0;
   var neverCounted = 0;
@@ -102,6 +106,18 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
         )
         .fold<int>(0, (sum, m) => sum + m.quantity);
 
+    // Pertes déclarées sur la même fenêtre. Sans elles, la casse se retrouve
+    // dans les ventes présumées : l'app réclame l'argent d'une bouteille
+    // cassée et le manquant ressemble à un vol.
+    final declaredLosses = losses
+        .where(
+          (l) =>
+              l.productId == product.id &&
+              l.occurredAt.isAfter(previousAt) &&
+              !l.occurredAt.isAfter(last.countedAt),
+        )
+        .fold<int>(0, (sum, l) => sum + l.quantity);
+
     inputs.add(
       InventoryProductInput(
         productId: product.id,
@@ -111,11 +127,11 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
         openingStock: last.previousQuantity!,
         countedStock: last.countedQuantity,
         purchases: purchases,
-        // Transferts et pertes déclarées : tables prêtes côté Supabase, pas
-        // encore saisissables dans l'app (B5, B8).
+        // Transferts : table prête côté Supabase, pas encore saisissable
+        // dans l'app (B8, après le multi-boutique).
         transfersIn: 0,
         transfersOut: 0,
-        declaredLosses: 0,
+        declaredLosses: declaredLosses,
         unitCost: product.buyPrice,
         unitSellPrice: product.sellPrice,
       ),

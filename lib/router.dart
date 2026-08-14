@@ -34,6 +34,7 @@ import 'features/cycles/presentation/screens/manage_units_screen.dart';
 import 'features/inventory/presentation/screens/daily_takings_screen.dart';
 import 'features/inventory/presentation/screens/inventory_dashboard_screen.dart';
 import 'features/inventory/presentation/screens/inventory_count_screen.dart';
+import 'features/inventory/presentation/screens/declare_loss_screen.dart';
 import 'features/inventory/presentation/screens/inventory_hub_screen.dart';
 import 'features/inventory/presentation/screens/inventory_report_screen.dart';
 
@@ -126,6 +127,10 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/inventory-count',
       builder: (context, state) => const InventoryCountScreen(),
+    ),
+    GoRoute(
+      path: '/declare-loss',
+      builder: (context, state) => const DeclareLossScreen(),
     ),
     GoRoute(
       path: '/inventory-report',
