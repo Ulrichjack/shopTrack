@@ -36,7 +36,16 @@ class InventoryDashboardScreen extends ConsumerWidget {
     );
     final monthTotal = monthTakings.fold<double>(0, (s, t) => s + t.amount);
 
-    final missingDays = _missingDays(takings, monthStart, today);
+    // On ne compte que depuis la première recette notée : avant elle, la
+    // boutique n'existait pas ou n'avait rien à déclarer. Sinon une boutique
+    // créée le 13 s'entend dire « 12 jours sans recette ».
+    final missingDays = takings.isEmpty
+        ? const <DateTime>[]
+        : _missingDays(
+            takings,
+            _laterOf(_earliestDay(takings), monthStart),
+            today,
+          );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -161,6 +170,18 @@ class InventoryDashboardScreen extends ConsumerWidget {
     }
     return missing;
   }
+
+  /// Premier jour où une recette a été notée.
+  static DateTime _earliestDay(List<LocalShopTaking> takings) {
+    var earliest = takings.first.date;
+    for (final t in takings) {
+      if (t.date.isBefore(earliest)) earliest = t.date;
+    }
+    return DateTime(earliest.year, earliest.month, earliest.day);
+  }
+
+  static DateTime _laterOf(DateTime a, DateTime b) =>
+      a.isAfter(b) ? a : b;
 
   static bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
