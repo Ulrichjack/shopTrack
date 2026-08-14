@@ -153,6 +153,9 @@ class SyncService {
         // Module B : sans les pertes déclarées, la casse d'un téléphone
         // redevient de l'inexpliqué sur l'autre — donc du vol présumé.
         supabase.from('inventory_losses').select().eq('shop_id', shopId),
+        // Le prix payé voyage avec l'achat : sans ce pull, un second téléphone
+        // revaloriserait tout au prix actuel du produit.
+        supabase.from('stock_purchases').select().eq('shop_id', shopId),
       ]);
 
       final productsData = results[0];
@@ -167,6 +170,7 @@ class SyncService {
       final inventoryCountsData = results[9];
       final stockMovementsData = results[10];
       final inventoryLossesData = results[11];
+      final stockPurchasesData = results[12];
 
       // Fusionner au lieu de vider les tables protège les écritures hors ligne.
       await db.transaction(() async {
@@ -366,6 +370,23 @@ class SyncService {
             mode: InsertMode.insertOrReplace,
           );
           batch.insertAll(
+            db.localStockPurchases,
+            stockPurchasesData
+                .map(
+                  (p) => LocalStockPurchase(
+                    id: p['id'],
+                    shopId: p['shop_id'],
+                    productId: p['product_id'],
+                    quantity: p['quantity'],
+                    unitCost: (p['unit_cost'] as num).toDouble(),
+                    purchasedAt: DateTime.parse(p['purchased_at']).toLocal(),
+                    note: p['note'] as String?,
+                  ),
+                )
+                .toList(),
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
             db.localInventoryLosses,
             inventoryLossesData
                 .map(
@@ -487,6 +508,8 @@ class SyncService {
         await supabase.from('inventory_counts').upsert(payload);
       case 'ADD_INVENTORY_LOSS':
         await supabase.from('inventory_losses').upsert(payload);
+      case 'ADD_STOCK_PURCHASE':
+        await supabase.from('stock_purchases').upsert(payload);
       case 'ADD_SUPPLY_CYCLE':
         await supabase.from('supply_cycles').upsert(payload);
       case 'CLOSE_SUPPLY_CYCLE':

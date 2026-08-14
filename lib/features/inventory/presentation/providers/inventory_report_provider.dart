@@ -73,6 +73,10 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
     db.localInventoryLosses,
   )..where((row) => row.shopId.equals(shopId))).get();
 
+  final purchaseLines = await (db.select(
+    db.localStockPurchases,
+  )..where((row) => row.shopId.equals(shopId))).get();
+
   final inputs = <InventoryProductInput>[];
   var awaitingSecond = 0;
   var neverCounted = 0;
@@ -118,6 +122,28 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
         )
         .fold<int>(0, (sum, l) => sum + l.quantity);
 
+    // Le prix payé, pas le prix affiché aujourd'hui : sinon revaloriser un
+    // produit réécrit le coût des périodes déjà closes.
+    final productPurchases = purchaseLines.where(
+      (p) => p.productId == product.id,
+    );
+    final unitCost = weightedUnitCost(
+      openingStock: last.previousQuantity!,
+      purchasesInPeriod: productPurchases
+          .where(
+            (p) =>
+                p.purchasedAt.isAfter(previousAt) &&
+                !p.purchasedAt.isAfter(last.countedAt),
+          )
+          .map((p) => PurchaseLine(quantity: p.quantity, unitCost: p.unitCost))
+          .toList(),
+      purchasesBefore: productPurchases
+          .where((p) => !p.purchasedAt.isAfter(previousAt))
+          .map((p) => PurchaseLine(quantity: p.quantity, unitCost: p.unitCost))
+          .toList(),
+      productBuyPrice: product.buyPrice,
+    );
+
     inputs.add(
       InventoryProductInput(
         productId: product.id,
@@ -132,7 +158,7 @@ final inventoryReportProvider = FutureProvider<InventoryPeriodReport>((
         transfersIn: 0,
         transfersOut: 0,
         declaredLosses: declaredLosses,
-        unitCost: product.buyPrice,
+        unitCost: unitCost,
         unitSellPrice: product.sellPrice,
       ),
     );

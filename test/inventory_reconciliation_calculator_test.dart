@@ -237,4 +237,57 @@ void main() {
       expect(r.hasUnexplainedGap, isFalse);
     });
   });
+
+
+  group('coût unitaire figé sur la ligne d\'achat', () {
+    test('sans ligne d\'achat, on garde le prix du produit', () {
+      // L'historique déjà saisi ne doit pas changer de valorisation le jour où
+      // la table stock_purchases apparaît.
+      expect(
+        weightedUnitCost(
+          openingStock: 10,
+          purchasesInPeriod: const [],
+          purchasesBefore: const [],
+          productBuyPrice: 22000,
+        ),
+        22000,
+      );
+    });
+
+    test('moyenne pondérée entre le stock d\'ouverture et les achats', () {
+      // 10 sacs déjà là à 22 000 + 5 achetés à 24 000 → 22 666,67.
+      final cost = weightedUnitCost(
+        openingStock: 10,
+        purchasesInPeriod: const [PurchaseLine(quantity: 5, unitCost: 24000)],
+        purchasesBefore: const [],
+        productBuyPrice: 22000,
+      );
+      expect(cost, closeTo(22666.67, 0.01));
+    });
+
+    test('un changement de prix ne réécrit pas la période close', () {
+      // 10 sacs achetés 22 000 avant la période, 5 achetés 24 000 pendant.
+      // Le produit est ensuite revalorisé à 30 000 : la période close garde le
+      // coût réellement payé, elle ne bouge pas.
+      final cost = weightedUnitCost(
+        openingStock: 10,
+        purchasesInPeriod: const [PurchaseLine(quantity: 5, unitCost: 24000)],
+        purchasesBefore: const [PurchaseLine(quantity: 10, unitCost: 22000)],
+        productBuyPrice: 30000,
+      );
+      expect(cost, closeTo(22666.67, 0.01));
+    });
+
+    test('le stock d\'ouverture est valorisé aux achats antérieurs', () {
+      expect(
+        weightedUnitCost(
+          openingStock: 4,
+          purchasesInPeriod: const [],
+          purchasesBefore: const [PurchaseLine(quantity: 10, unitCost: 21000)],
+          productBuyPrice: 30000,
+        ),
+        21000,
+      );
+    });
+  });
 }

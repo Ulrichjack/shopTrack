@@ -9,6 +9,51 @@
 // totales, pertes déclarées, ventes présumées — et le refus d'appeler
 // « ventes » tout ce qui a disparu.
 
+/// Un achat : une quantité, le prix payé ce jour-là.
+class PurchaseLine {
+  const PurchaseLine({required this.quantity, required this.unitCost});
+
+  final int quantity;
+  final double unitCost;
+}
+
+/// Coût unitaire à retenir pour valoriser ce qui est sorti.
+///
+/// Moyenne pondérée mobile : le stock d'ouverture au coût connu avant la
+/// période, plus les achats de la période à leur prix réel. Ce n'est pas du
+/// FIFO — on ne sait pas quel exemplaire est parti — mais c'est stable : une
+/// fois la période close, aucun changement de prix ne peut la réécrire.
+///
+/// Sans ligne d'achat, on retombe exactement sur le prix du produit, donc
+/// l'historique déjà saisi garde le comportement d'avant.
+double weightedUnitCost({
+  required int openingStock,
+  required List<PurchaseLine> purchasesInPeriod,
+  required List<PurchaseLine> purchasesBefore,
+  required double productBuyPrice,
+}) {
+  double averageOf(List<PurchaseLine> lines, double fallback) {
+    var quantity = 0;
+    var total = 0.0;
+    for (final line in lines) {
+      quantity += line.quantity;
+      total += line.quantity * line.unitCost;
+    }
+    return quantity > 0 ? total / quantity : fallback;
+  }
+
+  final openingCost = averageOf(purchasesBefore, productBuyPrice);
+  if (purchasesInPeriod.isEmpty) return openingCost;
+
+  var quantity = openingStock < 0 ? 0 : openingStock;
+  var total = quantity * openingCost;
+  for (final line in purchasesInPeriod) {
+    quantity += line.quantity;
+    total += line.quantity * line.unitCost;
+  }
+  return quantity > 0 ? total / quantity : openingCost;
+}
+
 /// Ce qu'on sait d'un produit sur une période, entre deux comptages.
 class InventoryProductInput {
   const InventoryProductInput({

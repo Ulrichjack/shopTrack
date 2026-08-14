@@ -322,7 +322,15 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
   }
 
   // 👇 NOUVEAU : Fonction pour ajouter du stock (100% Local + File d'attente)
-  Future<void> addStock(ProductEntity product, int addedQuantity) async {
+  ///
+  /// [unitCost] est le prix payé pour CET arrivage. Fourni, il crée une ligne
+  /// d'achat qui fige le coût : revaloriser le produit plus tard ne réécrira
+  /// plus les périodes déjà closes. Absent, le comportement est inchangé.
+  Future<void> addStock(
+    ProductEntity product,
+    int addedQuantity, {
+    double? unitCost,
+  }) async {
     try {
       final db = ref.read(localDbProvider);
       final newQty = product.quantity + addedQuantity;
@@ -355,6 +363,35 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
         'type': 'recharge',
       };
       await db.addToQueue('ADD_STOCK', jsonEncode(payload));
+
+      if (unitCost != null) {
+        final purchaseId = const Uuid().v4();
+        final purchasedAt = DateTime.now();
+        await db
+            .into(db.localStockPurchases)
+            .insert(
+              LocalStockPurchase(
+                id: purchaseId,
+                shopId: product.shopId,
+                productId: product.id,
+                quantity: addedQuantity,
+                unitCost: unitCost,
+                purchasedAt: purchasedAt,
+              ),
+            );
+        await db.addToQueue(
+          'ADD_STOCK_PURCHASE',
+          jsonEncode({
+            'id': purchaseId,
+            'shop_id': product.shopId,
+            'product_id': product.id,
+            'quantity': addedQuantity,
+            'unit_cost': unitCost,
+            'purchased_at': purchasedAt.toUtc().toIso8601String(),
+          }),
+        );
+      }
+
       await ref.read(syncServiceProvider).processQueue();
 
       // 4. Rafraîchir l'écran

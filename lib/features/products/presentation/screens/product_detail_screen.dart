@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/product_entity.dart';
+import '../../../../core/providers/shop_settings_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/product_history_provider.dart';
 
@@ -57,7 +58,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     BuildContext context,
     ProductEntity currentProduct,
   ) {
+    // Le prix d'achat ne se saisit qu'en inventaire périodique : c'est le
+    // seul mode où il valorise le rapport. Ailleurs, le formulaire reste tel
+    // qu'il était.
+    final isPeriodic =
+        ref.read(shopSettingsProvider).value?.saleCaptureMode == 'periodic';
     final quantityController = TextEditingController();
+    // Pré-rempli au dernier prix connu : le plus souvent il n'a pas bougé,
+    // et le commerçant valide sans rien retaper.
+    final costController = TextEditingController(
+      text: currentProduct.buyPrice.toInt().toString(),
+    );
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -102,7 +113,26 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+
+                  // Le prix payé pour CET arrivage. En inventaire périodique
+                  // c'est lui qui valorise la marchandise sortie : sans lui,
+                  // changer le prix du produit réécrirait les bilans passés.
+                  if (isPeriodic)
+                    TextField(
+                      controller: costController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Prix d\'achat unitaire (F)',
+                        helperText: 'Ce que tu as payé cette fois-ci',
+                        prefixIcon: const Icon(Icons.payments_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  if (isPeriodic) const SizedBox(height: 20) else
+                    const SizedBox(height: 4),
 
                   ElevatedButton(
                     onPressed: isSaving
@@ -116,7 +146,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             try {
                               await ref
                                   .read(productProvider.notifier)
-                                  .addStock(currentProduct, qty);
+                                  .addStock(
+                                    currentProduct,
+                                    qty,
+                                    unitCost: isPeriodic
+                                        ? double.tryParse(
+                                            costController.text.trim(),
+                                          )
+                                        : null,
+                                  );
                               ref.invalidate(
                                 productHistoryProvider(currentProduct.id),
                               );

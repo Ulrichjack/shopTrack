@@ -152,9 +152,14 @@ Ordre d'implémentation, du plus indépendant au plus risqué :
 - [x] **B3 — Comptage d'inventaire.** Table `inventory_counts` (repères par
   produit), écran de saisie **à l'aveugle** (ne jamais afficher la quantité
   théorique), sauvegarde progressive, indicateur « 22 produits sur 30 ».
-- [ ] **B4 — Approvisionnement avec prix.** Le prix payé est enregistré **sur
-  la ligne d'achat**, pas seulement sur le produit — sinon impossible de
-  revenir sur une période passée sans que les chiffres bougent.
+- [x] **B4 — Approvisionnement avec prix.** Table `stock_purchases` (déjà en
+  base), champ « Prix d'achat unitaire » dans la recharge, affiché uniquement
+  en mode périodique et pré-rempli au dernier prix connu. Le rapport valorise
+  par **moyenne pondérée mobile** (`weightedUnitCost`) : stock d'ouverture au
+  coût des achats antérieurs + achats de la période à leur prix réel. Pas du
+  FIFO — on ne sait pas quel exemplaire est parti — mais stable : une période
+  close ne bouge plus. Sans ligne d'achat, on retombe exactement sur l'ancien
+  comportement (prix du produit).
 - [x] **B5 — Pertes du module B.** Table `inventory_losses` (déjà en base),
   écran « Déclarer une perte » (produit, quantité, raison parmi casse ·
   périmé · invendu · vol · autre, date, note), synchro dans les deux sens,

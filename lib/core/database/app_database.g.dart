@@ -6421,6 +6421,464 @@ class LocalInventoryLossesCompanion
   }
 }
 
+class $LocalStockPurchasesTable extends LocalStockPurchases
+    with TableInfo<$LocalStockPurchasesTable, LocalStockPurchase> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalStockPurchasesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _shopIdMeta = const VerificationMeta('shopId');
+  @override
+  late final GeneratedColumn<String> shopId = GeneratedColumn<String>(
+    'shop_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _unitCostMeta = const VerificationMeta(
+    'unitCost',
+  );
+  @override
+  late final GeneratedColumn<double> unitCost = GeneratedColumn<double>(
+    'unit_cost',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _purchasedAtMeta = const VerificationMeta(
+    'purchasedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> purchasedAt = GeneratedColumn<DateTime>(
+    'purchased_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    shopId,
+    productId,
+    quantity,
+    unitCost,
+    purchasedAt,
+    note,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_stock_purchases';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalStockPurchase> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('shop_id')) {
+      context.handle(
+        _shopIdMeta,
+        shopId.isAcceptableOrUnknown(data['shop_id']!, _shopIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_shopIdMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('unit_cost')) {
+      context.handle(
+        _unitCostMeta,
+        unitCost.isAcceptableOrUnknown(data['unit_cost']!, _unitCostMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_unitCostMeta);
+    }
+    if (data.containsKey('purchased_at')) {
+      context.handle(
+        _purchasedAtMeta,
+        purchasedAt.isAcceptableOrUnknown(
+          data['purchased_at']!,
+          _purchasedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_purchasedAtMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalStockPurchase map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalStockPurchase(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      shopId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shop_id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
+      unitCost: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}unit_cost'],
+      )!,
+      purchasedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}purchased_at'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+    );
+  }
+
+  @override
+  $LocalStockPurchasesTable createAlias(String alias) {
+    return $LocalStockPurchasesTable(attachedDatabase, alias);
+  }
+}
+
+class LocalStockPurchase extends DataClass
+    implements Insertable<LocalStockPurchase> {
+  final String id;
+  final String shopId;
+  final String productId;
+  final int quantity;
+  final double unitCost;
+  final DateTime purchasedAt;
+  final String? note;
+  const LocalStockPurchase({
+    required this.id,
+    required this.shopId,
+    required this.productId,
+    required this.quantity,
+    required this.unitCost,
+    required this.purchasedAt,
+    this.note,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['shop_id'] = Variable<String>(shopId);
+    map['product_id'] = Variable<String>(productId);
+    map['quantity'] = Variable<int>(quantity);
+    map['unit_cost'] = Variable<double>(unitCost);
+    map['purchased_at'] = Variable<DateTime>(purchasedAt);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    return map;
+  }
+
+  LocalStockPurchasesCompanion toCompanion(bool nullToAbsent) {
+    return LocalStockPurchasesCompanion(
+      id: Value(id),
+      shopId: Value(shopId),
+      productId: Value(productId),
+      quantity: Value(quantity),
+      unitCost: Value(unitCost),
+      purchasedAt: Value(purchasedAt),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+    );
+  }
+
+  factory LocalStockPurchase.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalStockPurchase(
+      id: serializer.fromJson<String>(json['id']),
+      shopId: serializer.fromJson<String>(json['shopId']),
+      productId: serializer.fromJson<String>(json['productId']),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      unitCost: serializer.fromJson<double>(json['unitCost']),
+      purchasedAt: serializer.fromJson<DateTime>(json['purchasedAt']),
+      note: serializer.fromJson<String?>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'shopId': serializer.toJson<String>(shopId),
+      'productId': serializer.toJson<String>(productId),
+      'quantity': serializer.toJson<int>(quantity),
+      'unitCost': serializer.toJson<double>(unitCost),
+      'purchasedAt': serializer.toJson<DateTime>(purchasedAt),
+      'note': serializer.toJson<String?>(note),
+    };
+  }
+
+  LocalStockPurchase copyWith({
+    String? id,
+    String? shopId,
+    String? productId,
+    int? quantity,
+    double? unitCost,
+    DateTime? purchasedAt,
+    Value<String?> note = const Value.absent(),
+  }) => LocalStockPurchase(
+    id: id ?? this.id,
+    shopId: shopId ?? this.shopId,
+    productId: productId ?? this.productId,
+    quantity: quantity ?? this.quantity,
+    unitCost: unitCost ?? this.unitCost,
+    purchasedAt: purchasedAt ?? this.purchasedAt,
+    note: note.present ? note.value : this.note,
+  );
+  LocalStockPurchase copyWithCompanion(LocalStockPurchasesCompanion data) {
+    return LocalStockPurchase(
+      id: data.id.present ? data.id.value : this.id,
+      shopId: data.shopId.present ? data.shopId.value : this.shopId,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      unitCost: data.unitCost.present ? data.unitCost.value : this.unitCost,
+      purchasedAt: data.purchasedAt.present
+          ? data.purchasedAt.value
+          : this.purchasedAt,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalStockPurchase(')
+          ..write('id: $id, ')
+          ..write('shopId: $shopId, ')
+          ..write('productId: $productId, ')
+          ..write('quantity: $quantity, ')
+          ..write('unitCost: $unitCost, ')
+          ..write('purchasedAt: $purchasedAt, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, shopId, productId, quantity, unitCost, purchasedAt, note);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalStockPurchase &&
+          other.id == this.id &&
+          other.shopId == this.shopId &&
+          other.productId == this.productId &&
+          other.quantity == this.quantity &&
+          other.unitCost == this.unitCost &&
+          other.purchasedAt == this.purchasedAt &&
+          other.note == this.note);
+}
+
+class LocalStockPurchasesCompanion extends UpdateCompanion<LocalStockPurchase> {
+  final Value<String> id;
+  final Value<String> shopId;
+  final Value<String> productId;
+  final Value<int> quantity;
+  final Value<double> unitCost;
+  final Value<DateTime> purchasedAt;
+  final Value<String?> note;
+  final Value<int> rowid;
+  const LocalStockPurchasesCompanion({
+    this.id = const Value.absent(),
+    this.shopId = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.unitCost = const Value.absent(),
+    this.purchasedAt = const Value.absent(),
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalStockPurchasesCompanion.insert({
+    required String id,
+    required String shopId,
+    required String productId,
+    required int quantity,
+    required double unitCost,
+    required DateTime purchasedAt,
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       shopId = Value(shopId),
+       productId = Value(productId),
+       quantity = Value(quantity),
+       unitCost = Value(unitCost),
+       purchasedAt = Value(purchasedAt);
+  static Insertable<LocalStockPurchase> custom({
+    Expression<String>? id,
+    Expression<String>? shopId,
+    Expression<String>? productId,
+    Expression<int>? quantity,
+    Expression<double>? unitCost,
+    Expression<DateTime>? purchasedAt,
+    Expression<String>? note,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (shopId != null) 'shop_id': shopId,
+      if (productId != null) 'product_id': productId,
+      if (quantity != null) 'quantity': quantity,
+      if (unitCost != null) 'unit_cost': unitCost,
+      if (purchasedAt != null) 'purchased_at': purchasedAt,
+      if (note != null) 'note': note,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalStockPurchasesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? shopId,
+    Value<String>? productId,
+    Value<int>? quantity,
+    Value<double>? unitCost,
+    Value<DateTime>? purchasedAt,
+    Value<String?>? note,
+    Value<int>? rowid,
+  }) {
+    return LocalStockPurchasesCompanion(
+      id: id ?? this.id,
+      shopId: shopId ?? this.shopId,
+      productId: productId ?? this.productId,
+      quantity: quantity ?? this.quantity,
+      unitCost: unitCost ?? this.unitCost,
+      purchasedAt: purchasedAt ?? this.purchasedAt,
+      note: note ?? this.note,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (shopId.present) {
+      map['shop_id'] = Variable<String>(shopId.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (unitCost.present) {
+      map['unit_cost'] = Variable<double>(unitCost.value);
+    }
+    if (purchasedAt.present) {
+      map['purchased_at'] = Variable<DateTime>(purchasedAt.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalStockPurchasesCompanion(')
+          ..write('id: $id, ')
+          ..write('shopId: $shopId, ')
+          ..write('productId: $productId, ')
+          ..write('quantity: $quantity, ')
+          ..write('unitCost: $unitCost, ')
+          ..write('purchasedAt: $purchasedAt, ')
+          ..write('note: $note, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncQueueItemsTable extends SyncQueueItems
     with TableInfo<$SyncQueueItemsTable, SyncQueueItem> {
   @override
@@ -6745,6 +7203,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LocalInventoryCountsTable(this);
   late final $LocalInventoryLossesTable localInventoryLosses =
       $LocalInventoryLossesTable(this);
+  late final $LocalStockPurchasesTable localStockPurchases =
+      $LocalStockPurchasesTable(this);
   late final $SyncQueueItemsTable syncQueueItems = $SyncQueueItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -6764,6 +7224,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     localShopTakings,
     localInventoryCounts,
     localInventoryLosses,
+    localStockPurchases,
     syncQueueItems,
   ];
 }
@@ -10169,6 +10630,262 @@ typedef $$LocalInventoryLossesTableProcessedTableManager =
       LocalInventoryLoss,
       PrefetchHooks Function()
     >;
+typedef $$LocalStockPurchasesTableCreateCompanionBuilder =
+    LocalStockPurchasesCompanion Function({
+      required String id,
+      required String shopId,
+      required String productId,
+      required int quantity,
+      required double unitCost,
+      required DateTime purchasedAt,
+      Value<String?> note,
+      Value<int> rowid,
+    });
+typedef $$LocalStockPurchasesTableUpdateCompanionBuilder =
+    LocalStockPurchasesCompanion Function({
+      Value<String> id,
+      Value<String> shopId,
+      Value<String> productId,
+      Value<int> quantity,
+      Value<double> unitCost,
+      Value<DateTime> purchasedAt,
+      Value<String?> note,
+      Value<int> rowid,
+    });
+
+class $$LocalStockPurchasesTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalStockPurchasesTable> {
+  $$LocalStockPurchasesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get unitCost => $composableBuilder(
+    column: $table.unitCost,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get purchasedAt => $composableBuilder(
+    column: $table.purchasedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalStockPurchasesTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalStockPurchasesTable> {
+  $$LocalStockPurchasesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shopId => $composableBuilder(
+    column: $table.shopId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get unitCost => $composableBuilder(
+    column: $table.unitCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get purchasedAt => $composableBuilder(
+    column: $table.purchasedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalStockPurchasesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalStockPurchasesTable> {
+  $$LocalStockPurchasesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get shopId =>
+      $composableBuilder(column: $table.shopId, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<double> get unitCost =>
+      $composableBuilder(column: $table.unitCost, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get purchasedAt => $composableBuilder(
+    column: $table.purchasedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+}
+
+class $$LocalStockPurchasesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalStockPurchasesTable,
+          LocalStockPurchase,
+          $$LocalStockPurchasesTableFilterComposer,
+          $$LocalStockPurchasesTableOrderingComposer,
+          $$LocalStockPurchasesTableAnnotationComposer,
+          $$LocalStockPurchasesTableCreateCompanionBuilder,
+          $$LocalStockPurchasesTableUpdateCompanionBuilder,
+          (
+            LocalStockPurchase,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalStockPurchasesTable,
+              LocalStockPurchase
+            >,
+          ),
+          LocalStockPurchase,
+          PrefetchHooks Function()
+        > {
+  $$LocalStockPurchasesTableTableManager(
+    _$AppDatabase db,
+    $LocalStockPurchasesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalStockPurchasesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalStockPurchasesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$LocalStockPurchasesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> shopId = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
+                Value<double> unitCost = const Value.absent(),
+                Value<DateTime> purchasedAt = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalStockPurchasesCompanion(
+                id: id,
+                shopId: shopId,
+                productId: productId,
+                quantity: quantity,
+                unitCost: unitCost,
+                purchasedAt: purchasedAt,
+                note: note,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String shopId,
+                required String productId,
+                required int quantity,
+                required double unitCost,
+                required DateTime purchasedAt,
+                Value<String?> note = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalStockPurchasesCompanion.insert(
+                id: id,
+                shopId: shopId,
+                productId: productId,
+                quantity: quantity,
+                unitCost: unitCost,
+                purchasedAt: purchasedAt,
+                note: note,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalStockPurchasesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalStockPurchasesTable,
+      LocalStockPurchase,
+      $$LocalStockPurchasesTableFilterComposer,
+      $$LocalStockPurchasesTableOrderingComposer,
+      $$LocalStockPurchasesTableAnnotationComposer,
+      $$LocalStockPurchasesTableCreateCompanionBuilder,
+      $$LocalStockPurchasesTableUpdateCompanionBuilder,
+      (
+        LocalStockPurchase,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalStockPurchasesTable,
+          LocalStockPurchase
+        >,
+      ),
+      LocalStockPurchase,
+      PrefetchHooks Function()
+    >;
 typedef $$SyncQueueItemsTableCreateCompanionBuilder =
     SyncQueueItemsCompanion Function({
       Value<int> id,
@@ -10376,6 +11093,8 @@ class $AppDatabaseManager {
       $$LocalInventoryCountsTableTableManager(_db, _db.localInventoryCounts);
   $$LocalInventoryLossesTableTableManager get localInventoryLosses =>
       $$LocalInventoryLossesTableTableManager(_db, _db.localInventoryLosses);
+  $$LocalStockPurchasesTableTableManager get localStockPurchases =>
+      $$LocalStockPurchasesTableTableManager(_db, _db.localStockPurchases);
   $$SyncQueueItemsTableTableManager get syncQueueItems =>
       $$SyncQueueItemsTableTableManager(_db, _db.syncQueueItems);
 }

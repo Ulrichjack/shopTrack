@@ -189,6 +189,26 @@ class LocalInventoryCounts extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// Module B — Ce qui a été acheté, avec le prix payé ce jour-là.
+//
+// Le prix vit sur la ligne d'achat et pas seulement sur le produit : sinon
+// revaloriser un produit au prix du marché réécrit le coût de toutes les
+// périodes déjà closes, et un rapport consulté hier affiche d'autres chiffres
+// aujourd'hui. Le client a confirmé que ses prix bougent souvent.
+@DataClassName('LocalStockPurchase')
+class LocalStockPurchases extends Table {
+  TextColumn get id => text()();
+  TextColumn get shopId => text()();
+  TextColumn get productId => text()();
+  IntColumn get quantity => integer()();
+  RealColumn get unitCost => real()();
+  DateTimeColumn get purchasedAt => dateTime()();
+  TextColumn get note => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // Module B — Casse, péremption, invendu : ce qui est sorti du stock sans être
 // vendu. Séparé de `LocalCycleLosses`, qui appartient au module A et se
 // rattache à un cycle d'arrivage : ici la perte se rattache à une date, la
@@ -239,6 +259,7 @@ class SyncQueueItems extends Table {
     LocalShopTakings,
     LocalInventoryCounts,
     LocalInventoryLosses,
+    LocalStockPurchases,
     SyncQueueItems,
   ],
 )
@@ -249,7 +270,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -278,6 +299,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 7) {
         await m.createTable(localInventoryLosses);
+      }
+      if (from < 8) {
+        await m.createTable(localStockPurchases);
       }
     },
   );
