@@ -24,9 +24,13 @@ class InventoryReportScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Rapport de période'),
         actions: [
-          IconButton(
-            tooltip: 'Partager le rapport PDF',
-            icon: const Icon(Icons.share_outlined),
+          // Libellé « PDF » et non une icône de partage : le commerçant ne
+          // cherche pas à partager, il veut son papier. Ce qu'il en fait
+          // ensuite — l'envoyer, l'imprimer, le garder — le regarde.
+          TextButton.icon(
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('PDF'),
             onPressed: reportAsync.value?.hasData != true
                 ? null
                 : () async {
@@ -39,9 +43,12 @@ class InventoryReportScreen extends ConsumerWidget {
                     final finPeriode = DateFormat(
                       'yyyyMMdd',
                     ).format(report.periodEnd!);
-                    await Printing.sharePdf(
-                      bytes: pdf,
-                      filename: 'Rapport_ShopTrack_$finPeriode.pdf',
+                    // Même geste que le bilan mensuel : l'aperçu natif, d'où
+                    // l'on enregistre ou imprime. `sharePdf` ouvrait le
+                    // partage sans jamais montrer le document.
+                    await Printing.layoutPdf(
+                      onLayout: (_) async => pdf,
+                      name: 'Rapport_ShopTrack_$finPeriode.pdf',
                     );
                   },
           ),

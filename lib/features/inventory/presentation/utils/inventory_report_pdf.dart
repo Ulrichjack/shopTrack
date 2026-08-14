@@ -43,7 +43,15 @@ Future<Uint8List> buildInventoryReportPdf(
 
   pdf.addPage(
     pw.MultiPage(
-      pageFormat: PdfPageFormat.a4,
+      // Marges resserrées : avec les marges par défaut, une quinzaine de
+      // produits repoussait « TON RÉSULTAT » — donc le bénéfice — en page 2,
+      // et le patron recevait un papier dont le chiffre principal manquait.
+      pageFormat: PdfPageFormat.a4.copyWith(
+        marginTop: 32,
+        marginBottom: 28,
+        marginLeft: 32,
+        marginRight: 32,
+      ),
       build: (context) => [
         pw.Text(
           nomBoutique == null || nomBoutique.isEmpty
@@ -76,7 +84,7 @@ Future<Uint8List> buildInventoryReportPdf(
             ),
           ),
         ],
-        pw.SizedBox(height: 24),
+        pw.SizedBox(height: 16),
         _titreSection('CE QUI EST SORTI'),
         pw.SizedBox(height: 10),
         pw.TableHelper.fromTextArray(
@@ -90,7 +98,7 @@ Future<Uint8List> buildInventoryReportPdf(
           cellStyle: const pw.TextStyle(fontSize: 9),
           cellPadding: const pw.EdgeInsets.symmetric(
             horizontal: 6,
-            vertical: 5,
+            vertical: 3,
           ),
           cellAlignment: pw.Alignment.centerRight,
           cellAlignments: const {0: pw.Alignment.centerLeft},
@@ -111,36 +119,60 @@ Future<Uint8List> buildInventoryReportPdf(
               )
               .toList(),
         ),
-        pw.SizedBox(height: 28),
-        _titreSection('ET L\'ARGENT ?'),
-        pw.SizedBox(height: 10),
-        _encadreMontants([
-          _ligneMontant('Valeur de ce qui est sorti', result.expectedRevenue),
-          _ligneMontant('Recettes que tu as notées', result.actualTakings),
-          pw.Divider(color: PdfColors.grey300),
-          _ligneEcart(result.unexplainedGap),
-        ]),
-        pw.SizedBox(height: 28),
-        _titreSection('TON RÉSULTAT'),
-        pw.SizedBox(height: 10),
-        _encadreMontants([
-          _ligneMontant('Recettes encaissées', result.actualTakings),
-          _ligneMontant(
-            'Coût de la marchandise sortie',
-            -result.costOfGoodsSold,
+        pw.SizedBox(height: 18),
+        // Insécable : sans ça le cadre se coupait en deux pages et le patron
+        // recevait un « TON RÉSULTAT » réduit à une seule ligne.
+        pw.Inseparable(
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              _titreSection('ET L\'ARGENT ?'),
+              pw.SizedBox(height: 10),
+              _encadreMontants([
+                _ligneMontant(
+                  'Valeur de ce qui est sorti',
+                  result.expectedRevenue,
+                ),
+                _ligneMontant(
+                  'Recettes que tu as notées',
+                  result.actualTakings,
+                ),
+                pw.Divider(color: PdfColors.grey300),
+                _ligneEcart(result.unexplainedGap),
+              ]),
+            ],
           ),
-          // Sans cette ligne, un lecteur qui refait l'addition trouve un autre
-          // bénéfice que celui imprimé — sur un document qui se partage.
-          if (result.lossValue > 0)
-            _ligneMontant('Pertes déclarées', -result.lossValue),
-          pw.Divider(color: PdfColors.grey300),
-          _ligneMontant(
-            'Bénéfice',
-            result.profit,
-            accentue: true,
-            couleur: result.profit >= 0 ? PdfColors.green700 : PdfColors.red700,
+        ),
+        pw.SizedBox(height: 18),
+        pw.Inseparable(
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              _titreSection('TON RÉSULTAT'),
+              pw.SizedBox(height: 10),
+              _encadreMontants([
+                _ligneMontant('Recettes encaissées', result.actualTakings),
+                _ligneMontant(
+                  'Coût de la marchandise sortie',
+                  -result.costOfGoodsSold,
+                ),
+                // Sans cette ligne, un lecteur qui refait l'addition trouve un
+                // autre bénéfice que celui imprimé — sur un document partagé.
+                if (result.lossValue > 0)
+                  _ligneMontant('Pertes déclarées', -result.lossValue),
+                pw.Divider(color: PdfColors.grey300),
+                _ligneMontant(
+                  'Bénéfice',
+                  result.profit,
+                  accentue: true,
+                  couleur: result.profit >= 0
+                      ? PdfColors.green700
+                      : PdfColors.red700,
+                ),
+              ]),
+            ],
           ),
-        ]),
+        ),
       ],
     ),
   );
@@ -184,7 +216,7 @@ pw.Widget _ligneMontant(
   );
 
   return pw.Padding(
-    padding: const pw.EdgeInsets.symmetric(vertical: 5),
+    padding: const pw.EdgeInsets.symmetric(vertical: 3),
     child: pw.Row(
       children: [
         pw.Expanded(child: pw.Text(libelle, style: style)),
