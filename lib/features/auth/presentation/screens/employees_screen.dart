@@ -139,7 +139,10 @@ class EmployeesScreen extends ConsumerWidget {
 
     if (valide != true) return;
     try {
-      await ref
+      // Le serveur dit s'il a créé le compte ou rattaché un compte existant :
+      // le message doit refléter ce qui s'est réellement passé, sinon le
+      // patron donnera un mot de passe provisoire qui ne marche pas.
+      final message = await ref
           .read(employeeCreationProvider)
           .creerVendeur(
             telephone: telephone.text,
@@ -148,11 +151,9 @@ class EmployeesScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Vendeur créé. Il se connecte avec ${telephone.text.trim()} '
-              'et le mot de passe provisoire.',
-            ),
+            content: Text(message),
             backgroundColor: AppColors.primary,
+            duration: const Duration(seconds: 6),
           ),
         );
       }
@@ -160,12 +161,31 @@ class EmployeesScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$error'),
+            content: Text(_messageLisible(error)),
             backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 6),
           ),
         );
       }
     }
+  }
+
+  /// Les exceptions brutes affichent leur classe et leur code : illisible pour
+  /// un commerçant, et inutile pour nous puisque le journal les garde.
+  ///
+  /// La fonction serveur répond `{erreur: "..."}` : c'est cette phrase-là qu'il
+  /// faut montrer, pas l'enveloppe HTTP qui l'entoure.
+  String _messageLisible(Object error) {
+    if (error is FunctionException) {
+      final details = error.details;
+      if (details is Map && details['erreur'] != null) {
+        return '${details['erreur']}';
+      }
+    }
+    final texte = error.toString();
+    return texte.startsWith('Exception: ')
+        ? texte.substring('Exception: '.length)
+        : texte;
   }
 
   Future<void> _retirer(

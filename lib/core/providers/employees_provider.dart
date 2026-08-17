@@ -1,7 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../supabase_config.dart';
 import 'current_shop_provider.dart';
 import 'user_shops_provider.dart';
 
@@ -41,20 +42,44 @@ final shopMembersProvider = FutureProvider<List<ShopMember>>((ref) async {
   }
 });
 
-/// Vrai si le compte connecté est propriétaire de la boutique active.
+/// Mémorise le rôle pour les démarrages hors ligne. Sans ce cache, un patron
+/// sans réseau serait rétrogradé en vendeur au lancement.
+const _cleEstProprietaire = 'cached_is_owner';
+
+/// Le compte connecté est-il propriétaire de la boutique active ?
 ///
 /// C'est **le serveur** qui tranche, plus le PIN de l'appareil : un vendeur
 /// qui apprend le PIN du patron ne doit pas pouvoir ouvrir le bilan.
-final isOwnerOfCurrentShopProvider = Provider<bool>((ref) {
-  final boutiques = ref.watch(userShopsProvider).value ?? const <UserShop>[];
-  final active = ref.watch(currentShopIdProvider).value;
-  if (boutiques.isEmpty || active == null) {
-    // Rien de connu : on garde le comportement historique, où le PIN décide.
-    // Refuser ici bloquerait le patron hors ligne.
-    return true;
+///
+/// L'ordre des replis compte : la réponse du serveur d'abord, le dernier rôle
+/// connu ensuite, et seulement à défaut de tout le comportement historique.
+/// Répondre « oui » trop vite donnait le mode Patron à un vendeur qui vient
+/// d'installer l'app — son téléphone n'a aucun PIN, et sans PIN l'app
+/// concluait « patron ».
+final estProprietaireProvider = FutureProvider<bool>((ref) async {
+  final prefs = await SharedPreferences.getInstance();
+  final active = await ref.watch(currentShopIdProvider.future);
+  final boutiques = await ref.watch(userShopsProvider.future);
+
+  if (boutiques.isNotEmpty && active != null) {
+    final courante = boutiques.where((b) => b.id == active).firstOrNull;
+    if (courante != null) {
+      await prefs.setBool(_cleEstProprietaire, courante.isOwner);
+      // Le nom est rafraîchi ICI, à chaque lecture des boutiques. Il n'était
+      // écrit qu'au moment de choisir une boutique : une valeur de repli
+      // enregistrée une fois — « Ma boutique », quand la liste n'était pas
+      // encore arrivée — restait affichée pour toujours.
+      await prefs.setString('cached_shop_name', courante.name);
+      debugPrint('[ROLE] boutique ${courante.name} — rôle ${courante.role}');
+      return courante.isOwner;
+    }
+    // La boutique active n'est pas dans la liste : incohérence, pas une
+    // rétrogradation. Rétrograder ici enfermerait le patron en mode vendeur
+    // sur sa propre boutique.
+    debugPrint('[ROLE] boutique active $active absente de la liste');
   }
-  final courante = boutiques.where((b) => b.id == active).firstOrNull;
-  return courante?.isOwner ?? true;
+
+  return prefs.getBool(_cleEstProprietaire) ?? true;
 });
 
 final employeeCreationProvider = Provider((ref) => EmployeeCreation(ref));
@@ -73,48 +98,50 @@ class EmployeeCreation {
   ///
   /// Le mot de passe saisi ici est **provisoire** : l'employé doit en choisir
   /// un autre à sa première connexion, et le patron ne le connaît plus.
-  Future<void> creerVendeur({
+  Future<String> creerVendeur({
     required String telephone,
     required String motDePasseProvisoire,
   }) async {
     final numero = telephone.replaceAll(' ', '').trim();
-    if (numero.isEmpty) throw ArgumentError('Saisis le numéro de l\'employé.');
+    if (numero.isEmpty) throw Exception('Saisis le numéro de l\'employé.');
     if (motDePasseProvisoire.trim().length < 6) {
-      throw ArgumentError('Le mot de passe doit faire au moins 6 caractères.');
+      throw Exception('Le mot de passe doit faire au moins 6 caractères.');
     }
 
     final shopId = await requireShopId(ref);
 
-    // Client séparé, exprès : `Supabase.instance` remplacerait la session en
-    // cours par celle du compte créé — le patron serait déconnecté et se
-    // retrouverait dans l'app de son propre vendeur.
-    final clientTemporaire = SupabaseClient(supabaseUrl, supabaseAnonKey);
-    try {
-      final creation = await clientTemporaire.auth.signUp(
-        email: '$numero@shoptrack.cm',
-        password: motDePasseProvisoire.trim(),
-        data: const {mustChangePasswordKey: true},
-      );
+    // Tout se passe côté serveur, dans la fonction `creer-vendeur`.
+    //
+    // Créer un compte demande la clé d'administration, qui n'a rien à faire
+    // dans un téléphone : quelqu'un qui décompilerait l'APK pourrait supprimer
+    // n'importe quel compte. Et depuis l'app, la création réussissait puis le
+    // rattachement échouait — trois comptes orphelins en une matinée de test.
+    // Le serveur fait les deux ou aucun.
+    final reponse = await Supabase.instance.client.functions.invoke(
+      'creer-vendeur',
+      body: {
+        'telephone': numero,
+        'motDePasse': motDePasseProvisoire.trim(),
+        'shopId': shopId,
+      },
+    );
 
-      final nouvelId = creation.user?.id;
-      if (nouvelId == null) {
-        throw Exception('Compte non créé. Vérifie ta connexion.');
-      }
-
-      // Le rattachement passe par la session du PATRON : la policy exige
-      // d'être membre de la boutique, ce que le compte tout juste créé n'est
-      // pas encore.
-      await Supabase.instance.client.from('shop_members').insert({
-        'shop_id': shopId,
-        'user_id': nouvelId,
-        'role': 'seller',
-      });
-
-      ref.invalidate(shopMembersProvider);
-      ref.invalidate(userShopsProvider);
-    } finally {
-      await clientTemporaire.dispose();
+    final corps = reponse.data;
+    if (corps is Map && corps['erreur'] != null) {
+      throw Exception('${corps['erreur']}');
     }
+    if (corps is! Map || corps['rattache'] != true) {
+      throw Exception('Vendeur non créé. Vérifie ta connexion.');
+    }
+
+    ref.invalidate(shopMembersProvider);
+    ref.invalidate(userShopsProvider);
+
+    return corps['compteExistant'] == true
+        ? 'Ce compte existait déjà : il est maintenant rattaché à cette '
+              'boutique. Il garde son mot de passe habituel.'
+        : 'Vendeur créé. Il se connecte avec $numero et le mot de passe '
+              'provisoire.';
   }
 
   /// Retire un employé de la boutique.
