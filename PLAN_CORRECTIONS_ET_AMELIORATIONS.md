@@ -864,6 +864,25 @@ problème n'est pas la place, c'est qu'on ne retrouve rien dans 60 dates.
 Ces trois points rejoignent la refonte WhatsApp du §13 : ils s'appliquent
 **ensemble**, pas écran par écran, sinon on fabrique une app à deux visages.
 
+### Attentes sans retour visuel
+
+La déconnexion vérifie la file de synchronisation avant de partir : sur un
+réseau lent, l'écran reste figé plusieurs secondes sans rien dire, et le
+commerçant appuie une seconde fois. Il faut un indicateur pendant l'opération,
+puis la bascule vers l'écran de connexion.
+
+Même règle partout : **toute action qui attend le réseau doit le montrer**.
+À passer en revue lors de la refonte — enregistrement d'une vente, d'un
+comptage, création d'un vendeur, changement de boutique.
+
+### Après un changement de compte, chaque boutique se retélécharge à la visite
+
+Le téléchargement ne rapporte que la **boutique active**. Un patron qui change
+de compte doit donc visiter ses trois boutiques une à une pour retrouver leurs
+données. Ce n'est pas une perte — tout est sur le serveur — mais l'attente se
+répète. Précharger les autres boutiques en arrière-plan après une bascule de
+compte réglerait la friction.
+
 ### Corrigés immédiatement le 16/08 — c'étaient des bugs, pas du design
 
 - **Une perte déclarée n'apparaissait qu'après redémarrage** : `declareLoss`

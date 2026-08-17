@@ -12,6 +12,8 @@ import '../../../../features/products/presentation/providers/product_provider.da
 import '../../../../core/backup/backup_service.dart';
 import '../../../../shared/widgets/shop_switcher.dart';
 import '../../../../core/providers/employees_provider.dart';
+import '../../../../core/providers/user_shops_provider.dart';
+import '../../../../core/providers/current_shop_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -189,8 +191,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // vider la base ne les efface pas. Sans ce reset, le compte suivant
       // hérite de l'état du précédent — bloqué en Vendeur sur sa propre
       // boutique neuve, ou pire, Patron sans connaître le moindre PIN.
-      bossModeAccess.value = true; // aucun PIN configuré = accès Patron
+      bossModeAccess.value = false; // rien n'est ouvert tant qu'on ne sait pas
       ref.invalidate(appModeProvider);
+      ref.invalidate(currentShopIdProvider);
+      ref.invalidate(userShopsProvider);
+      ref.invalidate(estProprietaireProvider);
       ref.invalidate(shopSettingsProvider);
       ref.invalidate(productProvider);
       ref.invalidate(dashboardProvider);

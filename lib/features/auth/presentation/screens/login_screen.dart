@@ -12,6 +12,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../../core/providers/user_shops_provider.dart';
+import '../../../../core/providers/employees_provider.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -166,6 +169,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 // affiché à quelqu'un qui n'y a pas accès.
                                 await _nettoyerSiAutreCompte(ref);
 
+                                // TOUT ce qui dépend du compte doit repartir
+                                // de zéro. Vider les préférences ne suffit
+                                // pas : un provider garde sa valeur en
+                                // mémoire. Sans ces invalidations, la liste
+                                // des boutiques du compte PRÉCÉDENT restait
+                                // chargée — un vendeur héritait des boutiques
+                                // de son patron, donc de son rôle.
+                                ref.invalidate(currentShopIdProvider);
+                                ref.invalidate(userShopsProvider);
+                                ref.invalidate(estProprietaireProvider);
+                                ref.invalidate(appModeProvider);
                                 ref.invalidate(dashboardProvider);
                                 ref.invalidate(productProvider);
                                 // Le mode de la boutique aussi : il se lit

@@ -27,6 +27,7 @@ supabase/migrations/202608130002_module_b_inventory.sql
 supabase/migrations/202608130003_product_unit.sql
 supabase/migrations/202608140001_product_prices.sql
 supabase/migrations/202608170001_shop_members_owner.sql
+supabase/migrations/202608170002_shops_readable_by_members.sql
 ```
 
 ### Fonctions serveur

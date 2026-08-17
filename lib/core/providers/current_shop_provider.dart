@@ -27,14 +27,29 @@ class CurrentShopNotifier extends AsyncNotifier<String?> {
   Future<String?> build() async {
     final prefs = await SharedPreferences.getInstance();
     final id = prefs.getString(cachedShopIdKey);
-    if (id != null && id.isNotEmpty) return id;
-
-    // Première connexion : personne d'autre ne peut trouver la boutique.
-    // Elle était découverte par le tableau de bord, mais le routeur attend
-    // maintenant de la connaître avant de construire quoi que ce soit — donc
-    // le tableau de bord ne se construisait jamais et l'app tournait en rond.
-    // La source de vérité doit savoir se renseigner elle-même.
     final boutiques = await ref.read(userShopsProvider.future);
+
+    // Hors ligne : on garde ce qu'on avait, faute de pouvoir vérifier.
+    if (boutiques.isEmpty) {
+      return (id == null || id.isEmpty) ? null : id;
+    }
+
+    // La boutique mémorisée appartient-elle vraiment à ce compte ?
+    //
+    // Un vendeur qui se connecte sur un téléphone déjà utilisé par son patron
+    // héritait de la boutique active de celui-ci. Elle n'était pas dans SA
+    // liste, donc son rôle restait introuvable — et l'app, faute de savoir,
+    // lui ouvrait tout. Vider les préférences ne suffisait pas : ce nettoyage
+    // ne se déclenche qu'au changement de compte, et le même vendeur qui se
+    // reconnecte n'y passe jamais.
+    if (id != null && boutiques.any((boutique) => boutique.id == id)) {
+      return id;
+    }
+
+    // Sinon on ouvre sa boutique par défaut. Le tableau de bord s'en chargeait
+    // autrefois, mais le routeur attend désormais de connaître la boutique
+    // avant de construire quoi que ce soit : il ne se construisait donc jamais
+    // et l'app tournait en rond à la connexion.
     final defaut = boutiqueParDefaut(boutiques);
     if (defaut == null) return null;
 
