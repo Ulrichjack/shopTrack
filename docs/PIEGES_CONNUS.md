@@ -56,6 +56,36 @@ affiche des données manquantes sans dire pourquoi.
 
 ---
 
+## 3bis. Une opération refusée gèle toute la file, en silence
+
+**Symptôme** : le compteur d'opérations en attente ne descend plus, le
+téléchargement ne se fait plus, et rien ne le dit. Vu en vrai : un transfert
+refusé par `apply_stock_movement` (« Stock insuffisant ») a bloqué l'envoi de
+tout ce qui a été saisi ensuite.
+
+La file reste ordonnée — un produit doit être créé avant qu'on lui ajoute du
+stock — mais l'ordre ne vaut qu'**entre opérations liées**. `_porteesDe()`
+décrit ce que chaque opération touche : deux portées disjointes ne s'attendent
+pas. Après `maxRefusAvantMiseDeCote` refus, l'opération passe **de côté** :
+gardée, plus renvoyée seule, et signalée par un bandeau rouge qui mène à
+l'écran de synchro pour réessayer ou abandonner.
+
+Trois réflexes :
+
+- **Un réseau coupé n'est pas un refus.** `estUnRefusDuServeur()` fait la
+  différence : sans elle, une semaine hors couverture mettrait de côté tout le
+  travail d'un commerçant.
+- **Une charge illisible arrête tout.** On ne sait pas ce qu'elle touche, donc
+  on ne peut pas laisser passer la suite.
+- **Le téléchargement reste bloqué tant qu'une opération est de côté.** C'est
+  volontaire : le débloquer écraserait le stock local avec un stock serveur qui
+  ignore l'opération refusée. Mieux vaut un arrêt visible qu'un chiffre faux.
+
+**Gardes automatiques** : `test/sync_queue_quarantine_test.dart`,
+`test/sync_queue_order_test.dart`.
+
+---
+
 ## 4. Comparer des dates au jour ou à l'instant — choisir exprès
 
 | Ce qu'on compare | Granularité | Pourquoi |

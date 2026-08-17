@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/app_mode_provider.dart';
 import '../../core/providers/shop_settings_provider.dart';
+import 'blocked_sync_banner.dart';
 import 'offline_banner.dart';
 
 // 👈 On utilise ConsumerWidget à la place de StatelessWidget
@@ -97,7 +98,12 @@ class MainLayout extends ConsumerWidget {
     return Scaffold(
       body: Column(
         children: [
-          const SafeArea(bottom: false, child: OfflineBanner()),
+          const SafeArea(
+            bottom: false,
+            child: Column(
+              children: [OfflineBanner(), BlockedSyncBanner()],
+            ),
+          ),
           Expanded(child: child),
         ],
       ),

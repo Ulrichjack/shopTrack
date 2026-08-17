@@ -285,6 +285,20 @@ class SyncQueueItems extends Table {
   TextColumn get action => text()();
   TextColumn get payload => text()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Nombre de refus essuyés. Sans ce compteur, une opération que le serveur
+  /// refusera toujours gelait la file entière — et le commerçant continuait
+  /// de travailler sans savoir que plus rien ne partait.
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+
+  /// Mise de côté après trop de refus. L'opération reste dans la file : on ne
+  /// jette pas le travail de quelqu'un sans le lui dire. Elle n'est
+  /// simplement plus renvoyée toute seule, et elle attend une décision.
+  BoolColumn get setAside => boolean().withDefault(const Constant(false))();
+
+  /// Ce que le serveur a répondu la dernière fois, pour pouvoir l'afficher.
+  TextColumn get lastError => text().nullable()();
+  DateTimeColumn get lastAttemptAt => dateTime().nullable()();
 }
 
 // --- 2. CONFIGURATION DE LA BASE DE DONNÉES ---
@@ -317,7 +331,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -356,6 +370,12 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10) {
         await m.createTable(localStockTransfers);
       }
+      if (from < 11) {
+        await m.addColumn(syncQueueItems, syncQueueItems.attempts);
+        await m.addColumn(syncQueueItems, syncQueueItems.setAside);
+        await m.addColumn(syncQueueItems, syncQueueItems.lastError);
+        await m.addColumn(syncQueueItems, syncQueueItems.lastAttemptAt);
+      }
     },
   );
 
@@ -366,10 +386,16 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Toute la file, mises de côté comprises, dans l'ordre où les opérations
+  /// ont été faites. `id` départage : deux opérations de la même milliseconde
+  /// sortaient sinon dans un ordre indéfini, et l'ordre est ce qui garantit
+  /// qu'un produit est créé avant qu'on lui ajoute du stock.
   Future<List<SyncQueueItem>> getPendingItems() {
-    return (select(
-      syncQueueItems,
-    )..orderBy([(t) => OrderingTerm(expression: t.createdAt)])).get();
+    return (select(syncQueueItems)..orderBy([
+          (t) => OrderingTerm(expression: t.createdAt),
+          (t) => OrderingTerm(expression: t.id),
+        ]))
+        .get();
   }
 
   Future<int> getPendingCount() async {
@@ -377,6 +403,62 @@ class AppDatabase extends _$AppDatabase {
     final query = selectOnly(syncQueueItems)..addColumns([countExpression]);
     final row = await query.getSingle();
     return row.read(countExpression) ?? 0;
+  }
+
+  /// Les opérations que le serveur refuse et qui attendent une décision.
+  Future<List<SyncQueueItem>> getSetAsideItems() {
+    return (select(syncQueueItems)
+          ..where((t) => t.setAside.equals(true))
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
+        .get();
+  }
+
+  Future<int> getSetAsideCount() async {
+    final countExpression = syncQueueItems.id.count();
+    final query = selectOnly(syncQueueItems)
+      ..addColumns([countExpression])
+      ..where(syncQueueItems.setAside.equals(true));
+    final row = await query.getSingle();
+    return row.read(countExpression) ?? 0;
+  }
+
+  /// Note un refus. Au-delà du seuil, l'opération passe de côté.
+  Future<void> noteQueueFailure(
+    int id, {
+    required int attempts,
+    required String error,
+    required bool setAside,
+  }) {
+    return (update(syncQueueItems)..where((t) => t.id.equals(id))).write(
+      SyncQueueItemsCompanion(
+        attempts: Value(attempts),
+        lastError: Value(error),
+        lastAttemptAt: Value(DateTime.now()),
+        setAside: Value(setAside),
+      ),
+    );
+  }
+
+  /// Remet une opération dans le circuit, compteur remis à zéro.
+  Future<void> requeueItem(int id) {
+    return (update(syncQueueItems)..where((t) => t.id.equals(id))).write(
+      const SyncQueueItemsCompanion(
+        setAside: Value(false),
+        attempts: Value(0),
+        lastError: Value(null),
+      ),
+    );
+  }
+
+  Future<void> requeueAllSetAside() {
+    return (update(syncQueueItems)..where((t) => t.setAside.equals(true)))
+        .write(
+          const SyncQueueItemsCompanion(
+            setAside: Value(false),
+            attempts: Value(0),
+            lastError: Value(null),
+          ),
+        );
   }
 
   Future<void> removeFromQueue(int id) {
