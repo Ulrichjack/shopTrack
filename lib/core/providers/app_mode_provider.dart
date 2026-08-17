@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'employees_provider.dart';
 
 const String kBossPinKey = 'boss_pin'; // Ancienne clé, utilisée pour migration.
 const String kBossPinHashKey = 'boss_pin_hash';
@@ -62,6 +63,11 @@ class AppModeNotifier extends AsyncNotifier<bool> {
   }
 
   Future<bool> unlockBossMode(String enteredPin) async {
+    // Le rôle prime sur le PIN. Un vendeur qui a vu son patron composer le
+    // code ne doit pas pouvoir ouvrir le bilan : la barrière est côté
+    // serveur, l'appareil ne fait que la relayer.
+    if (!ref.read(isOwnerOfCurrentShopProvider)) return false;
+
     final now = DateTime.now();
     if (_lockedUntil?.isAfter(now) ?? false) return false;
 

@@ -8,6 +8,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'declare_loss_screen.dart';
 import '../providers/takings_provider.dart';
+import '../../../../core/providers/user_shops_provider.dart';
 
 /// Regroupe les opérations du mode inventaire, comme l'onglet Cycles le fait
 /// pour le module A : saisie quotidienne, comptage, rapport.
@@ -16,14 +17,17 @@ class InventoryHubScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final takings = ref.watch(takingsProvider).value ?? const <LocalShopTaking>[];
+    final takings =
+        ref.watch(takingsProvider).value ?? const <LocalShopTaking>[];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final todayTaking = takings
-        .where((t) =>
-            t.date.year == today.year &&
-            t.date.month == today.month &&
-            t.date.day == today.day)
+        .where(
+          (t) =>
+              t.date.year == today.year &&
+              t.date.month == today.month &&
+              t.date.day == today.day,
+        )
         .firstOrNull;
 
     final lastCount = takings.isEmpty ? null : takings.first.date;
@@ -59,6 +63,17 @@ class InventoryHubScreen extends ConsumerWidget {
                       '${DateFormat('dd/MM/yyyy').format(lastCount)}',
             onTap: () => context.push('/inventory-count'),
           ),
+          // Uniquement s'il y a une autre boutique où envoyer : sinon la
+          // tuile promet une action impossible.
+          if ((ref.watch(userShopsProvider).value ?? const []).length > 1) ...[
+            const SizedBox(height: 12),
+            _ActionTile(
+              icon: Icons.local_shipping_outlined,
+              title: 'Transferts',
+              subtitle: 'Envoyer et confirmer entre tes boutiques',
+              onTap: () => context.push('/transfers'),
+            ),
+          ],
           const SizedBox(height: 12),
           _ActionTile(
             icon: Icons.report_gmailerrorred_outlined,
@@ -66,10 +81,10 @@ class InventoryHubScreen extends ConsumerWidget {
             subtitle: 'Casse, périmé, invendu — sinon compté comme vendu',
             onTap: () => showDeclareLossSheet(context),
           ),
+
           // Le rapport a son propre onglet en bas depuis qu'il remplace le
           // bilan : le proposer ici en plus donnait deux chemins et deux noms
           // pour le même écran.
-
           const SizedBox(height: 28),
           Container(
             padding: const EdgeInsets.all(16),
@@ -86,10 +101,7 @@ class InventoryHubScreen extends ConsumerWidget {
                     'Compte ton stock quand tu veux : la période va du dernier '
                     'comptage à celui-ci. Compte tous tes produits pour '
                     'connaître ton bénéfice réel.',
-                    style: TextStyle(
-                      color: Colors.blue.shade900,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.blue.shade900, fontSize: 13),
                   ),
                 ),
               ],

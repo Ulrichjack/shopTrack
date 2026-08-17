@@ -189,6 +189,32 @@ class LocalInventoryCounts extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// Module B — Marchandise déplacée d'une boutique à l'autre.
+//
+// Ce n'est PAS une recharge : rien n'est acheté, la marchandise est déjà
+// payée. L'enregistrer comme un achat la ferait compter deux fois dans les
+// dépenses du groupe, et le bénéfice consolidé du patron deviendrait faux.
+//
+// `receivedQuantity` est rempli à l'arrivée si quelqu'un vérifie. L'écart
+// avec `quantity` est une perte de transport imputée à l'expéditeur : la
+// marchandise était la sienne, et sans cette imputation le manquant
+// deviendrait un écart inexpliqué chez lui — donc un vol présumé.
+@DataClassName('LocalStockTransfer')
+class LocalStockTransfers extends Table {
+  TextColumn get id => text()();
+  TextColumn get fromShopId => text()();
+  TextColumn get toShopId => text()();
+  TextColumn get productId => text()();
+  IntColumn get quantity => integer()();
+  IntColumn get receivedQuantity => integer().nullable()();
+  DateTimeColumn get receivedAt => dateTime().nullable()();
+  DateTimeColumn get transferredAt => dateTime()();
+  TextColumn get note => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // Module B — Historique des prix d'un produit, une ligne par changement.
 //
 // Le prix d'achat est figé sur la ligne d'achat, mais le prix de VENTE
@@ -280,6 +306,7 @@ class SyncQueueItems extends Table {
     LocalInventoryLosses,
     LocalStockPurchases,
     LocalProductPrices,
+    LocalStockTransfers,
     SyncQueueItems,
   ],
 )
@@ -290,7 +317,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -325,6 +352,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 9) {
         await m.createTable(localProductPrices);
+      }
+      if (from < 10) {
+        await m.createTable(localStockTransfers);
       }
     },
   );

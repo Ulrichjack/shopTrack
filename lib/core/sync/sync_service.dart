@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
+import '../providers/current_shop_provider.dart';
 
 final localDbProvider = Provider<AppDatabase>((ref) {
   final database = AppDatabase();
@@ -15,7 +16,7 @@ final localDbProvider = Provider<AppDatabase>((ref) {
 });
 
 final syncServiceProvider = Provider<SyncService>((ref) {
-  final service = SyncService(ref.read(localDbProvider));
+  final service = SyncService(ref.read(localDbProvider), ref);
   ref.onDispose(service.dispose);
   return service;
 });
@@ -48,9 +49,13 @@ class SyncStatus {
 }
 
 class SyncService {
-  SyncService(this.db);
+  SyncService(this.db, this.ref);
 
   final AppDatabase db;
+
+  /// Sert à connaître la boutique active. La synchro ne la décide pas : elle
+  /// travaille sur celle que le commerçant a choisie.
+  final Ref ref;
   final _statusController = StreamController<SyncStatus>.broadcast();
   SyncStatus _status = const SyncStatus.initial();
   bool _isSyncing = false;
@@ -111,12 +116,16 @@ class SyncService {
     );
 
     try {
-      final memberResponse = await supabase
-          .from('shop_members')
-          .select('shop_id')
-          .eq('user_id', userId)
-          .single();
-      final shopId = memberResponse['shop_id'] as String;
+      // La boutique active, pas « la » boutique du compte : `.single()`
+      // supposait un seul rattachement et levait une exception dès le
+      // deuxième. Le patron en a trois.
+      final shopId = await ref.read(currentShopIdProvider.future);
+      if (shopId == null || shopId.isEmpty) {
+        // Rien à télécharger tant qu'aucune boutique n'est choisie : la
+        // première connexion la renseigne, la synchro suivra.
+        _emit(phase: SyncPhase.idle, pendingCount: await db.getPendingCount());
+        return;
+      }
 
       // Une table absente côté serveur ne doit pas emporter tout le
       // téléchargement. Vu en vrai : la migration `product_prices` pas encore
@@ -219,6 +228,16 @@ class SyncService {
           'product_prices',
           supabase.from('product_prices').select().eq('shop_id', shopId),
         ),
+        // Les deux sens : la boutique voit ce qu'elle a envoyé ET ce qu'elle
+        // doit recevoir. Sans le second, personne ne pourrait confirmer une
+        // réception.
+        tirer(
+          'stock_transfers',
+          supabase
+              .from('stock_transfers')
+              .select()
+              .or('from_shop_id.eq.$shopId,to_shop_id.eq.$shopId'),
+        ),
       ]);
 
       final productsData = results[0];
@@ -235,6 +254,7 @@ class SyncService {
       final inventoryLossesData = results[11];
       final stockPurchasesData = results[12];
       final productPricesData = results[13];
+      final transfersData = results[14];
 
       // Fusionner au lieu de vider les tables protège les écritures hors ligne.
       await db.transaction(() async {
@@ -434,6 +454,29 @@ class SyncService {
             mode: InsertMode.insertOrReplace,
           );
           batch.insertAll(
+            db.localStockTransfers,
+            transfersData
+                .map(
+                  (t) => LocalStockTransfer(
+                    id: t['id'],
+                    fromShopId: t['from_shop_id'],
+                    toShopId: t['to_shop_id'],
+                    productId: t['product_id'],
+                    quantity: t['quantity'],
+                    receivedQuantity: t['received_quantity'] as int?,
+                    receivedAt: t['received_at'] == null
+                        ? null
+                        : DateTime.parse(t['received_at']).toLocal(),
+                    transferredAt: DateTime.parse(
+                      t['transferred_at'],
+                    ).toLocal(),
+                    note: t['note'] as String?,
+                  ),
+                )
+                .toList(),
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
             db.localProductPrices,
             productPricesData
                 .map(
@@ -543,6 +586,10 @@ class SyncService {
           await _processItem(item.action, payload);
           await db.removeFromQueue(item.id);
         } catch (error) {
+          // Bruyant : un échec d'envoi bloque toute la file derrière lui, et
+          // sans trace on ne voit qu'un compteur d'opérations qui ne descend
+          // plus. Le nom de l'action dit tout de suite laquelle coince.
+          debugPrint('[SYNC] échec de l\'envoi ${item.action} : $error');
           // Respecter l'ordre : une opération plus récente peut dépendre de celle-ci.
           lastError = error.toString();
           break;
@@ -602,6 +649,16 @@ class SyncService {
         await supabase.from('stock_purchases').upsert(payload);
       case 'ADD_PRODUCT_PRICE':
         await supabase.from('product_prices').upsert(payload);
+      case 'ADD_STOCK_TRANSFER':
+        await supabase.from('stock_transfers').upsert(payload);
+      case 'CONFIRM_STOCK_TRANSFER':
+        await supabase
+            .from('stock_transfers')
+            .update({
+              'received_quantity': payload['received_quantity'],
+              'received_at': payload['received_at'],
+            })
+            .eq('id', payload['id']);
       case 'ADD_SUPPLY_CYCLE':
         await supabase.from('supply_cycles').upsert(payload);
       case 'CLOSE_SUPPLY_CYCLE':

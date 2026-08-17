@@ -415,4 +415,46 @@ void main() {
       );
     });
   });
+
+  group('transferts entre boutiques', () {
+    test('la marchandise reçue augmente ce qui était disponible', () {
+      // 10 au départ, 5 reçus d'une autre boutique, 3 restants → 12 sortis.
+      final r = InventoryReconciliationCalculator.calculateProduct(
+        _produit(debut: 10, entrees: 5, compte: 3, cout: 275, vente: 350),
+      );
+      expect(r.totalOutflow, 12);
+      expect(r.presumedSales, 12);
+    });
+
+    test('un envoi ne crée ni vente ni bénéfice', () {
+      // Toute la marchandise part vers l'autre boutique : rien n'a été vendu,
+      // et surtout rien ne doit être réclamé à la caisse.
+      final r = InventoryReconciliationCalculator.calculateProduct(
+        _produit(debut: 10, sorties: 10, compte: 0, cout: 275, vente: 350),
+      );
+      expect(r.totalOutflow, 0);
+      expect(r.expectedRevenue, 0);
+      expect(r.costOfGoodsSold, 0);
+    });
+
+    test('ce qui se perd en route sort des ventes présumées', () {
+      // 10 envoyés, 9 arrivés : le dixième est une perte de transport chez
+      // l'expéditeur. Sans elle il deviendrait un écart inexpliqué — donc un
+      // vol présumé alors que la marchandise s'est perdue sur la route.
+      final r = InventoryReconciliationCalculator.calculateProduct(
+        _produit(
+          debut: 20,
+          sorties: 10,
+          compte: 8,
+          pertes: 1,
+          cout: 275,
+          vente: 350,
+        ),
+      );
+      expect(r.totalOutflow, 2, reason: '20 − 10 transférés − 8 comptés');
+      expect(r.declaredLosses, 1);
+      expect(r.presumedSales, 1);
+      expect(r.lossValue, 275);
+    });
+  });
 }

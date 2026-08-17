@@ -10,6 +10,7 @@ import '../../../../core/sync/sync_service.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../../features/products/presentation/providers/product_provider.dart';
 import '../../../../core/backup/backup_service.dart';
+import '../../../../shared/widgets/shop_switcher.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -86,6 +87,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         }
       }
       await ref.read(backupServiceProvider).createBackup();
+
+      // Quitter l'accueil AVANT de tout effacer : sinon l'écran encore affiché
+      // se reconstruit sur une app sans boutique, le temps que la navigation
+      // se fasse.
+      if (mounted) context.go('/login');
+
       await db.clearAllData();
 
       // On vide aussi les SharedPreferences
@@ -103,7 +110,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ref.invalidate(dashboardProvider);
 
       await Supabase.instance.client.auth.signOut();
-      if (mounted) context.go('/login');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -429,6 +435,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             onTap: _showUnlockDialog,
                           ),
 
+                        // Gérer ses boutiques et ses employés ne dépend pas
+                        // d'un PIN : un patron qui n'en a pas encore posé
+                        // reste le patron, et c'est même le premier à qui ces
+                        // écrans servent. Le PIN ne protège que le passage en
+                        // mode vendeur sur un téléphone partagé.
+                        if (isBossMode) ...[
+                          ListTile(
+                            leading: const Icon(
+                              Icons.add_business_outlined,
+                              color: AppColors.primaryDark,
+                            ),
+                            title: const Text(
+                              'Ajouter une boutique',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: const Text(
+                              'Elle reprendra le mode de celle-ci',
+                            ),
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            onTap: () =>
+                                ouvrirCreationBoutique(context, ref),
+                          ),
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: const Icon(
+                              Icons.people_outline,
+                              color: AppColors.primaryDark,
+                            ),
+                            title: const Text(
+                              'Employés',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: const Text(
+                              'Un compte par vendeur, limité à cette boutique',
+                            ),
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            onTap: () => context.push('/employees'),
+                          ),
+                          const Divider(height: 1),
+                        ],
+
+                        // Le verrouillage et le retrait du PIN n'ont de sens
+                        // que si un PIN existe.
                         if (hasPin && isBossMode) ...[
                           ListTile(
                             leading: const Icon(

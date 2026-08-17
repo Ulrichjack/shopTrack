@@ -7293,6 +7293,586 @@ class LocalProductPricesCompanion extends UpdateCompanion<LocalProductPrice> {
   }
 }
 
+class $LocalStockTransfersTable extends LocalStockTransfers
+    with TableInfo<$LocalStockTransfersTable, LocalStockTransfer> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalStockTransfersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fromShopIdMeta = const VerificationMeta(
+    'fromShopId',
+  );
+  @override
+  late final GeneratedColumn<String> fromShopId = GeneratedColumn<String>(
+    'from_shop_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _toShopIdMeta = const VerificationMeta(
+    'toShopId',
+  );
+  @override
+  late final GeneratedColumn<String> toShopId = GeneratedColumn<String>(
+    'to_shop_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _receivedQuantityMeta = const VerificationMeta(
+    'receivedQuantity',
+  );
+  @override
+  late final GeneratedColumn<int> receivedQuantity = GeneratedColumn<int>(
+    'received_quantity',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receivedAtMeta = const VerificationMeta(
+    'receivedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> receivedAt = GeneratedColumn<DateTime>(
+    'received_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _transferredAtMeta = const VerificationMeta(
+    'transferredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> transferredAt =
+      GeneratedColumn<DateTime>(
+        'transferred_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    fromShopId,
+    toShopId,
+    productId,
+    quantity,
+    receivedQuantity,
+    receivedAt,
+    transferredAt,
+    note,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_stock_transfers';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalStockTransfer> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('from_shop_id')) {
+      context.handle(
+        _fromShopIdMeta,
+        fromShopId.isAcceptableOrUnknown(
+          data['from_shop_id']!,
+          _fromShopIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fromShopIdMeta);
+    }
+    if (data.containsKey('to_shop_id')) {
+      context.handle(
+        _toShopIdMeta,
+        toShopId.isAcceptableOrUnknown(data['to_shop_id']!, _toShopIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_toShopIdMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('received_quantity')) {
+      context.handle(
+        _receivedQuantityMeta,
+        receivedQuantity.isAcceptableOrUnknown(
+          data['received_quantity']!,
+          _receivedQuantityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('received_at')) {
+      context.handle(
+        _receivedAtMeta,
+        receivedAt.isAcceptableOrUnknown(data['received_at']!, _receivedAtMeta),
+      );
+    }
+    if (data.containsKey('transferred_at')) {
+      context.handle(
+        _transferredAtMeta,
+        transferredAt.isAcceptableOrUnknown(
+          data['transferred_at']!,
+          _transferredAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transferredAtMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalStockTransfer map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalStockTransfer(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      fromShopId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}from_shop_id'],
+      )!,
+      toShopId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}to_shop_id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
+      receivedQuantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}received_quantity'],
+      ),
+      receivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}received_at'],
+      ),
+      transferredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}transferred_at'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+    );
+  }
+
+  @override
+  $LocalStockTransfersTable createAlias(String alias) {
+    return $LocalStockTransfersTable(attachedDatabase, alias);
+  }
+}
+
+class LocalStockTransfer extends DataClass
+    implements Insertable<LocalStockTransfer> {
+  final String id;
+  final String fromShopId;
+  final String toShopId;
+  final String productId;
+  final int quantity;
+  final int? receivedQuantity;
+  final DateTime? receivedAt;
+  final DateTime transferredAt;
+  final String? note;
+  const LocalStockTransfer({
+    required this.id,
+    required this.fromShopId,
+    required this.toShopId,
+    required this.productId,
+    required this.quantity,
+    this.receivedQuantity,
+    this.receivedAt,
+    required this.transferredAt,
+    this.note,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['from_shop_id'] = Variable<String>(fromShopId);
+    map['to_shop_id'] = Variable<String>(toShopId);
+    map['product_id'] = Variable<String>(productId);
+    map['quantity'] = Variable<int>(quantity);
+    if (!nullToAbsent || receivedQuantity != null) {
+      map['received_quantity'] = Variable<int>(receivedQuantity);
+    }
+    if (!nullToAbsent || receivedAt != null) {
+      map['received_at'] = Variable<DateTime>(receivedAt);
+    }
+    map['transferred_at'] = Variable<DateTime>(transferredAt);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    return map;
+  }
+
+  LocalStockTransfersCompanion toCompanion(bool nullToAbsent) {
+    return LocalStockTransfersCompanion(
+      id: Value(id),
+      fromShopId: Value(fromShopId),
+      toShopId: Value(toShopId),
+      productId: Value(productId),
+      quantity: Value(quantity),
+      receivedQuantity: receivedQuantity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receivedQuantity),
+      receivedAt: receivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receivedAt),
+      transferredAt: Value(transferredAt),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+    );
+  }
+
+  factory LocalStockTransfer.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalStockTransfer(
+      id: serializer.fromJson<String>(json['id']),
+      fromShopId: serializer.fromJson<String>(json['fromShopId']),
+      toShopId: serializer.fromJson<String>(json['toShopId']),
+      productId: serializer.fromJson<String>(json['productId']),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      receivedQuantity: serializer.fromJson<int?>(json['receivedQuantity']),
+      receivedAt: serializer.fromJson<DateTime?>(json['receivedAt']),
+      transferredAt: serializer.fromJson<DateTime>(json['transferredAt']),
+      note: serializer.fromJson<String?>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'fromShopId': serializer.toJson<String>(fromShopId),
+      'toShopId': serializer.toJson<String>(toShopId),
+      'productId': serializer.toJson<String>(productId),
+      'quantity': serializer.toJson<int>(quantity),
+      'receivedQuantity': serializer.toJson<int?>(receivedQuantity),
+      'receivedAt': serializer.toJson<DateTime?>(receivedAt),
+      'transferredAt': serializer.toJson<DateTime>(transferredAt),
+      'note': serializer.toJson<String?>(note),
+    };
+  }
+
+  LocalStockTransfer copyWith({
+    String? id,
+    String? fromShopId,
+    String? toShopId,
+    String? productId,
+    int? quantity,
+    Value<int?> receivedQuantity = const Value.absent(),
+    Value<DateTime?> receivedAt = const Value.absent(),
+    DateTime? transferredAt,
+    Value<String?> note = const Value.absent(),
+  }) => LocalStockTransfer(
+    id: id ?? this.id,
+    fromShopId: fromShopId ?? this.fromShopId,
+    toShopId: toShopId ?? this.toShopId,
+    productId: productId ?? this.productId,
+    quantity: quantity ?? this.quantity,
+    receivedQuantity: receivedQuantity.present
+        ? receivedQuantity.value
+        : this.receivedQuantity,
+    receivedAt: receivedAt.present ? receivedAt.value : this.receivedAt,
+    transferredAt: transferredAt ?? this.transferredAt,
+    note: note.present ? note.value : this.note,
+  );
+  LocalStockTransfer copyWithCompanion(LocalStockTransfersCompanion data) {
+    return LocalStockTransfer(
+      id: data.id.present ? data.id.value : this.id,
+      fromShopId: data.fromShopId.present
+          ? data.fromShopId.value
+          : this.fromShopId,
+      toShopId: data.toShopId.present ? data.toShopId.value : this.toShopId,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      receivedQuantity: data.receivedQuantity.present
+          ? data.receivedQuantity.value
+          : this.receivedQuantity,
+      receivedAt: data.receivedAt.present
+          ? data.receivedAt.value
+          : this.receivedAt,
+      transferredAt: data.transferredAt.present
+          ? data.transferredAt.value
+          : this.transferredAt,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalStockTransfer(')
+          ..write('id: $id, ')
+          ..write('fromShopId: $fromShopId, ')
+          ..write('toShopId: $toShopId, ')
+          ..write('productId: $productId, ')
+          ..write('quantity: $quantity, ')
+          ..write('receivedQuantity: $receivedQuantity, ')
+          ..write('receivedAt: $receivedAt, ')
+          ..write('transferredAt: $transferredAt, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    fromShopId,
+    toShopId,
+    productId,
+    quantity,
+    receivedQuantity,
+    receivedAt,
+    transferredAt,
+    note,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalStockTransfer &&
+          other.id == this.id &&
+          other.fromShopId == this.fromShopId &&
+          other.toShopId == this.toShopId &&
+          other.productId == this.productId &&
+          other.quantity == this.quantity &&
+          other.receivedQuantity == this.receivedQuantity &&
+          other.receivedAt == this.receivedAt &&
+          other.transferredAt == this.transferredAt &&
+          other.note == this.note);
+}
+
+class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
+  final Value<String> id;
+  final Value<String> fromShopId;
+  final Value<String> toShopId;
+  final Value<String> productId;
+  final Value<int> quantity;
+  final Value<int?> receivedQuantity;
+  final Value<DateTime?> receivedAt;
+  final Value<DateTime> transferredAt;
+  final Value<String?> note;
+  final Value<int> rowid;
+  const LocalStockTransfersCompanion({
+    this.id = const Value.absent(),
+    this.fromShopId = const Value.absent(),
+    this.toShopId = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.receivedQuantity = const Value.absent(),
+    this.receivedAt = const Value.absent(),
+    this.transferredAt = const Value.absent(),
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalStockTransfersCompanion.insert({
+    required String id,
+    required String fromShopId,
+    required String toShopId,
+    required String productId,
+    required int quantity,
+    this.receivedQuantity = const Value.absent(),
+    this.receivedAt = const Value.absent(),
+    required DateTime transferredAt,
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       fromShopId = Value(fromShopId),
+       toShopId = Value(toShopId),
+       productId = Value(productId),
+       quantity = Value(quantity),
+       transferredAt = Value(transferredAt);
+  static Insertable<LocalStockTransfer> custom({
+    Expression<String>? id,
+    Expression<String>? fromShopId,
+    Expression<String>? toShopId,
+    Expression<String>? productId,
+    Expression<int>? quantity,
+    Expression<int>? receivedQuantity,
+    Expression<DateTime>? receivedAt,
+    Expression<DateTime>? transferredAt,
+    Expression<String>? note,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (fromShopId != null) 'from_shop_id': fromShopId,
+      if (toShopId != null) 'to_shop_id': toShopId,
+      if (productId != null) 'product_id': productId,
+      if (quantity != null) 'quantity': quantity,
+      if (receivedQuantity != null) 'received_quantity': receivedQuantity,
+      if (receivedAt != null) 'received_at': receivedAt,
+      if (transferredAt != null) 'transferred_at': transferredAt,
+      if (note != null) 'note': note,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalStockTransfersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? fromShopId,
+    Value<String>? toShopId,
+    Value<String>? productId,
+    Value<int>? quantity,
+    Value<int?>? receivedQuantity,
+    Value<DateTime?>? receivedAt,
+    Value<DateTime>? transferredAt,
+    Value<String?>? note,
+    Value<int>? rowid,
+  }) {
+    return LocalStockTransfersCompanion(
+      id: id ?? this.id,
+      fromShopId: fromShopId ?? this.fromShopId,
+      toShopId: toShopId ?? this.toShopId,
+      productId: productId ?? this.productId,
+      quantity: quantity ?? this.quantity,
+      receivedQuantity: receivedQuantity ?? this.receivedQuantity,
+      receivedAt: receivedAt ?? this.receivedAt,
+      transferredAt: transferredAt ?? this.transferredAt,
+      note: note ?? this.note,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (fromShopId.present) {
+      map['from_shop_id'] = Variable<String>(fromShopId.value);
+    }
+    if (toShopId.present) {
+      map['to_shop_id'] = Variable<String>(toShopId.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (receivedQuantity.present) {
+      map['received_quantity'] = Variable<int>(receivedQuantity.value);
+    }
+    if (receivedAt.present) {
+      map['received_at'] = Variable<DateTime>(receivedAt.value);
+    }
+    if (transferredAt.present) {
+      map['transferred_at'] = Variable<DateTime>(transferredAt.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalStockTransfersCompanion(')
+          ..write('id: $id, ')
+          ..write('fromShopId: $fromShopId, ')
+          ..write('toShopId: $toShopId, ')
+          ..write('productId: $productId, ')
+          ..write('quantity: $quantity, ')
+          ..write('receivedQuantity: $receivedQuantity, ')
+          ..write('receivedAt: $receivedAt, ')
+          ..write('transferredAt: $transferredAt, ')
+          ..write('note: $note, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncQueueItemsTable extends SyncQueueItems
     with TableInfo<$SyncQueueItemsTable, SyncQueueItem> {
   @override
@@ -7621,6 +8201,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LocalStockPurchasesTable(this);
   late final $LocalProductPricesTable localProductPrices =
       $LocalProductPricesTable(this);
+  late final $LocalStockTransfersTable localStockTransfers =
+      $LocalStockTransfersTable(this);
   late final $SyncQueueItemsTable syncQueueItems = $SyncQueueItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -7642,6 +8224,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     localInventoryLosses,
     localStockPurchases,
     localProductPrices,
+    localStockTransfers,
     syncQueueItems,
   ];
 }
@@ -11537,6 +12120,306 @@ typedef $$LocalProductPricesTableProcessedTableManager =
       LocalProductPrice,
       PrefetchHooks Function()
     >;
+typedef $$LocalStockTransfersTableCreateCompanionBuilder =
+    LocalStockTransfersCompanion Function({
+      required String id,
+      required String fromShopId,
+      required String toShopId,
+      required String productId,
+      required int quantity,
+      Value<int?> receivedQuantity,
+      Value<DateTime?> receivedAt,
+      required DateTime transferredAt,
+      Value<String?> note,
+      Value<int> rowid,
+    });
+typedef $$LocalStockTransfersTableUpdateCompanionBuilder =
+    LocalStockTransfersCompanion Function({
+      Value<String> id,
+      Value<String> fromShopId,
+      Value<String> toShopId,
+      Value<String> productId,
+      Value<int> quantity,
+      Value<int?> receivedQuantity,
+      Value<DateTime?> receivedAt,
+      Value<DateTime> transferredAt,
+      Value<String?> note,
+      Value<int> rowid,
+    });
+
+class $$LocalStockTransfersTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalStockTransfersTable> {
+  $$LocalStockTransfersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fromShopId => $composableBuilder(
+    column: $table.fromShopId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get toShopId => $composableBuilder(
+    column: $table.toShopId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get receivedQuantity => $composableBuilder(
+    column: $table.receivedQuantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get transferredAt => $composableBuilder(
+    column: $table.transferredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalStockTransfersTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalStockTransfersTable> {
+  $$LocalStockTransfersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fromShopId => $composableBuilder(
+    column: $table.fromShopId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get toShopId => $composableBuilder(
+    column: $table.toShopId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get receivedQuantity => $composableBuilder(
+    column: $table.receivedQuantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get transferredAt => $composableBuilder(
+    column: $table.transferredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalStockTransfersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalStockTransfersTable> {
+  $$LocalStockTransfersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get fromShopId => $composableBuilder(
+    column: $table.fromShopId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get toShopId =>
+      $composableBuilder(column: $table.toShopId, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<int> get receivedQuantity => $composableBuilder(
+    column: $table.receivedQuantity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get transferredAt => $composableBuilder(
+    column: $table.transferredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+}
+
+class $$LocalStockTransfersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalStockTransfersTable,
+          LocalStockTransfer,
+          $$LocalStockTransfersTableFilterComposer,
+          $$LocalStockTransfersTableOrderingComposer,
+          $$LocalStockTransfersTableAnnotationComposer,
+          $$LocalStockTransfersTableCreateCompanionBuilder,
+          $$LocalStockTransfersTableUpdateCompanionBuilder,
+          (
+            LocalStockTransfer,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalStockTransfersTable,
+              LocalStockTransfer
+            >,
+          ),
+          LocalStockTransfer,
+          PrefetchHooks Function()
+        > {
+  $$LocalStockTransfersTableTableManager(
+    _$AppDatabase db,
+    $LocalStockTransfersTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalStockTransfersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalStockTransfersTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$LocalStockTransfersTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> fromShopId = const Value.absent(),
+                Value<String> toShopId = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
+                Value<int?> receivedQuantity = const Value.absent(),
+                Value<DateTime?> receivedAt = const Value.absent(),
+                Value<DateTime> transferredAt = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalStockTransfersCompanion(
+                id: id,
+                fromShopId: fromShopId,
+                toShopId: toShopId,
+                productId: productId,
+                quantity: quantity,
+                receivedQuantity: receivedQuantity,
+                receivedAt: receivedAt,
+                transferredAt: transferredAt,
+                note: note,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String fromShopId,
+                required String toShopId,
+                required String productId,
+                required int quantity,
+                Value<int?> receivedQuantity = const Value.absent(),
+                Value<DateTime?> receivedAt = const Value.absent(),
+                required DateTime transferredAt,
+                Value<String?> note = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalStockTransfersCompanion.insert(
+                id: id,
+                fromShopId: fromShopId,
+                toShopId: toShopId,
+                productId: productId,
+                quantity: quantity,
+                receivedQuantity: receivedQuantity,
+                receivedAt: receivedAt,
+                transferredAt: transferredAt,
+                note: note,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalStockTransfersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalStockTransfersTable,
+      LocalStockTransfer,
+      $$LocalStockTransfersTableFilterComposer,
+      $$LocalStockTransfersTableOrderingComposer,
+      $$LocalStockTransfersTableAnnotationComposer,
+      $$LocalStockTransfersTableCreateCompanionBuilder,
+      $$LocalStockTransfersTableUpdateCompanionBuilder,
+      (
+        LocalStockTransfer,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalStockTransfersTable,
+          LocalStockTransfer
+        >,
+      ),
+      LocalStockTransfer,
+      PrefetchHooks Function()
+    >;
 typedef $$SyncQueueItemsTableCreateCompanionBuilder =
     SyncQueueItemsCompanion Function({
       Value<int> id,
@@ -11748,6 +12631,8 @@ class $AppDatabaseManager {
       $$LocalStockPurchasesTableTableManager(_db, _db.localStockPurchases);
   $$LocalProductPricesTableTableManager get localProductPrices =>
       $$LocalProductPricesTableTableManager(_db, _db.localProductPrices);
+  $$LocalStockTransfersTableTableManager get localStockTransfers =>
+      $$LocalStockTransfersTableTableManager(_db, _db.localStockTransfers);
   $$SyncQueueItemsTableTableManager get syncQueueItems =>
       $$SyncQueueItemsTableTableManager(_db, _db.syncQueueItems);
 }
