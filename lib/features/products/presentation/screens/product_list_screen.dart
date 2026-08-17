@@ -36,12 +36,18 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Mon stock'),
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
+      body: NestedScrollView(
+        floatHeaderSlivers: true,
+        headerSliverBuilder: (context, innerBoxIsScrolled) => const [
+          SliverAppBar(
+            title: Text('Mon stock'),
+            floating: true,
+            snap: true,
+            elevation: 0,
+          ),
+        ],
+        body: Column(
+          children: [
           // 1. Zone de Recherche, Filtres et Valeur du stock (En-tête)
           Container(
             color: AppColors.primary,
@@ -54,25 +60,36 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   data: (products) {
                     final totalValue = _calculateTotalStockValue(products);
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 16.0),
+                      margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.primaryDark.withOpacity(0.5), // Fond légèrement plus sombre pour faire ressortir
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Valeur totale du stock :',
-                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          const Expanded(
+                            child: Text(
+                              'Valeur totale du stock',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
                           ),
-                          Text(
-                            CurrencyFormatter.format(totalValue),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                CurrencyFormatter.format(totalValue),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -102,7 +119,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // Filtres (Tous / Stock bas / Rupture)
                 SingleChildScrollView(
@@ -213,7 +230,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                               )
                                   : const Icon(Icons.image, color: Colors.grey),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 12),
 
                             // Infos (Nom + Badge)
                             Expanded(
@@ -281,7 +298,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               },
             ),
           ),
-        ],
+          ],
+        ),
       ),
 
       floatingActionButton: FloatingActionButton.extended(

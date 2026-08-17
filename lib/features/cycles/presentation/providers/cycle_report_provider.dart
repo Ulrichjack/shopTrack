@@ -21,14 +21,12 @@ final cycleReportProvider = FutureProvider.family<CycleReport, String>((
     db.localSupplyCycles,
   )..where((t) => t.id.equals(cycleId))).getSingle();
 
-  final saleRows =
-      await (db.select(db.localSaleItems)
-            ..where((t) => t.cycleId.equals(cycleId)))
-          .get();
-  final lossRows =
-      await (db.select(db.localCycleLosses)
-            ..where((t) => t.cycleId.equals(cycleId)))
-          .get();
+  final saleRows = await (db.select(
+    db.localSaleItems,
+  )..where((t) => t.cycleId.equals(cycleId))).get();
+  final lossRows = await (db.select(
+    db.localCycleLosses,
+  )..where((t) => t.cycleId.equals(cycleId))).get();
 
   final totals = CycleResultCalculator.calculate(
     quantityReceived: cycle.quantityReceived,

@@ -313,12 +313,18 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Journal de Caisse'),
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
+      body: NestedScrollView(
+        floatHeaderSlivers: true,
+        headerSliverBuilder: (context, innerBoxIsScrolled) => const [
+          SliverAppBar(
+            title: Text('Journal de caisse'),
+            floating: true,
+            snap: true,
+            elevation: 0,
+          ),
+        ],
+        body: Column(
+          children: [
           // SÉLECTEUR DE DATE
           Container(
             color: AppColors.primary,
@@ -434,7 +440,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                   if (transactions.isEmpty) {
                     return const Center(
                       child: Padding(
-                        padding: EdgeInsets.all(20.0),
+                        padding: EdgeInsets.all(16),
                         child: Text(
                           'Aucune transaction à cette date.',
                           style: TextStyle(color: Colors.grey),
@@ -453,7 +459,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                       final timeStr = DateFormat('HH:mm').format(tx.time);
 
                       return Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -581,7 +587,8 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

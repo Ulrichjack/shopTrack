@@ -7,6 +7,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../providers/takings_provider.dart';
+import '../../../../shared/widgets/shop_switcher.dart';
 
 /// Accueil des boutiques en inventaire périodique.
 ///
@@ -50,9 +51,11 @@ class InventoryDashboardScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'ShopTrack',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: ShopSwitcher(
+          repli: const Text(
+            'ShopTrack',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
         elevation: 0,
         actions: [

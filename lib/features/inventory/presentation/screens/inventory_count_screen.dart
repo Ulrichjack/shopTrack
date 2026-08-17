@@ -88,126 +88,139 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Comptage du stock')),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      setState(() => _query = value.trim().toLowerCase());
-                    },
-                    textInputAction: TextInputAction.search,
-                    decoration: InputDecoration(
-                      hintText: 'Rechercher un produit',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _query.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Effacer la recherche',
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _query = '');
-                              },
-                              icon: const Icon(Icons.close),
-                            ),
-                      filled: true,
-                      fillColor: AppColors.cardBg,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
+      body: NestedScrollView(
+        floatHeaderSlivers: true,
+        headerSliverBuilder: (context, innerBoxIsScrolled) => const [
+          SliverAppBar(
+            title: Text('Comptage du stock'),
+            floating: true,
+            snap: true,
+          ),
+        ],
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() => _query = value.trim().toLowerCase());
+                      },
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Rechercher un produit',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _query.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Effacer la recherche',
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _query = '');
+                                },
+                                icon: const Icon(Icons.close),
+                              ),
+                        filled: true,
+                        fillColor: AppColors.cardBg,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  overviewAsync.when(
-                    loading: () => const _ProgressCard.loading(),
-                    error: (_, _) => const _ProgressCard(
-                      counted: 0,
-                      total: 0,
-                      isComplete: false,
+                    const SizedBox(height: 12),
+                    overviewAsync.when(
+                      loading: () => const _ProgressCard.loading(),
+                      error: (_, _) => const _ProgressCard(
+                        counted: 0,
+                        total: 0,
+                        isComplete: false,
+                      ),
+                      data: (overview) => _ProgressCard(
+                        counted: overview.countedProducts,
+                        total: overview.totalProducts,
+                        isComplete: overview.isRoundComplete,
+                        isFirstRound: overview.isFirstRound,
+                        periodStartedAt: overview.periodStartedAt,
+                      ),
                     ),
-                    data: (overview) => _ProgressCard(
-                      counted: overview.countedProducts,
-                      total: overview.totalProducts,
-                      isComplete: overview.isRoundComplete,
-                      isFirstRound: overview.isFirstRound,
-                      periodStartedAt: overview.periodStartedAt,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: overviewAsync.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                ),
-                error: (error, _) => _LoadError(
-                  message: humanSyncError(error),
-                  onRetry: () => ref.invalidate(inventoryCountProvider),
-                ),
-                data: (overview) {
-                  if (overview.lines.isEmpty) {
-                    return const _EmptyProducts();
-                  }
+              Expanded(
+                child: overviewAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                  error: (error, _) => _LoadError(
+                    message: humanSyncError(error),
+                    onRetry: () => ref.invalidate(inventoryCountProvider),
+                  ),
+                  data: (overview) {
+                    if (overview.lines.isEmpty) {
+                      return const _EmptyProducts();
+                    }
 
-                  final visibleLines = overview.lines
-                      .where(
-                        (line) =>
-                            _query.isEmpty ||
-                            line.product.name.toLowerCase().contains(_query),
-                      )
-                      .toList();
+                    final visibleLines = overview.lines
+                        .where(
+                          (line) =>
+                              _query.isEmpty ||
+                              line.product.name.toLowerCase().contains(_query),
+                        )
+                        .toList();
 
-                  if (visibleLines.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'Aucun produit ne correspond à la recherche.',
+                    if (visibleLines.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'Aucun produit ne correspond à la recherche.',
+                        ),
+                      );
+                    }
+
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        ref.invalidate(inventoryCountProvider);
+                        await ref.read(inventoryCountProvider.future);
+                      },
+                      child: ListView.separated(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 112),
+                        itemCount: visibleLines.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final line = visibleLines[index];
+                          final recounting = _recountingProductIds.contains(
+                            line.product.id,
+                          );
+                          return _ProductCountCard(
+                            line: line,
+                            controller: _controllerFor(line.product.id),
+                            isSaving: _savingProductIds.contains(
+                              line.product.id,
+                            ),
+                            showInput: !line.isCounted || recounting,
+                            canRecount: overview.isRoundComplete && !recounting,
+                            onSave: () => _saveLine(line),
+                            onRecount: () {
+                              setState(
+                                () =>
+                                    _recountingProductIds.add(line.product.id),
+                              );
+                            },
+                          );
+                        },
                       ),
                     );
-                  }
-
-                  return RefreshIndicator(
-                    onRefresh: () async {
-                      ref.invalidate(inventoryCountProvider);
-                      await ref.read(inventoryCountProvider.future);
-                    },
-                    child: ListView.separated(
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 112),
-                      itemCount: visibleLines.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final line = visibleLines[index];
-                        final recounting = _recountingProductIds.contains(
-                          line.product.id,
-                        );
-                        return _ProductCountCard(
-                          line: line,
-                          controller: _controllerFor(line.product.id),
-                          isSaving: _savingProductIds.contains(line.product.id),
-                          showInput: !line.isCounted || recounting,
-                          canRecount: overview.isRoundComplete && !recounting,
-                          onSave: () => _saveLine(line),
-                          onRecount: () {
-                            setState(
-                              () => _recountingProductIds.add(line.product.id),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  );
-                },
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -345,7 +358,7 @@ class _ProductCountCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       color: AppColors.cardBg,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -86,143 +86,171 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 20,
-                right: 20,
-                top: 20,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Nouvel arrivage',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Article : ${currentProduct.name}',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 20),
-
-                  TextField(
-                    controller: quantityController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Quantité à ajouter',
-                      prefixIcon: const Icon(Icons.add_box),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Les deux prix au même endroit : celui qui paie plus cher
-                  // remonte son prix de vente dans la foulée. C'est un seul
-                  // geste, et c'est le moment où il connaît les deux chiffres.
-                  // Chacun est figé sur l'arrivage, donc les périodes déjà
-                  // closes ne bougent plus quand un tarif change ensuite.
-                  if (isPeriodic) ...[
+                    const SizedBox(height: 4),
                     Row(
                       children: [
-                        Expanded(
-                          child: TextField(
-                            controller: costController,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: 'Prix d\'achat (F)',
-                              helperText: 'Ce que tu as payé',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                        const Expanded(
+                          child: Text(
+                            'Nouvel arrivage',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: sellController,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: 'Prix de vente (F)',
-                              helperText: 'Ce que tu demandes',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
+                        IconButton(
+                          tooltip: 'Fermer',
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                  ] else
                     const SizedBox(height: 4),
+                    Text(
+                      'Article : ${currentProduct.name}',
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
 
-                  ElevatedButton(
-                    onPressed: isSaving
-                        ? null
-                        : () async {
-                            final qty = int.tryParse(quantityController.text);
-                            if (qty == null || qty <= 0) return;
+                    TextField(
+                      controller: quantityController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Quantité à ajouter',
+                        prefixIcon: const Icon(Icons.add_box),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-                            setModalState(() => isSaving = true);
+                    // Les deux prix au même endroit : celui qui paie plus cher
+                    // remonte son prix de vente dans la foulée. C'est un seul
+                    // geste, et c'est le moment où il connaît les deux chiffres.
+                    // Chacun est figé sur l'arrivage, donc les périodes déjà
+                    // closes ne bougent plus quand un tarif change ensuite.
+                    if (isPeriodic) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: costController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Prix d\'achat (F)',
+                                helperText: 'Ce que tu as payé',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: sellController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Prix de vente (F)',
+                                helperText: 'Ce que tu demandes',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                    ] else
+                      const SizedBox(height: 4),
 
-                            try {
-                              await ref
-                                  .read(productProvider.notifier)
-                                  .addStock(
-                                    currentProduct,
-                                    qty,
-                                    unitCost: isPeriodic
-                                        ? double.tryParse(
-                                            costController.text.trim(),
-                                          )
-                                        : null,
-                                    sellPrice: isPeriodic
-                                        ? double.tryParse(
-                                            sellController.text.trim(),
-                                          )
-                                        : null,
+                    ElevatedButton(
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              final qty = int.tryParse(quantityController.text);
+                              if (qty == null || qty <= 0) return;
+
+                              setModalState(() => isSaving = true);
+
+                              try {
+                                await ref
+                                    .read(productProvider.notifier)
+                                    .addStock(
+                                      currentProduct,
+                                      qty,
+                                      unitCost: isPeriodic
+                                          ? double.tryParse(
+                                              costController.text.trim(),
+                                            )
+                                          : null,
+                                      sellPrice: isPeriodic
+                                          ? double.tryParse(
+                                              sellController.text.trim(),
+                                            )
+                                          : null,
+                                    );
+                                ref.invalidate(
+                                  productHistoryProvider(currentProduct.id),
+                                );
+
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Stock ajouté avec succès !',
+                                      ),
+                                      backgroundColor: AppColors.primary,
+                                    ),
                                   );
-                              ref.invalidate(
-                                productHistoryProvider(currentProduct.id),
-                              );
-
-                              if (context.mounted) {
-                                Navigator.pop(
-                                  context,
-                                ); // On ferme juste le BottomSheet
+                                }
+                              } catch (e) {
+                                setModalState(() => isSaving = false);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Stock ajouté avec succès !'),
-                                    backgroundColor: AppColors.primary,
+                                  SnackBar(
+                                    content: Text('Erreur: $e'),
+                                    backgroundColor: AppColors.error,
                                   ),
                                 );
                               }
-                            } catch (e) {
-                              setModalState(() => isSaving = false);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Erreur: $e'),
-                                  backgroundColor: AppColors.error,
-                                ),
-                              );
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: isSaving
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'Confirmer la recharge',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
-                    child: isSaving
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Confirmer la recharge',
-                            style: TextStyle(fontSize: 16, color: Colors.white),
-                          ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                    const SizedBox(height: 4),
+                  ],
+                ),
               ),
             );
           },
@@ -656,7 +684,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                             : AppColors.primaryDark),
                                 ),
                               ),
-                              if (!isRecharge && !isComptage && item.totalAmount != null)
+                              if (!isRecharge &&
+                                  !isComptage &&
+                                  item.totalAmount != null)
                                 Text(
                                   CurrencyFormatter.format(item.totalAmount!),
                                   style: const TextStyle(
