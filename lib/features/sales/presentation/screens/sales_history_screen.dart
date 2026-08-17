@@ -318,8 +318,12 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
         headerSliverBuilder: (context, innerBoxIsScrolled) => const [
           SliverAppBar(
             title: Text('Journal de caisse'),
-            floating: true,
-            snap: true,
+            // Ni `floating` ni `snap` : l'entête ne revient qu'une fois
+            // remonté tout en haut. En `floating`, il réapparaissait au
+            // moindre geste vers le haut et recouvrait la ligne qu'on venait
+            // chercher — on le repoussait, il revenait.
+            floating: false,
+            snap: false,
             elevation: 0,
           ),
         ],

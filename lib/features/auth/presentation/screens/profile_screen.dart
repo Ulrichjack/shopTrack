@@ -149,12 +149,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (confirm != true) return;
 
+    // Le contrôle de la file peut prendre plusieurs secondes sur un réseau
+    // lent, et l'écran restait figé sans rien dire — le commerçant appuyait
+    // une seconde fois. Une attente muette est pire qu'une attente longue.
+    if (mounted) {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const PopScope(
+          canPop: false,
+          child: AlertDialog(
+            content: Row(
+              children: [
+                SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                SizedBox(width: 18),
+                Expanded(child: Text('Déconnexion en cours…')),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    void fermerAttente() {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    }
+
     try {
       final db = ref.read(localDbProvider);
       if (await db.getPendingCount() > 0) {
         await ref.read(syncServiceProvider).processQueue();
         final remaining = await db.getPendingCount();
         if (remaining > 0) {
+          fermerAttente();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -173,6 +204,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
       // Quitter l'accueil AVANT de toucher à l'état : sinon l'écran encore
       // affiché se reconstruit sur une app sans boutique.
+      fermerAttente();
       if (mounted) context.go('/login');
 
       // On NE vide plus la base ni les préférences.
@@ -202,6 +234,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
       await Supabase.instance.client.auth.signOut();
     } catch (e) {
+      fermerAttente();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -396,8 +429,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Center(
               child: Column(
                 children: [
+                  // Rond réduit de moitié : l'ancien occupait un tiers de la
+                  // hauteur avant le premier réglage, pour une icône qui
+                  // n'apporte aucune information nouvelle — le mode est déjà
+                  // écrit juste en dessous.
                   CircleAvatar(
-                    radius: 50,
+                    radius: 28,
                     backgroundColor: isBossMode
                         ? AppColors.primaryLight
                         : Colors.orange.shade100,
@@ -405,17 +442,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       isBossMode
                           ? Icons.admin_panel_settings
                           : Icons.storefront,
-                      size: 50,
+                      size: 28,
                       color: isBossMode
                           ? AppColors.primaryDark
                           : Colors.orange.shade800,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   Text(
                     _shopName, // 👈 Le vrai nom de la boutique s'affiche ici !
                     style: const TextStyle(
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
@@ -453,19 +490,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
 
             // --- SECTION SÉCURITÉ ---
             const Text(
               'SÉCURITÉ',
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
                 color: Colors.grey,
-                letterSpacing: 1.2,
+                letterSpacing: 0.6,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
             // 👇 CORRECTION DE L'ERREUR FLUTTER (Utilisation de Material) 👇
             Material(
@@ -661,18 +698,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
 
             const Text(
               'DONNÉES',
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
                 color: Colors.grey,
-                letterSpacing: 1.2,
+                letterSpacing: 0.6,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Card(
               child: Column(
                 children: [
@@ -714,7 +751,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
 
             // --- BOUTON DÉCONNEXION ---
             ElevatedButton.icon(
