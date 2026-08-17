@@ -15,6 +15,8 @@ import '../../../products/presentation/providers/product_provider.dart';
 import '../../domain/entities/daily_closing_entity.dart';
 import '../../data/datasources/closing_remote_datasource.dart';
 import '../../data/repositories/closing_repository_impl.dart';
+import '../../../../core/providers/current_shop_provider.dart';
+import '../../../../core/providers/user_shops_provider.dart';
 
 // --- 1. REPOSITORIES POUR LA CLÔTURE (Supabase) ---
 final closingRemoteDataSourceProvider = Provider((ref) {
@@ -131,20 +133,25 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       if (currentUser != null) {
         await prefs.setString('cached_user_id', currentUser.id);
 
-        // On récupère le shop_id ET le nom de la boutique via une jointure Supabase
-        final memberResponse = await Supabase.instance.client
-            .from('shop_members')
-            .select('shop_id, shops(name)')
-            .eq('user_id', currentUser.id)
-            .single();
+        // Toutes les boutiques du compte, pas « la » sienne : `.single()`
+        // levait une exception dès la deuxième, et le client type en a trois.
+        ref.invalidate(userShopsProvider);
+        final boutiques = await ref.read(userShopsProvider.future);
+        if (boutiques.isNotEmpty) {
+          final active = await ref.read(currentShopIdProvider.future);
+          // On ne rebascule jamais tout seul : si le patron a choisi une
+          // boutique, il la retrouve. On ne choisit que faute de mieux.
+          final choisie = boutiques.firstWhere(
+            (boutique) => boutique.id == active,
+            orElse: () => boutiqueParDefaut(boutiques)!,
+          );
 
-        await prefs.setString(
-          'cached_shop_id',
-          memberResponse['shop_id'] as String,
-        );
-        // On sauvegarde le nom de la boutique
-        final shopData = memberResponse['shops'] as Map<String, dynamic>;
-        await prefs.setString('cached_shop_name', shopData['name'] as String);
+          // Par le notifier et non par les préférences : lui seul prévient les
+          // écrans. Écrire la clé en douce laisserait la source unique sur son
+          // ancienne valeur — donc les providers sur l'ancienne boutique.
+          await ref.read(currentShopIdProvider.notifier).select(choisie.id);
+          await prefs.setString('cached_shop_name', choisie.name);
+        }
       }
 
       await ref.read(syncServiceProvider).pullDataFromSupabase();
@@ -156,12 +163,14 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
   Future<DashboardState> _fetchDashboardData() async {
     final db = ref.read(localDbProvider);
     final isOnline = ref.read(connectivityProvider).value ?? true;
-    final prefs = await SharedPreferences.getInstance();
-
-    String shopId = prefs.getString('cached_shop_id') ?? '';
+    String shopId = await ref.read(currentShopIdProvider.future) ?? '';
 
     // 1. SI C'EST LA TOUTE PREMIÈRE CONNEXION
-    final localProducts = await db.select(db.localProducts).get();
+    final localProducts = shopId.isEmpty
+        ? const <LocalProduct>[]
+        : await (db.select(
+            db.localProducts,
+          )..where((row) => row.shopId.equals(shopId))).get();
     final isFirstLoad = localProducts.isEmpty;
 
     if (isOnline) {
@@ -183,7 +192,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     // La toute première synchronisation renseigne cached_shop_id. Il faut le
     // relire ici : la valeur récupérée avant la synchronisation est encore
     // vide, même si SharedPreferences a été correctement mis à jour.
-    shopId = prefs.getString('cached_shop_id') ?? '';
+    shopId = await ref.read(currentShopIdProvider.future) ?? '';
 
     if (shopId.isEmpty && isFirstLoad) {
       throw Exception('Boutique introuvable. Connectez-vous à internet.');
@@ -202,9 +211,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     final pastSales =
         await (db.select(db.localSales)
               ..where((t) => t.createdAt.isSmallerThanValue(startOfDay))
-              ..orderBy([
-                (t) => drift.OrderingTerm(expression: t.createdAt),
-              ]))
+              ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt)]))
             .get();
     final lastSale = pastSales.isEmpty ? null : pastSales.first;
 
@@ -339,10 +346,8 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final db = ref.read(localDbProvider);
       final prefs = await SharedPreferences.getInstance();
 
-      final shopId = prefs.getString('cached_shop_id');
+      final shopId = await requireShopId(ref);
       final userId = prefs.getString('cached_user_id') ?? 'offline_user';
-
-      if (shopId == null) throw Exception('Boutique introuvable.');
 
       final movementId = const Uuid().v4();
       final now = DateTime.now();
@@ -453,10 +458,8 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final db = ref.read(localDbProvider);
       final prefs = await SharedPreferences.getInstance();
 
-      final shopId = prefs.getString('cached_shop_id');
+      final shopId = await requireShopId(ref);
       final userId = prefs.getString('cached_user_id') ?? 'offline_user';
-
-      if (shopId == null) throw Exception('Boutique introuvable.');
 
       final dateToClose = specificDate ?? DateTime.now();
       final startOfDay = DateTime(

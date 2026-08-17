@@ -2,15 +2,18 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../products/presentation/providers/product_provider.dart';
+import '../../../../core/providers/current_shop_provider.dart';
 
 final cycleLossesProvider =
-    FutureProvider.family<List<LocalCycleLossesData>, String>((ref, cycleId) async {
+    FutureProvider.family<List<LocalCycleLossesData>, String>((
+      ref,
+      cycleId,
+    ) async {
       final db = ref.watch(localDbProvider);
       return (db.select(
         db.localCycleLosses,
@@ -31,9 +34,7 @@ class CycleLossActions {
     String? note,
   }) async {
     final db = ref.read(localDbProvider);
-    final prefs = await SharedPreferences.getInstance();
-    final shopId = prefs.getString('cached_shop_id');
-    if (shopId == null) throw Exception('Boutique introuvable.');
+    final shopId = await requireShopId(ref);
 
     final product = await (db.select(
       db.localProducts,

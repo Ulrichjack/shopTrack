@@ -10,6 +10,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/network_error_widget.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../../../../shared/widgets/shop_switcher.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -33,6 +34,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void _checkAlerts() {
     // 👇 2. SÉCURITÉ : Si une boîte est déjà ouverte, on ne fait rien
     if (_isDialogOpen) return;
+
+    // Deuxième garde, en ceinture et bretelles : la caisse et la clôture
+    // journalière n'existent pas en inventaire périodique. Le routeur ne
+    // construit plus cet écran dans ce mode, mais une boîte ouverte ici
+    // survivrait à l'écran lui-même — donc on refuse aussi de ce côté.
+    if (ref.read(shopSettingsProvider).value?.saleCaptureMode == 'periodic') {
+      return;
+    }
 
     final state = ref.read(dashboardProvider);
     state.whenData((data) {
@@ -60,19 +69,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           backgroundColor: Colors.white,
           title: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 32),
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.red.shade700,
+                size: 32,
+              ),
               const SizedBox(width: 8),
               Expanded(
-                  child: Text(
-                      'Clôture manquante !',
-                      style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold)
-                  )
+                child: Text(
+                  'Clôture manquante !',
+                  style: TextStyle(
+                    color: Colors.red.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
           content: Text(
             'Tu as oublié de clôturer la caisse pour la journée du $dateStr.\n\n'
-                'Tu dois absolument faire le comptage de cette journée avant de pouvoir enregistrer de nouvelles ventes.',
+            'Tu dois absolument faire le comptage de cette journée avant de pouvoir enregistrer de nouvelles ventes.',
             style: const TextStyle(fontSize: 16),
           ),
           actions: [
@@ -82,7 +98,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 _showQuickClosingDialog(dateToClose);
               },
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-              child: const Text('Clôturer maintenant', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Clôturer maintenant',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -103,7 +122,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Combien d\'argent y avait-il dans la caisse à la fin du ${DateFormat('dd/MM').format(dateToClose)} ?'),
+              Text(
+                'Combien d\'argent y avait-il dans la caisse à la fin du ${DateFormat('dd/MM').format(dateToClose)} ?',
+              ),
               const SizedBox(height: 16),
               TextField(
                 controller: controller,
@@ -122,12 +143,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 if (amount != null) {
                   Navigator.pop(context);
                   setState(() => _isDialogOpen = false); // Libère le verrou
-                  await ref.read(dashboardProvider.notifier).closeDay(amount, 'Clôture en retard', specificDate: dateToClose);
+                  await ref
+                      .read(dashboardProvider.notifier)
+                      .closeDay(
+                        amount,
+                        'Clôture en retard',
+                        specificDate: dateToClose,
+                      );
                   _checkAlerts();
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: const Text('Valider', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
+              child: const Text(
+                'Valider',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -153,7 +185,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Combien y a-t-il dans le tiroir-caisse ce matin ?', textAlign: TextAlign.center),
+            const Text(
+              'Combien y a-t-il dans le tiroir-caisse ce matin ?',
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 20),
             TextField(
               controller: controller,
@@ -173,7 +208,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 Navigator.pop(context);
                 setState(() => _isDialogOpen = false); // Libère le verrou
               },
-              child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+              child: const Text(
+                'Annuler',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
           ElevatedButton(
             onPressed: () {
@@ -187,7 +225,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Enregistrer', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Enregistrer',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -241,13 +282,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  Widget _buildStatCard(String title, String amount, IconData icon, Color color, {bool isLarge = false}) {
+  Widget _buildStatCard(
+    String title,
+    String amount,
+    IconData icon,
+    Color color, {
+    bool isLarge = false,
+  }) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))],
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,12 +308,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: isLarge ? 16 : 14)),
-              Icon(icon, color: Colors.white.withOpacity(0.8), size: isLarge ? 28 : 20),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: isLarge ? 16 : 14,
+                ),
+              ),
+              Icon(
+                icon,
+                color: Colors.white.withOpacity(0.8),
+                size: isLarge ? 28 : 20,
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(amount, style: TextStyle(color: Colors.white, fontSize: isLarge ? 32 : 20, fontWeight: FontWeight.bold)),
+          Text(
+            amount,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: isLarge ? 32 : 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -276,7 +346,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('ShopTrack', style: TextStyle(fontWeight: FontWeight.bold)),
+        // Le nom de la boutique remplace celui de l'app dès qu'il y en a
+        // plusieurs : le patron doit voir en permanence où il écrit.
+        title: const ShopSwitcher(
+          repli: Text(
+            'ShopTrack',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
         elevation: 0,
         actions: [
           IconButton(
@@ -301,7 +378,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-
                   if (data.isClosed)
                     Container(
                       margin: const EdgeInsets.only(bottom: 20),
@@ -321,7 +397,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               children: [
                                 Text(
                                   'Journée clôturée. Aucune nouvelle vente ne peut être enregistrée aujourd\'hui.',
-                                  style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    color: Colors.red.shade900,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 // Un client qui arrive après la fermeture ne
                                 // doit pas obliger à vendre hors de l'app.
@@ -347,17 +426,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Aujourd'hui", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      const Text(
+                        "Aujourd'hui",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
                       GestureDetector(
-                        onTap: data.isClosed ? null : () {
-                          setState(() => _isDialogOpen = true);
-                          _showMorningBalanceDialog(
-                            currentBalance: data.morningBalance,
-                            isEdit: true,
-                          );
-                        },
+                        onTap: data.isClosed
+                            ? null
+                            : () {
+                                setState(() => _isDialogOpen = true);
+                                _showMorningBalanceDialog(
+                                  currentBalance: data.morningBalance,
+                                  isEdit: true,
+                                );
+                              },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(20),
@@ -365,11 +456,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                           child: Row(
                             children: [
-                              Text('Matin : ${CurrencyFormatter.format(data.morningBalance)}', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
+                              Text(
+                                'Matin : ${CurrencyFormatter.format(data.morningBalance)}',
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               if (!data.isClosed) ...[
                                 const SizedBox(width: 4),
-                                Icon(Icons.edit, size: 14, color: Colors.grey.shade600),
-                              ]
+                                Icon(
+                                  Icons.edit,
+                                  size: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -402,7 +503,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                       Expanded(
                         child: GestureDetector(
-                          onTap: data.isClosed ? null : () => context.push('/cash-out'),
+                          onTap: data.isClosed
+                              ? null
+                              : () => context.push('/cash-out'),
                           child: _buildStatCard(
                             'Sorties',
                             CurrencyFormatter.format(data.totalWithdrawals),
@@ -425,10 +528,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 20),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
-                    icon: const Icon(Icons.point_of_sale, size: 32, color: Colors.white),
-                    label: const Text('NOUVELLE VENTE', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                    icon: const Icon(
+                      Icons.point_of_sale,
+                      size: 32,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'NOUVELLE VENTE',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
 
                   const SizedBox(height: 16),
@@ -437,11 +553,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     onPressed: () => context.push('/products'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: const BorderSide(color: AppColors.primary, width: 2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      side: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
-                    icon: const Icon(Icons.inventory_2, color: AppColors.primary),
-                    label: const Text('Gérer mon stock', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                    icon: const Icon(
+                      Icons.inventory_2,
+                      color: AppColors.primary,
+                    ),
+                    label: const Text(
+                      'Gérer mon stock',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ),
 
                   const SizedBox(height: 40),
@@ -452,52 +583,77 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                       return productsAsync.when(
                         data: (products) {
-                          final lowStockProducts = products.where((p) => p.quantity <= p.minQuantity).toList();
-                          if (lowStockProducts.isEmpty) return const SizedBox.shrink();
+                          final lowStockProducts = products
+                              .where((p) => p.quantity <= p.minQuantity)
+                              .toList();
+                          if (lowStockProducts.isEmpty)
+                            return const SizedBox.shrink();
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 '${lowStockProducts.length} ALERTE${lowStockProducts.length > 1 ? 'S' : ''} STOCK BAS',
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                  letterSpacing: 1.2,
+                                ),
                               ),
                               const SizedBox(height: 12),
                               ListView.separated(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: lowStockProducts.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 8),
                                 itemBuilder: (context, index) {
                                   final product = lowStockProducts[index];
                                   final isOutOfStock = product.quantity <= 0;
 
                                   return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: isOutOfStock ? Colors.red.shade50 : Colors.orange.shade50,
+                                      color: isOutOfStock
+                                          ? Colors.red.shade50
+                                          : Colors.orange.shade50,
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: isOutOfStock ? Colors.red.shade200 : Colors.orange.shade200),
+                                      border: Border.all(
+                                        color: isOutOfStock
+                                            ? Colors.red.shade200
+                                            : Colors.orange.shade200,
+                                      ),
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Expanded(
                                           child: Text(
                                             product.name,
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
-                                              color: isOutOfStock ? Colors.red.shade900 : Colors.orange.shade900,
+                                              color: isOutOfStock
+                                                  ? Colors.red.shade900
+                                                  : Colors.orange.shade900,
                                             ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         Text(
-                                          isOutOfStock ? 'Rupture' : '${product.quantity} restants',
+                                          isOutOfStock
+                                              ? 'Rupture'
+                                              : '${product.quantity} restants',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            color: isOutOfStock ? Colors.red.shade700 : Colors.orange.shade800,
+                                            color: isOutOfStock
+                                                ? Colors.red.shade700
+                                                : Colors.orange.shade800,
                                           ),
                                         ),
                                       ],
@@ -522,12 +678,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueGrey.shade800,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       icon: const Icon(Icons.lock_clock, color: Colors.white),
                       label: const Text(
-                          'Clôturer la journée',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
+                        'Clôturer la journée',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                 ],

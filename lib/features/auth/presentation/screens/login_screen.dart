@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../../core/providers/shop_settings_provider.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/auth_provider.dart';
 
@@ -138,6 +139,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 // erreur ou une déconnexion/reconnexion.
                                 ref.invalidate(dashboardProvider);
                                 ref.invalidate(productProvider);
+                                // Le mode de la boutique aussi : il se lit
+                                // depuis `cached_shop_id`, écrit pendant la
+                                // connexion. Sans cette invalidation, le
+                                // provider gardait les valeurs par défaut
+                                // calculées avant que la boutique soit connue
+                                // — le commerçant retrouvait le mode simple et
+                                // devait réactiver son module à chaque
+                                // connexion.
+                                ref.invalidate(shopSettingsProvider);
 
                                 // 2. Si l'écran est toujours affiché (bonne pratique Flutter)
                                 if (context.mounted) {

@@ -3,9 +3,9 @@ import 'dart:math' as math;
 
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../products/presentation/providers/product_provider.dart';
@@ -57,11 +57,7 @@ class InventoryCountOverview {
 final inventoryCountProvider = FutureProvider<InventoryCountOverview>((
   ref,
 ) async {
-  final prefs = await SharedPreferences.getInstance();
-  final shopId = prefs.getString('cached_shop_id');
-  if (shopId == null || shopId.isEmpty) {
-    throw Exception('Boutique introuvable.');
-  }
+  final shopId = await watchShopId(ref);
 
   return loadInventoryCountOverview(ref.watch(localDbProvider), shopId);
 });
@@ -83,11 +79,7 @@ class InventoryCountActions {
       throw ArgumentError('La quantité comptée ne peut pas être négative.');
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final shopId = prefs.getString('cached_shop_id');
-    if (shopId == null || shopId.isEmpty) {
-      throw Exception('Boutique introuvable.');
-    }
+    final shopId = await requireShopId(ref);
 
     final db = ref.read(localDbProvider);
     late LocalInventoryCount savedCount;

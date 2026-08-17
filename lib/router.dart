@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'features/auth/presentation/screens/profile_screen.dart';
+import 'features/auth/presentation/screens/employees_screen.dart';
 import 'features/auth/presentation/screens/shop_settings_screen.dart';
 import 'features/cash/presentation/screens/cash_screen.dart';
 import 'features/products/presentation/screens/edit_product_screen.dart';
@@ -35,8 +36,11 @@ import 'features/inventory/presentation/screens/daily_takings_screen.dart';
 import 'features/inventory/presentation/screens/inventory_dashboard_screen.dart';
 import 'features/inventory/presentation/screens/inventory_count_screen.dart';
 import 'features/inventory/presentation/screens/declare_loss_screen.dart';
+import 'features/inventory/presentation/screens/transfers_screen.dart';
 import 'features/inventory/presentation/screens/inventory_hub_screen.dart';
 import 'features/inventory/presentation/screens/inventory_report_screen.dart';
+import 'core/constants/app_colors.dart';
+import 'core/providers/current_shop_provider.dart';
 
 // Clés nécessaires pour le ShellRoute
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -58,6 +62,7 @@ final goRouter = GoRouter(
     // '/inventory-report' y figure aussi : il donne le bénéfice et l'écart
     // inexpliqué, exactement ce que le bilan protège en mode simple.
     const bossOnlyRoutes = {
+      '/employees',
       '/bilan',
       '/activity-log',
       '/shop-settings',
@@ -134,6 +139,14 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/inventory-count',
       builder: (context, state) => const InventoryCountScreen(),
+    ),
+    GoRoute(
+      path: '/employees',
+      builder: (context, state) => const EmployeesScreen(),
+    ),
+    GoRoute(
+      path: '/transfers',
+      builder: (context, state) => const TransfersScreen(),
     ),
     GoRoute(
       path: '/declare-loss',
@@ -216,10 +229,43 @@ class _HomeForShopMode extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final periodic =
-        ref.watch(shopSettingsProvider).value?.saleCaptureMode == 'periodic';
-    return periodic
-        ? const InventoryDashboardScreen()
-        : const DashboardScreen();
+    // Ne rien deviner tant que le mode est inconnu. En repli sur le mode
+    // simple pendant le chargement, `DashboardScreen` se construisait — et son
+    // initState ouvrait aussitôt la boîte « fonds de caisse », qui restait à
+    // l'écran même une fois l'accueil inventaire affiché. Une boîte de
+    // dialogue est une route : elle survit au widget qui l'a ouverte.
+    // Aucune boutique = on ne sait pas encore, ou on est en train de se
+    // déconnecter (les préférences viennent d'être vidées). Dans les deux cas
+    // il ne faut rien construire : l'accueil simple ouvrirait la boîte
+    // « fonds de caisse », qui apparaissait une seconde en pleine
+    // déconnexion.
+    final boutiqueAsync = ref.watch(currentShopIdProvider);
+    // Tant qu'on cherche, écran neutre. Une fois la recherche finie sans
+    // résultat — hors ligne au tout premier lancement — on affiche l'accueil
+    // simple plutôt que de laisser tourner un cercle sans fin.
+    if (boutiqueAsync.isLoading) return const _EcranNeutre();
+    final boutique = boutiqueAsync.value;
+    if (boutique == null || boutique.isEmpty) return const DashboardScreen();
+
+    return ref
+        .watch(shopSettingsProvider)
+        .when(
+          loading: () => const _EcranNeutre(),
+          error: (_, _) => const DashboardScreen(),
+          data: (settings) => settings.saleCaptureMode == 'periodic'
+              ? const InventoryDashboardScreen()
+              : const DashboardScreen(),
+        );
   }
+}
+
+/// Le temps de savoir quoi afficher. Volontairement muet : un message
+/// « chargement » qui clignote une demi-seconde inquiète plus qu'il n'informe.
+class _EcranNeutre extends StatelessWidget {
+  const _EcranNeutre();
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+    body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+  );
 }

@@ -1,12 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
 import '../sync/sync_service.dart';
+import '../../core/providers/current_shop_provider.dart';
 
 /// Réglages d'activation des modules optionnels d'une boutique
 /// (voir docs/ARCHITECTURE_MODULES.md). Absence de ligne côté Supabase/local
@@ -32,15 +33,34 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
   @override
   Future<ShopSettings> build() async {
     final db = ref.read(localDbProvider);
-    final prefs = await SharedPreferences.getInstance();
-    final shopId = prefs.getString('cached_shop_id');
+    // `watch` : à la reconnexion la boutique n'est connue qu'après le premier
+    // échange réseau. En `read`, ce provider concluait « mode simple » avant
+    // qu'elle arrive et n'était plus jamais relancé — le commerçant retrouvait
+    // le mode simple alors qu'il s'était déconnecté en mode inventaire.
+    final shopId = await ref.watch(currentShopIdProvider.future);
 
     if (shopId == null || shopId.isEmpty) {
       return const ShopSettings();
     }
 
-    await _syncFromSupabase(db, shopId);
+    // Le cache local D'ABORD, le réseau ensuite. L'ordre inverse faisait
+    // attendre Supabase avant de rendre quoi que ce soit : pendant ce temps
+    // les écrans se construisaient sur les valeurs par défaut, donc en mode
+    // simple, et basculaient en inventaire une seconde plus tard. Le
+    // commerçant voyait ses onglets changer sous ses yeux — et pouvait taper
+    // au mauvais endroit.
+    final local = await _lireLocal(db, shopId);
 
+    // La mise à jour distante ne bloque pas l'affichage : elle arrive quand
+    // elle arrive, et ne change l'état que si le serveur dit autre chose.
+    // Après une reconnexion la base locale a été vidée : c'est ce rattrapage
+    // qui ramène le mode réel de la boutique.
+    unawaited(_rafraichirDepuisSupabase(db, shopId));
+
+    return local;
+  }
+
+  Future<ShopSettings> _lireLocal(AppDatabase db, String shopId) async {
     final local = await (db.select(
       db.localShopSettings,
     )..where((t) => t.shopId.equals(shopId))).getSingleOrNull();
@@ -54,16 +74,24 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
     );
   }
 
+  Future<void> _rafraichirDepuisSupabase(AppDatabase db, String shopId) async {
+    await _syncFromSupabase(db, shopId);
+    final frais = await _lireLocal(db, shopId);
+    final actuel = state.valueOrNull;
+    if (actuel == null ||
+        frais.unitMode != actuel.unitMode ||
+        frais.saleCaptureMode != actuel.saleCaptureMode ||
+        frais.multiPointEnabled != actuel.multiPointEnabled) {
+      state = AsyncValue.data(frais);
+    }
+  }
+
   /// Active/désactive la vente par unités pour cette boutique.
   /// Purement additif : les produits sans unité continuent de se vendre
   /// normalement, et repasser en simple ne détruit aucune donnée.
   Future<void> setUnitMode(bool hierarchical) async {
     final db = ref.read(localDbProvider);
-    final prefs = await SharedPreferences.getInstance();
-    final shopId = prefs.getString('cached_shop_id');
-    if (shopId == null || shopId.isEmpty) {
-      throw Exception('Boutique introuvable.');
-    }
+    final shopId = await requireShopId(ref);
 
     final mode = hierarchical ? 'hierarchical' : 'simple';
 
@@ -94,11 +122,7 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
   /// enregistrées dans l'estimation — d'où un interrupteur exclusif.
   Future<void> setSaleCaptureMode(bool periodic) async {
     final db = ref.read(localDbProvider);
-    final prefs = await SharedPreferences.getInstance();
-    final shopId = prefs.getString('cached_shop_id');
-    if (shopId == null || shopId.isEmpty) {
-      throw Exception('Boutique introuvable.');
-    }
+    final shopId = await requireShopId(ref);
 
     final mode = periodic ? 'periodic' : 'realtime';
 

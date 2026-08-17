@@ -2,12 +2,12 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../products/presentation/providers/product_provider.dart';
+import '../../../../core/providers/current_shop_provider.dart';
 
 final cyclesProvider =
     AsyncNotifierProvider<CyclesNotifier, List<LocalSupplyCycle>>(() {
@@ -46,9 +46,7 @@ class CyclesNotifier extends AsyncNotifier<List<LocalSupplyCycle>> {
     double? referenceMarginPerUnit,
   }) async {
     final db = ref.read(localDbProvider);
-    final prefs = await SharedPreferences.getInstance();
-    final shopId = prefs.getString('cached_shop_id');
-    if (shopId == null) throw Exception('Boutique introuvable.');
+    final shopId = await requireShopId(ref);
 
     final id = const Uuid().v4();
     final openedAt = DateTime.now();

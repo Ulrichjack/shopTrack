@@ -4,13 +4,13 @@ import 'dart:convert';
 import 'dart:io' as import_io;
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../../core/network/connectivity_provider.dart';
 import '../../domain/entities/product_entity.dart';
+import '../../../../core/providers/current_shop_provider.dart';
 
 class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
   @override
@@ -20,7 +20,17 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
 
   Future<List<ProductEntity>> _fetchProducts() async {
     final db = ref.read(localDbProvider);
-    final localProducts = await db.select(db.localProducts).get();
+
+    // Filtré par boutique : la base locale garde les produits de TOUTES les
+    // boutiques du compte. Sans ce filtre, ouvrir une boutique neuve affichait
+    // le stock d'une autre — et un arrivage aurait été enregistré au mauvais
+    // endroit sans que rien ne le signale.
+    final shopId = await ref.read(currentShopIdProvider.future);
+    if (shopId == null || shopId.isEmpty) return const [];
+
+    final localProducts = await (db.select(
+      db.localProducts,
+    )..where((row) => row.shopId.equals(shopId))).get();
 
     return localProducts.map(_toEntity).toList();
   }
@@ -35,6 +45,11 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     minQuantity: p.minQuantity,
     barcode: p.barcode,
     photoUrl: p.photoUrl,
+    // Oubli initial : sans cette ligne l'unité existait en base mais
+    // disparaissait dès le chargement. Les pastilles d'unités connues
+    // restaient vides, et surtout MODIFIER un produit effaçait son unité —
+    // l'écran pré-remplissait le champ avec une valeur toujours nulle.
+    unit: p.unit,
   );
 
   Future<void> _cacheProduct(Map<String, dynamic> data) async {
@@ -119,8 +134,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     // Envoie d'abord un produit éventuellement créé sur cet appareil.
     await ref.read(syncServiceProvider).processQueue();
 
-    final prefs = await SharedPreferences.getInstance();
-    final shopId = prefs.getString('cached_shop_id');
+    final shopId = await ref.read(currentShopIdProvider.future);
     if (shopId == null || shopId.isEmpty) return null;
 
     final remote = await Supabase.instance.client
