@@ -90,7 +90,17 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
             note: _noteController.text,
           );
       if (!mounted) return;
-      Navigator.of(context).pop();
+      // On reste dans la feuille : le commerçant fait son tour et constate
+      // plusieurs pertes d'affilée. La perte qui apparaît dans la liste juste
+      // en dessous suffit à confirmer l'enregistrement — pas besoin d'un
+      // message, comme au comptage.
+      setState(() {
+        _quantityController.clear();
+        _noteController.clear();
+        _product = null;
+        _formKey.currentState?.reset();
+      });
+      FocusScope.of(context).unfocus();
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -111,19 +121,43 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
 
     return Padding(
       // Le clavier remonte la feuille, sinon il recouvre le bouton.
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.85,
         // Formulaire scrollable : le clavier mange la moitié de la hauteur sur
         // un petit écran, et le bouton doit rester atteignable.
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
-            const Text(
-              'Déclarer une perte',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Déclarer une perte',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Fermer',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             Form(
               key: _formKey,
               child: Column(
@@ -268,8 +302,7 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
             ),
             const SizedBox(height: 10),
             losses.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => Text(humanSyncError(error)),
               data: (entries) => entries.isEmpty
                   ? const Text(

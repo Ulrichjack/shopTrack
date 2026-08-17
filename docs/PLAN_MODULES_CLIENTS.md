@@ -175,12 +175,39 @@ Ordre d'implémentation, du plus indépendant au plus risqué :
   réelles. **Restent** le PDF (réutiliser celui du bilan existant) et le
   stockage du bilan une fois clôturé, pas recalculé — sinon il change sous les
   yeux du patron quand une donnée arrive en retard.
-- [ ] **B7 — Multi-boutique.** Sélecteur de boutique + relâchement de
+- [x] **B7 — Multi-boutique.** Sélecteur de boutique + relâchement de
   l'hypothèse un-seul-shop-par-membre dans `sync_service.dart`
   (`shop_members...single()`). **La partie la plus risquée** : elle touche le
   cœur de la synchro, donc en dernier, une fois le calcul prouvé sur une
   seule boutique.
-- [ ] **B8 — Transferts entre boutiques.** N'a de sens qu'après B7. Stock
+- [ ] **B7bis — Comptes employés.** Décidé le 16/08/2026, à faire **entre B7
+  et B8**. Aujourd'hui patron et vendeur partagent le compte de la boutique ;
+  le mode vendeur vient de l'absence de PIN **sur l'appareil**. Un vendeur qui
+  utilise son propre téléphone détient donc le mot de passe du patron — et
+  avec le multi-boutique, celui des trois boutiques.
+  `shop_members(user_id, shop_id, role)` existe déjà : il suffit que le rôle
+  vienne du **serveur** et non d'un PIN local. Le vendeur se connecte avec son
+  compte, l'app voit `role = 'seller'` et une seule boutique, et l'amène
+  directement chez lui — sans PIN ni sélecteur. Le PIN garde son sens pour le
+  téléphone partagé du comptoir. Retirer un employé devient : supprimer sa
+  ligne.
+- [x] **B8 — Transferts entre boutiques.** Table `stock_transfers` (déjà en
+  base), écran « Transferts » avec deux listes — à vérifier d'abord, puis
+  l'historique — et confirmation de la quantité réellement reçue.
+  **Transfert neutre** : le coût voyage avec la marchandise, rien n'est acheté
+  ni vendu. Valoriser au prix de la boutique d'arrivée créerait du bénéfice en
+  déplaçant des sacs ; en faire une vente interne afficherait un chiffre
+  d'affaires que personne n'a payé. La quantité **reçue** compte dès qu'elle
+  est confirmée, sinon celle envoyée — la marchandise est sur l'étagère qu'on
+  ait tapé sur un bouton ou non. L'écart devient une **perte de transport chez
+  l'expéditeur** : sans cette imputation, le manquant serait un écart
+  inexpliqué chez lui, donc un vol présumé alors que la marchandise s'est
+  perdue sur la route.
+  (ancienne description : ) N'a de sens qu'après B7 **et
+  B7bis** : la boutique qui reçoit doit vérifier la marchandise, donc quelqu'un
+  doit être présent là-bas pour le faire. Sans compte employé, seul le patron
+  peut confirmer une réception — il devrait se déplacer, et le transfert
+  perdrait son intérêt. Stock
   déplacé immédiatement des deux côtés, vérification à l'arrivée (le client a
   confirmé qu'ils vérifient), écart enregistré comme perte de transport.
 

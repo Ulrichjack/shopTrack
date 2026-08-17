@@ -12,58 +12,93 @@ import '../providers/inventory_report_provider.dart';
 import '../utils/inventory_report_pdf.dart';
 
 /// Le verdict de la période : ce qui est sorti, et si l'argent correspond.
-class InventoryReportScreen extends ConsumerWidget {
+class InventoryReportScreen extends ConsumerStatefulWidget {
   const InventoryReportScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final reportAsync = ref.watch(inventoryReportProvider);
+  ConsumerState<InventoryReportScreen> createState() =>
+      _InventoryReportScreenState();
+}
+
+class _InventoryReportScreenState extends ConsumerState<InventoryReportScreen> {
+  int? _indiceComptageSelectionne;
+
+  @override
+  Widget build(BuildContext context) {
+    final reportAsync = ref.watch(
+      inventoryReportProvider(_indiceComptageSelectionne),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Rapport de période'),
-        actions: [
-          // Libellé « PDF » et non une icône de partage : le commerçant ne
-          // cherche pas à partager, il veut son papier. Ce qu'il en fait
-          // ensuite — l'envoyer, l'imprimer, le garder — le regarde.
-          TextButton.icon(
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            label: const Text('PDF'),
-            onPressed: reportAsync.value?.hasData != true
-                ? null
-                : () async {
-                    final report = reportAsync.value!;
-                    final prefs = await SharedPreferences.getInstance();
-                    final pdf = await buildInventoryReportPdf(
-                      report,
-                      shopName: prefs.getString('cached_shop_name'),
-                    );
-                    final finPeriode = DateFormat(
-                      'yyyyMMdd',
-                    ).format(report.periodEnd!);
-                    // Même geste que le bilan mensuel : l'aperçu natif, d'où
-                    // l'on enregistre ou imprime. `sharePdf` ouvrait le
-                    // partage sans jamais montrer le document.
-                    await Printing.layoutPdf(
-                      onLayout: (_) async => pdf,
-                      name: 'Rapport_ShopTrack_$finPeriode.pdf',
-                    );
-                  },
+      body: NestedScrollView(
+        floatHeaderSlivers: true,
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            title: const Text('Rapport de période'),
+            floating: true,
+            snap: true,
+            actions: [
+              // Libellé « PDF » et non une icône de partage : le commerçant ne
+              // cherche pas à partager, il veut son papier. Ce qu'il en fait
+              // ensuite — l'envoyer, l'imprimer, le garder — le regarde.
+              TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: Colors.white),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('PDF'),
+                onPressed: reportAsync.value?.hasData != true
+                    ? null
+                    : () async {
+                        final report = reportAsync.value!;
+                        final prefs = await SharedPreferences.getInstance();
+                        final pdf = await buildInventoryReportPdf(
+                          report,
+                          shopName: prefs.getString('cached_shop_name'),
+                        );
+                        final finPeriode = DateFormat(
+                          'yyyyMMdd',
+                        ).format(report.periodEnd!);
+                        // Même geste que le bilan mensuel : l'aperçu natif,
+                        // d'où l'on enregistre ou imprime. `sharePdf` ouvrait
+                        // le partage sans jamais montrer le document.
+                        await Printing.layoutPdf(
+                          onLayout: (_) async => pdf,
+                          name: 'Rapport_ShopTrack_$finPeriode.pdf',
+                        );
+                      },
+              ),
+            ],
           ),
         ],
-      ),
-      body: SafeArea(
-        child: reportAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(humanSyncError(e), textAlign: TextAlign.center),
+        body: SafeArea(
+          top: false,
+          child: reportAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(humanSyncError(e), textAlign: TextAlign.center),
+              ),
             ),
+            data: (report) {
+              final selectionToujoursDisponible = report.periodesDisponibles
+                  .any(
+                    (periode) =>
+                        periode.indiceComptage == _indiceComptageSelectionne,
+                  );
+              final indiceAffiche = selectionToujoursDisponible
+                  ? _indiceComptageSelectionne
+                  : report.periodesDisponibles.firstOrNull?.indiceComptage;
+
+              return _Body(
+                report: report,
+                indiceComptageSelectionne: indiceAffiche,
+                onPeriodeChoisie: (indice) {
+                  setState(() => _indiceComptageSelectionne = indice);
+                },
+              );
+            },
           ),
-          data: (report) => _Body(report: report),
         ),
       ),
     );
@@ -71,9 +106,15 @@ class InventoryReportScreen extends ConsumerWidget {
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.report});
+  const _Body({
+    required this.report,
+    required this.indiceComptageSelectionne,
+    required this.onPeriodeChoisie,
+  });
 
   final InventoryPeriodReport report;
+  final int? indiceComptageSelectionne;
+  final ValueChanged<int> onPeriodeChoisie;
 
   @override
   Widget build(BuildContext context) {
@@ -83,10 +124,41 @@ class _Body extends StatelessWidget {
 
     final r = report.result;
     final format = DateFormat('dd/MM/yyyy');
+    final formatCourt = DateFormat('dd/MM');
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
+        if (report.periodesDisponibles.isNotEmpty) ...[
+          InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Période',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 14),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                isExpanded: true,
+                value: indiceComptageSelectionne,
+                items: [
+                  for (final periode in report.periodesDisponibles)
+                    DropdownMenuItem(
+                      value: periode.indiceComptage,
+                      child: Text(
+                        'Du ${formatCourt.format(periode.debut)} '
+                        'au ${formatCourt.format(periode.fin)}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (indice) {
+                  if (indice != null) onPeriodeChoisie(indice);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         Text(
           'Du ${format.format(report.periodStart!)} '
           'au ${format.format(report.periodEnd!)}',
@@ -96,7 +168,7 @@ class _Body extends StatelessWidget {
             color: AppColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
         // Les réserves d'abord : un chiffre présenté comme complet alors
         // qu'il ne l'est pas est pire que pas de chiffre du tout.
@@ -106,7 +178,7 @@ class _Body extends StatelessWidget {
           _MissingTakingsWarning(days: report.daysWithoutTakings),
         ],
         if (!report.isComplete || report.daysWithoutTakings.isNotEmpty)
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
         const Text(
           'CE QUI EST SORTI',
@@ -135,7 +207,7 @@ class _Body extends StatelessWidget {
           _InconsistentWarning(products: r.inconsistentProducts),
         ],
 
-        const SizedBox(height: 28),
+        const SizedBox(height: 20),
         const Text(
           'ET L\'ARGENT ?',
           style: TextStyle(
@@ -149,7 +221,7 @@ class _Body extends StatelessWidget {
         Card(
           margin: EdgeInsets.zero,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Column(
               children: [
                 _Line('Valeur de ce qui est sorti', r.expectedRevenue),
@@ -161,7 +233,7 @@ class _Body extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 28),
+        const SizedBox(height: 20),
         const Text(
           'TON RÉSULTAT',
           style: TextStyle(
@@ -175,7 +247,7 @@ class _Body extends StatelessWidget {
         Card(
           margin: EdgeInsets.zero,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Column(
               children: [
                 _Line('Recettes encaissées', r.actualTakings),
@@ -223,6 +295,8 @@ class _ProductLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      visualDensity: VisualDensity.compact,
       title: Text(
         product.productName,
         style: const TextStyle(fontWeight: FontWeight.bold),

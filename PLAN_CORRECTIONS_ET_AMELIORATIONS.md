@@ -789,3 +789,91 @@ La version pourra être considérée comme prête lorsque :
 - tous les tests passent ;
 - l'APK release possède une signature de production ;
 - chaque APK possède un numéro de version unique.
+
+## Dette d'interface — relevée le 16/08/2026, à traiter après B7 et B8
+
+Retours du terrain sur téléphone réel. Rien ici n'est faux : ce sont des
+frictions d'usage. Elles sont groupées parce qu'elles se corrigent bien
+ensemble, une fois le multi-boutique posé.
+
+### L'écran perd la moitié de sa hauteur
+
+Les barres de titre et les marges mangent près de 50 % de l'écran sur un
+petit appareil. Deux choses à faire :
+
+- **Une barre qui se rétracte au défilement** (`SliverAppBar` avec
+  `floating`/`snap`), pour que la liste occupe l'écran dès qu'on descend.
+  Aujourd'hui le titre reste figé et vole la place utile.
+- **Réduire les marges** : nos écrans utilisent des paddings de 20 à 24 px
+  empilés (page + carte + tuile). Sur un Pixel 4a, cela laisse moins de la
+  moitié de la largeur au contenu.
+
+### La navigation depuis le rapport est un cul-de-sac
+
+- Le bouton retour **quitte l'application** au lieu de revenir en arrière.
+- Impossible de rejoindre Accueil, Stock ou Inventaire depuis le rapport.
+
+Cause probable : `/inventory-report` est atteint par l'onglet du bas, qui
+utilise `context.go()` — donc sans pile de navigation. À reprendre avec la
+barre d'onglets plutôt qu'en ajoutant un bouton retour.
+
+### Pas de retour explicite sur « Déclarer une perte »
+
+La feuille se ferme au glissement vers le bas, mais rien ne le dit. Il faut un
+bouton de fermeture visible.
+
+### La mise à jour paraît lente
+
+Corrigé pour le rapport (voir plus bas), mais le ressenti général reste :
+l'app attend la fin de la synchro réseau avant de rafraîchir l'écran, alors
+que l'écriture locale est déjà faite. L'affichage devrait suivre l'écriture
+locale, la synchro n'étant qu'un rattrapage en arrière-plan.
+
+### Deux synchros à chaque lancement
+
+Visible dans les logs : deux `[SYNC] téléchargement terminé` à une seconde
+d'intervalle à chaque démarrage. Deux providers demandent le pull en parallèle.
+Sans gravité, mais c'est du réseau et de la batterie pour rien.
+
+### Le sélecteur de périodes va s'allonger sans fin
+
+Un commerçant qui compte tous les mois aura 12 périodes après un an, 60 après
+cinq. Une liste déroulante de 60 lignes est inutilisable, et elle grossit
+pour toujours.
+
+Ce qu'il consulte réellement : la période en cours, parfois la précédente pour
+comparer, très rarement un mois d'il y a deux ans. La liste doit donc suivre
+cet usage — les dernières périodes accessibles d'un geste, le reste replié et
+groupé par année. Ne pas se contenter d'ajouter une barre de défilement : le
+problème n'est pas la place, c'est qu'on ne retrouve rien dans 60 dates.
+
+### Décisions de design prises le 16/08, à appliquer dans la refonte
+
+- **Une barre d'onglets partout, y compris sur le rapport.** Plutôt qu'un
+  bouton retour bricolé : si Accueil, Stock et Inventaire restent atteignables,
+  le problème du cul-de-sac disparaît de lui-même. Le rapport n'est pas un
+  écran de détail, c'est une destination.
+- **Le sélecteur de période devient un écran de recherche**, ouvert par le bas,
+  liste du plus récent au plus ancien. Un menu déroulant ne tient pas la
+  distance : douze périodes par an, soixante en cinq ans.
+- **Normaliser les composants.** Deux styles cohabitent (cartes ombrées contre
+  champs bordés), et les boutons de confirmation ne tiennent pas correctement
+  dans leur zone. Un seul vocabulaire visuel : un style de carte, un style de
+  bouton, un style de champ — décidés une fois et réutilisés.
+
+Ces trois points rejoignent la refonte WhatsApp du §13 : ils s'appliquent
+**ensemble**, pas écran par écran, sinon on fabrique une app à deux visages.
+
+### Corrigés immédiatement le 16/08 — c'étaient des bugs, pas du design
+
+- **Une perte déclarée n'apparaissait qu'après redémarrage** : `declareLoss`
+  n'invalidait pas `inventoryReportProvider`. Idem pour la recette du jour.
+- **Le mode simple clignotait à la reconnexion** : `shopSettingsProvider`
+  attendait la réponse de Supabase avant de rendre quoi que ce soit. Pendant
+  ce temps les écrans se construisaient sur les valeurs par défaut — donc en
+  mode simple — et basculaient en inventaire une seconde plus tard. Le cache
+  local est désormais lu en premier, le réseau ne fait que corriger ensuite.
+- **Le mode de la boutique était perdu à chaque connexion** : le commerçant
+  devait retourner activer son module. `shopSettingsProvider` se construisait
+  avant que `cached_shop_id` soit écrit et gardait les valeurs par défaut ;
+  il n'était invalidé qu'à la déconnexion, jamais à la connexion.
