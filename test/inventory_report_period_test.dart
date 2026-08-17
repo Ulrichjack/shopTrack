@@ -138,6 +138,27 @@ void main() {
     expect(recente.result.actualTakings, 0);
   });
 
+  test('un produit récent n\'efface pas l\'historique des périodes', () async {
+    // Un article ajouté hier — ou arrivé par transfert — n'a qu'un comptage,
+    // voire aucun. En prenant le minimum sur TOUS les produits, il ramenait le
+    // compte à zéro et le sélecteur de périodes disparaissait entièrement.
+    await db
+        .into(db.localProducts)
+        .insert(_produit('p3', 'Savon arrivé hier', 350));
+
+    final comptages = await db.select(db.localInventoryCounts).get();
+    final periodes = construirePeriodesRapport(
+      idsProduits: const ['p1', 'p2', 'p3'],
+      comptages: comptages,
+    );
+
+    expect(
+      periodes.map((periode) => periode.indiceComptage),
+      [2, 1],
+      reason: 'les périodes des produits établis restent consultables',
+    );
+  });
+
   test('le rapport choisi utilise les comptages de cette période', () async {
     final container = ProviderContainer(
       overrides: [localDbProvider.overrideWithValue(db)],

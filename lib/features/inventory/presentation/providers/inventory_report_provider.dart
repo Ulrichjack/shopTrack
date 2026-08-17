@@ -79,9 +79,21 @@ List<PeriodeRapportInventaire> construirePeriodesRapport({
     liste.sort((a, b) => a.countedAt.compareTo(b.countedAt));
   }
 
+  // Seuls les produits ayant au moins deux comptages définissent les périodes.
+  //
+  // En prenant le minimum sur TOUS les produits, un article ajouté hier — ou
+  // arrivé par transfert — ramenait le compte à zéro et faisait disparaître
+  // tout l'historique des périodes. Un produit qui n'existait pas encore ne
+  // peut pas borner une période passée ; il est déjà signalé à part comme
+  // « jamais compté ».
+  final avecPeriodes = ids
+      .where((id) => (parProduit[id]?.length ?? 0) >= 2)
+      .toList();
+  if (avecPeriodes.isEmpty) return const [];
+
   var nombreCommun = 1 << 31;
-  for (final id in ids) {
-    final nombre = parProduit[id]?.length ?? 0;
+  for (final id in avecPeriodes) {
+    final nombre = parProduit[id]!.length;
     if (nombre < nombreCommun) nombreCommun = nombre;
   }
   if (nombreCommun < 2) return const [];
@@ -92,7 +104,7 @@ List<PeriodeRapportInventaire> construirePeriodesRapport({
     DateTime? fin;
     var complete = true;
 
-    for (final id in ids) {
+    for (final id in avecPeriodes) {
       final comptage = parProduit[id]![indice];
       final precedent = comptage.previousCountedAt;
       if (precedent == null || comptage.previousQuantity == null) {

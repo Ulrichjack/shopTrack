@@ -8,7 +8,6 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'declare_loss_screen.dart';
 import '../providers/takings_provider.dart';
-import '../../../../core/providers/user_shops_provider.dart';
 
 /// Regroupe les opérations du mode inventaire, comme l'onglet Cycles le fait
 /// pour le module A : saisie quotidienne, comptage, rapport.
@@ -63,17 +62,18 @@ class InventoryHubScreen extends ConsumerWidget {
                       '${DateFormat('dd/MM/yyyy').format(lastCount)}',
             onTap: () => context.push('/inventory-count'),
           ),
-          // Uniquement s'il y a une autre boutique où envoyer : sinon la
-          // tuile promet une action impossible.
-          if ((ref.watch(userShopsProvider).value ?? const []).length > 1) ...[
-            const SizedBox(height: 12),
-            _ActionTile(
-              icon: Icons.local_shipping_outlined,
-              title: 'Transferts',
-              subtitle: 'Envoyer et confirmer entre tes boutiques',
-              onTap: () => context.push('/transfers'),
-            ),
-          ],
+          // Toujours visible : la masquer dépendait de la liste des boutiques,
+          // qui vient du réseau — hors ligne ou le temps du chargement, la
+          // tuile disparaissait et personne ne pouvait confirmer une
+          // réception. L'écran lui-même explique s'il n'y a nulle part où
+          // envoyer.
+          const SizedBox(height: 12),
+          _ActionTile(
+            icon: Icons.local_shipping_outlined,
+            title: 'Transferts',
+            subtitle: 'Envoyer et confirmer entre tes boutiques',
+            onTap: () => context.push('/transfers'),
+          ),
           const SizedBox(height: 12),
           _ActionTile(
             icon: Icons.report_gmailerrorred_outlined,
