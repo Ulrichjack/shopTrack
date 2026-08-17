@@ -10,6 +10,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/inventory_reconciliation_calculator.dart';
 import '../providers/inventory_report_provider.dart';
 import '../utils/inventory_report_pdf.dart';
+import '../../../../shared/widgets/choice_sheet.dart';
 
 /// Le verdict de la période : ce qui est sorti, et si l'argent correspond.
 class InventoryReportScreen extends ConsumerStatefulWidget {
@@ -36,8 +37,12 @@ class _InventoryReportScreenState extends ConsumerState<InventoryReportScreen> {
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
             title: const Text('Rapport de période'),
-            floating: true,
-            snap: true,
+            // Ni `floating` ni `snap` : l'entête ne revient qu'une fois
+            // remonté tout en haut. En `floating`, il réapparaissait au
+            // moindre geste vers le haut et recouvrait la ligne qu'on venait
+            // chercher — on le repoussait, il revenait.
+            floating: false,
+            snap: false,
             actions: [
               // Libellé « PDF » et non une icône de partage : le commerçant ne
               // cherche pas à partager, il veut son papier. Ce qu'il en fait
@@ -129,47 +134,80 @@ class _Body extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        if (report.periodesDisponibles.isNotEmpty) ...[
-          InputDecorator(
-            decoration: const InputDecoration(
-              labelText: 'Période',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 14),
+        // Le bénéfice d'abord, en grand. C'est la seule question que le
+        // commerçant se pose en ouvrant cet écran ; l'enterrer sous trois
+        // sections l'obligeait à faire défiler pour la trouver.
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'BÉNÉFICE',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  CurrencyFormatter.format(r.profit),
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    color: r.profit >= 0
+                        ? AppColors.primaryDark
+                        : AppColors.error,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Du ${format.format(report.periodStart!)} '
+                  'au ${format.format(report.periodEnd!)}',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ],
             ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                isExpanded: true,
-                value: indiceComptageSelectionne,
-                items: [
-                  for (final periode in report.periodesDisponibles)
-                    DropdownMenuItem(
-                      value: periode.indiceComptage,
-                      child: Text(
-                        'Du ${formatCourt.format(periode.debut)} '
-                        'au ${formatCourt.format(periode.fin)}',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-                onChanged: (indice) {
-                  if (indice != null) onPeriodeChoisie(indice);
-                },
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Une feuille de recherche plutôt qu'un menu déroulant : douze périodes
+        // par an, soixante en cinq ans — on ne retrouve rien dans une liste
+        // déroulante de soixante dates.
+        if (report.periodesDisponibles.length > 1) ...[
+          Card(
+            margin: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(
+                Icons.event_outlined,
+                color: AppColors.primary,
               ),
+              title: const Text('Période'),
+              subtitle: Text(
+                'Du ${formatCourt.format(report.periodStart!)} '
+                'au ${formatCourt.format(report.periodEnd!)}',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final choix = await showChoiceSheet<PeriodeRapportInventaire>(
+                  context: context,
+                  titre: 'Choisir une période',
+                  elements: report.periodesDisponibles,
+                  libelle: (p) =>
+                      'Du ${formatCourt.format(p.debut)} '
+                      'au ${formatCourt.format(p.fin)}',
+                );
+                if (choix != null) onPeriodeChoisie(choix.indiceComptage);
+              },
             ),
           ),
           const SizedBox(height: 16),
         ],
-        Text(
-          'Du ${format.format(report.periodStart!)} '
-          'au ${format.format(report.periodEnd!)}',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 16),
-
         // Les réserves d'abord : un chiffre présenté comme complet alors
         // qu'il ne l'est pas est pire que pas de chiffre du tout.
         if (!report.isComplete) _IncompleteWarning(report: report),
