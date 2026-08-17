@@ -2,11 +2,12 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
+import 'inventory_report_provider.dart';
 
 /// Raisons possibles d'une perte. Les clés doivent rester identiques à la
 /// contrainte SQL de `inventory_losses`, sinon Supabase rejette l'envoi.
@@ -33,11 +34,7 @@ class InventoryLossEntry {
 final inventoryLossesProvider = FutureProvider<List<InventoryLossEntry>>((
   ref,
 ) async {
-  final prefs = await SharedPreferences.getInstance();
-  final shopId = prefs.getString('cached_shop_id');
-  if (shopId == null || shopId.isEmpty) {
-    throw Exception('Boutique introuvable.');
-  }
+  final shopId = await watchShopId(ref);
 
   final db = ref.watch(localDbProvider);
   final losses =
@@ -52,7 +49,9 @@ final inventoryLossesProvider = FutureProvider<List<InventoryLossEntry>>((
   final byId = {for (final product in products) product.id: product};
 
   return losses
-      .map((loss) => InventoryLossEntry(loss: loss, product: byId[loss.productId]))
+      .map(
+        (loss) => InventoryLossEntry(loss: loss, product: byId[loss.productId]),
+      )
       .toList();
 });
 
@@ -83,11 +82,7 @@ class InventoryLossActions {
       throw ArgumentError('Raison de perte inconnue : $reason');
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final shopId = prefs.getString('cached_shop_id');
-    if (shopId == null || shopId.isEmpty) {
-      throw Exception('Boutique introuvable.');
-    }
+    final shopId = await requireShopId(ref);
 
     final db = ref.read(localDbProvider);
 
@@ -136,6 +131,9 @@ class InventoryLossActions {
     // la file garde l'écriture si le réseau manque.
     await ref.read(syncServiceProvider).processQueue();
     ref.invalidate(inventoryLossesProvider);
+    // Le rapport lit les pertes : sans cette invalidation il gardait ses
+    // chiffres d'avant et la perte ne se voyait qu'après redémarrage de l'app.
+    ref.invalidate(inventoryReportProvider);
     return loss;
   }
 }

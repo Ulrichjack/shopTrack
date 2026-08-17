@@ -2,19 +2,16 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
+import 'inventory_report_provider.dart';
 
 /// Recettes de la boutique active, de la plus récente à la plus ancienne.
 final takingsProvider = FutureProvider<List<LocalShopTaking>>((ref) async {
-  final prefs = await SharedPreferences.getInstance();
-  final shopId = prefs.getString('cached_shop_id');
-  if (shopId == null || shopId.isEmpty) {
-    throw Exception('Boutique introuvable.');
-  }
+  final shopId = await watchShopId(ref);
 
   final db = ref.watch(localDbProvider);
   return (db.select(db.localShopTakings)
@@ -44,11 +41,7 @@ class TakingActions {
       throw ArgumentError('Le montant doit être positif ou nul.');
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final shopId = prefs.getString('cached_shop_id');
-    if (shopId == null || shopId.isEmpty) {
-      throw Exception('Boutique introuvable.');
-    }
+    final shopId = await requireShopId(ref);
 
     final db = ref.read(localDbProvider);
     final normalizedDate = DateTime(date.year, date.month, date.day);
@@ -97,6 +90,9 @@ class TakingActions {
 
     await ref.read(syncServiceProvider).processQueue();
     ref.invalidate(takingsProvider);
+    // Même raison que pour les pertes : le rapport croise les recettes, il
+    // doit être recalculé sinon l'écart affiché reste celui d'avant.
+    ref.invalidate(inventoryReportProvider);
 
     return ResultatEnregistrementRecette(
       avantPremierComptage:
