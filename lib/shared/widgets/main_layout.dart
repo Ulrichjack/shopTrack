@@ -75,9 +75,21 @@ class MainLayout extends ConsumerWidget {
     ];
 
     final location = GoRouterState.of(context).matchedLocation;
-    final matchedIndex = destinations.indexWhere(
-      (destination) => location.startsWith(destination.route),
-    );
+    // La route la PLUS LONGUE qui corresponde, pas la première trouvée :
+    // `/inventory-report` commence par `/inventory`, donc l'onglet Inventaire
+    // s'allumait quand on ouvrait le Rapport.
+    var matchedIndex = -1;
+    var meilleureLongueur = 0;
+    for (var i = 0; i < destinations.length; i++) {
+      final route = destinations[i].route;
+      if (location == route || location.startsWith(route)) {
+        if (route.length > meilleureLongueur) {
+          meilleureLongueur = route.length;
+          matchedIndex = i;
+        }
+      }
+    }
+
     // Onglet masqué dans ce mode (ex: /bilan pour un vendeur) : on retombe
     // sur Accueil plutôt que de planter avec un index hors liste.
     final selectedIndex = matchedIndex >= 0 ? matchedIndex : 0;

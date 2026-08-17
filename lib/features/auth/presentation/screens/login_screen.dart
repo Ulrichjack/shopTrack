@@ -8,12 +8,29 @@ import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../../core/providers/shop_settings_provider.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/auth_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/providers/current_shop_provider.dart';
+import '../../../../core/sync/sync_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+/// Efface les données locales quand ce n'est pas le même compte qu'avant.
+Future<void> _nettoyerSiAutreCompte(WidgetRef ref) async {
+  final prefs = await SharedPreferences.getInstance();
+  final precedent = prefs.getString('cached_user_id');
+  final actuel = Supabase.instance.client.auth.currentUser?.id;
+  if (actuel == null || precedent == null || precedent == actuel) return;
+
+  await ref.read(localDbProvider).clearAllData();
+  await prefs.remove(cachedShopIdKey);
+  await prefs.remove('cached_shop_name');
+  await prefs.remove('cached_is_owner');
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
@@ -137,6 +154,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 // Une nouvelle session doit repartir avec des données
                                 // fraîchement chargées, notamment après une précédente
                                 // erreur ou une déconnexion/reconnexion.
+                                // Le ménage se fait ICI, et seulement si le
+                                // compte a changé. La déconnexion ne vide plus
+                                // rien : revenir sur son propre compte doit
+                                // être instantané et marcher hors ligne, sans
+                                // retélécharger tout l'historique.
+                                //
+                                // Mais un AUTRE compte ne doit jamais hériter
+                                // des données du précédent — sur un téléphone
+                                // partagé, ce serait le stock d'une boutique
+                                // affiché à quelqu'un qui n'y a pas accès.
+                                await _nettoyerSiAutreCompte(ref);
+
                                 ref.invalidate(dashboardProvider);
                                 ref.invalidate(productProvider);
                                 // Le mode de la boutique aussi : il se lit

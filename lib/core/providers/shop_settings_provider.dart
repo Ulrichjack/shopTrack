@@ -17,10 +17,21 @@ class ShopSettings {
   final String saleCaptureMode;
   final bool multiPointEnabled;
 
+  /// Le mode a-t-il été **lu quelque part**, ou est-ce encore la valeur par
+  /// défaut faute de mieux ?
+  ///
+  /// Sans cette distinction, « je ne sais pas encore » et « mode simple » se
+  /// confondaient : l'accueil simple se construisait une seconde, ouvrait la
+  /// boîte « fonds de caisse », et celle-ci restait à l'écran par-dessus
+  /// l'inventaire. Une boîte de dialogue est une route : elle survit au widget
+  /// qui l'a ouverte.
+  final bool connu;
+
   const ShopSettings({
     this.unitMode = 'simple',
     this.saleCaptureMode = 'realtime',
     this.multiPointEnabled = false,
+    this.connu = false,
   });
 }
 
@@ -71,6 +82,7 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
       unitMode: local.unitMode,
       saleCaptureMode: local.saleCaptureMode,
       multiPointEnabled: local.multiPointEnabled,
+      connu: true,
     );
   }
 

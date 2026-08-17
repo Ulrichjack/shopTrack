@@ -153,10 +153,6 @@ final goRouter = GoRouter(
       builder: (context, state) => const DeclareLossScreen(),
     ),
     GoRoute(
-      path: '/inventory-report',
-      builder: (context, state) => const InventoryReportScreen(),
-    ),
-    GoRoute(
       path: '/daily-takings',
       builder: (context, state) => const DailyTakingsScreen(),
     ),
@@ -214,6 +210,14 @@ final goRouter = GoRouter(
           path: '/inventory',
           builder: (context, state) => const InventoryHubScreen(),
         ),
+        // Dans le ShellRoute, donc AVEC la barre du bas : le rapport est une
+        // destination, pas un écran de détail. Déclaré à l'extérieur, le
+        // bouton retour quittait l'application et rien ne permettait de
+        // rejoindre Accueil, Stock ou Inventaire.
+        GoRoute(
+          path: '/inventory-report',
+          builder: (context, state) => const InventoryReportScreen(),
+        ),
         GoRoute(
           path: '/bilan',
           builder: (context, state) => const MonthlyReportScreen(),
@@ -252,7 +256,12 @@ class _HomeForShopMode extends ConsumerWidget {
         .when(
           loading: () => const _EcranNeutre(),
           error: (_, _) => const DashboardScreen(),
-          data: (settings) => settings.saleCaptureMode == 'periodic'
+          // Mode inconnu = on attend. Parier sur « simple » faisait apparaître
+          // la boîte « fonds de caisse » avant de basculer en inventaire, et
+          // elle restait affichée par-dessus.
+          data: (settings) => !settings.connu
+              ? const _EcranNeutre()
+              : settings.saleCaptureMode == 'periodic'
               ? const InventoryDashboardScreen()
               : const DashboardScreen(),
         );
