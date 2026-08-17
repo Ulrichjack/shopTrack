@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'shop_settings_provider.dart';
@@ -52,14 +53,22 @@ UserShop? boutiqueParDefaut(List<UserShop> boutiques) {
 /// boutique déjà mémorisée localement, elle ne doit pas s'arrêter parce que le
 /// réseau manque.
 final userShopsProvider = FutureProvider<List<UserShop>>((ref) async {
-  final userId = Supabase.instance.client.auth.currentUser?.id;
-  if (userId == null) return const [];
-
+  // L'accès à `Supabase.instance` est DANS le try : il lève une assertion tant
+  // que l'initialisation n'a pas eu lieu, et ce provider est désormais lu très
+  // tôt — au démarrage, et dans les tests où Supabase n'existe pas.
   try {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return const [];
+
     final reponse = await Supabase.instance.client
         .from('shop_members')
         .select('shop_id, role, shops(name, created_at)')
         .eq('user_id', userId);
+
+    // Trace de diagnostic : le nom et le rôle remontent-ils réellement du
+    // serveur ? « Ma boutique » et « vendeur » sont des valeurs de repli, on
+    // ne peut pas distinguer « absent » de « mal lu » sans voir la réponse.
+    debugPrint('[SHOPS] réponse brute : $reponse');
 
     return (reponse as List)
         .map((ligne) {
@@ -76,7 +85,8 @@ final userShopsProvider = FutureProvider<List<UserShop>>((ref) async {
       // Ordre stable : le sélecteur ne doit pas changer d'ordre à chaque
       // chargement, sinon on tape sur la mauvaise boutique par habitude.
       ..sort((a, b) => a.name.compareTo(b.name));
-  } catch (_) {
+  } catch (erreur) {
+    debugPrint('[SHOPS] échec de la lecture des boutiques : $erreur');
     return const [];
   }
 });

@@ -24,6 +24,15 @@ class AppModeNotifier extends AsyncNotifier<bool> {
     final prefs = await SharedPreferences.getInstance();
     final hasPin =
         prefs.containsKey(kBossPinHashKey) || prefs.containsKey(kBossPinKey);
+    // Le rôle passe avant le PIN. Sans cette barrière, un vendeur qui installe
+    // l'app sur son propre téléphone arrivait en mode Patron : son appareil
+    // n'a aucun PIN, et « pas de PIN » valait « patron ».
+    final estProprietaire = await ref.watch(estProprietaireProvider.future);
+    if (!estProprietaire) {
+      bossModeAccess.value = false;
+      return false;
+    }
+
     final isBoss = !hasPin || (prefs.getBool(kBossModeActiveKey) ?? false);
     bossModeAccess.value = isBoss;
     return isBoss;
@@ -66,7 +75,7 @@ class AppModeNotifier extends AsyncNotifier<bool> {
     // Le rôle prime sur le PIN. Un vendeur qui a vu son patron composer le
     // code ne doit pas pouvoir ouvrir le bilan : la barrière est côté
     // serveur, l'appareil ne fait que la relayer.
-    if (!ref.read(isOwnerOfCurrentShopProvider)) return false;
+    if (!(await ref.read(estProprietaireProvider.future))) return false;
 
     final now = DateTime.now();
     if (_lockedUntil?.isAfter(now) ?? false) return false;

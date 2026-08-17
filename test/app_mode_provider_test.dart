@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shoptrack/core/providers/app_mode_provider.dart';
+import 'package:shoptrack/core/providers/employees_provider.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -65,5 +66,39 @@ void main() {
       reason: 'le PIN du compte précédent ne doit pas survivre',
     );
     compteB.dispose();
+  });
+
+  test('un vendeur n\'obtient pas le mode Patron faute de PIN', () async {
+    // Le défaut trouvé le 17/08 : « pas de PIN » valait « patron ». Un vendeur
+    // qui installe l'app sur son propre téléphone n'a évidemment aucun PIN, et
+    // arrivait donc avec le bilan, les réglages et les employés ouverts.
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer(
+      overrides: [estProprietaireProvider.overrideWith((ref) async => false)],
+    );
+    addTearDown(container.dispose);
+
+    expect(await container.read(appModeProvider.future), isFalse);
+    expect(bossModeAccess.value, isFalse);
+  });
+
+  test('le PIN ne promeut pas un vendeur', () async {
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer(
+      overrides: [estProprietaireProvider.overrideWith((ref) async => false)],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(appModeProvider.future);
+    await container.read(appModeProvider.notifier).setPin('1234');
+    final ouvert = await container
+        .read(appModeProvider.notifier)
+        .unlockBossMode('1234');
+
+    expect(
+      ouvert,
+      isFalse,
+      reason: 'le rôle vient du serveur, le PIN ne le contredit pas',
+    );
   });
 }

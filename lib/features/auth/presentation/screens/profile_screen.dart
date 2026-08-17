@@ -11,6 +11,7 @@ import '../../../../features/dashboard/presentation/providers/dashboard_provider
 import '../../../../features/products/presentation/providers/product_provider.dart';
 import '../../../../core/backup/backup_service.dart';
 import '../../../../shared/widgets/shop_switcher.dart';
+import '../../../../core/providers/employees_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -39,6 +40,86 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // --- DÉCONNEXION ---
+  Future<void> _changerMotDePasse(BuildContext context, WidgetRef ref) async {
+    final champ = TextEditingController();
+    final confirmation = TextEditingController();
+
+    final valide = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nouveau mot de passe'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: champ,
+              autofocus: true,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Nouveau mot de passe',
+                helperText: '6 caractères minimum',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmation,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Répète-le',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    );
+
+    if (valide != true) return;
+    if (champ.text.trim() != confirmation.text.trim()) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Les deux mots de passe ne sont pas identiques.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      await changerMotDePasse(champ.text);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Mot de passe changé.'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$error'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -88,16 +169,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
       await ref.read(backupServiceProvider).createBackup();
 
-      // Quitter l'accueil AVANT de tout effacer : sinon l'écran encore affiché
-      // se reconstruit sur une app sans boutique, le temps que la navigation
-      // se fasse.
+      // Quitter l'accueil AVANT de toucher à l'état : sinon l'écran encore
+      // affiché se reconstruit sur une app sans boutique.
       if (mounted) context.go('/login');
 
-      await db.clearAllData();
-
-      // On vide aussi les SharedPreferences
+      // On NE vide plus la base ni les préférences.
+      //
+      // C'était la sécurité du temps où un compte valait une boutique : le
+      // suivant ne devait pas hériter des données du précédent. Mais se
+      // déconnecter et revenir obligeait à retélécharger tout le stock, tous
+      // les comptages, tout l'historique — long, et impossible hors ligne.
+      //
+      // Le nettoyage se fait désormais **à la connexion**, et seulement si le
+      // compte a changé : voir `login_screen`. Même compte, données gardées.
       final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      await prefs.remove('boss_mode_active');
 
       // Le mode Patron/Vendeur et les réglages de boutique vivent en mémoire :
       // vider la base ne les efface pas. Sans ce reset, le compte suivant
@@ -393,7 +479,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                     return Column(
                       children: [
-                        if (!hasPin)
+                        // Pour tout le monde, patron comme vendeur : chacun
+                        // doit pouvoir changer son mot de passe, et le vendeur
+                        // arrive justement avec un provisoire donné par son
+                        // patron — qui le connaît encore.
+                        ListTile(
+                          leading: const Icon(
+                            Icons.password_outlined,
+                            color: AppColors.primaryDark,
+                          ),
+                          title: const Text(
+                            'Changer mon mot de passe',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
+                          onTap: () => _changerMotDePasse(context, ref),
+                        ),
+                        const Divider(height: 1),
+
+                        // Réservé au patron : un vendeur ne peut rien en faire
+                        // — son rôle vient du serveur, et le PIN ne le
+                        // déverrouillerait pas. Le lui montrer n'apporte que
+                        // du doute.
+                        //
+                        // Le PIN garde son sens pour le téléphone partagé du
+                        // comptoir : le patron y travaille, puis le laisse à
+                        // son vendeur sans se déconnecter — la déconnexion
+                        // efface les données locales.
+                        if (!hasPin && isBossMode)
                           ListTile(
                             leading: const Icon(
                               Icons.lock_outline,
