@@ -22,12 +22,16 @@ vide, ou s'efface toute seule quelques secondes après avoir été écrite.
 | `stock_movements` poussée mais jamais tirée | le rapport perdait ses recharges → faux « tu as encaissé plus », bénéfice surévalué |
 | `unit` absent de `ProductEntity` | **modifier un produit effaçait son unité** — l'écran pré-remplissait un champ toujours vide |
 
-**Règle** : toute nouvelle colonne synchronisée s'ajoute aux **DEUX** côtés de
-`pullDataFromSupabase()` (le `select` distant **et** le mapping vers Drift), et
-tout mapping base → entité doit être complet.
+**Règle** : une table synchronisée se déclare **à un seul endroit**, dans
+`tablesTirees` (`lib/core/sync/pull_registry.dart`) — requête distante et
+mapping vers Drift côte à côte. C'est l'écart entre les deux qui produisait le
+bug : ils vivaient à trois cents lignes de distance. Tout mapping base →
+entité doit par ailleurs être complet.
 
-**Gardes automatiques** : `test/sync_pull_coverage_test.dart` et
-`test/product_entity_mapping_test.dart` échouent à l'ajout d'un champ oublié.
+**Gardes automatiques** : `test/sync_pull_coverage_test.dart` construit, pour
+chaque table du registre, une ligne distante portant **toutes** ses colonnes et
+vérifie qu'aucune ne ressort nulle — il nomme la colonne fautive. Avec
+`test/product_entity_mapping_test.dart` pour le mapping base → entité.
 
 ---
 

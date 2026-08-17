@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
 import '../providers/current_shop_provider.dart';
+import 'pull_registry.dart';
 
 final localDbProvider = Provider<AppDatabase>((ref) {
   final database = AppDatabase();
@@ -173,408 +173,30 @@ class SyncService {
         }
       }
 
-      final results = await Future.wait([
-        tirer(
-          'products',
-          supabase.from('products').select().eq('shop_id', shopId),
-        ),
-        tirer(
-          'cash_movements',
-          supabase.from('cash_movements').select().eq('shop_id', shopId),
-        ),
-        tirer('sales', supabase.from('sales').select().eq('shop_id', shopId)),
-        tirer(
-          'sale_items',
-          supabase
-              .from('sale_items')
-              .select('*, sales!inner(shop_id)')
-              .eq('sales.shop_id', shopId),
-        ),
-        tirer(
-          'daily_closings',
-          supabase.from('daily_closings').select().eq('shop_id', shopId),
-        ),
-        // Module A : sans ces trois-là, un 2e téléphone ne voit ni les
-        // cycles ni les unités, donc ne peut pas vendre au plateau.
-        tirer(
-          'supply_cycles',
-          supabase.from('supply_cycles').select().eq('shop_id', shopId),
-        ),
-        tirer(
-          'product_units',
-          supabase
-              .from('product_units')
-              .select('*, products!inner(shop_id)')
-              .eq('products.shop_id', shopId),
-        ),
-        tirer(
-          'cycle_losses',
-          supabase
-              .from('cycle_losses')
-              .select('*, supply_cycles!inner(shop_id)')
-              .eq('supply_cycles.shop_id', shopId),
-        ),
-        // Module B : la recette locale doit revenir après connexion sur un
-        // autre téléphone, au même titre que les autres données métier.
-        tirer(
-          'shop_takings',
-          supabase.from('shop_takings').select().eq('shop_id', shopId),
-        ),
-        // Module B : les comptages sont des repères historiques. Sans ce
-        // pull, un second téléphone ne peut ni reprendre ni terminer le tour.
-        tirer(
-          'inventory_counts',
-          supabase.from('inventory_counts').select().eq('shop_id', shopId),
-        ),
-        // Les recharges sont poussées par apply_stock_movement mais n'étaient
-        // jamais retéléchargées. Le rapport de période en tire ses `purchases` :
-        // sans elles, les sorties valent « stock de départ − stock compté », le
-        // réapprovisionnement disparaît du calcul et l'app annonce un bénéfice
-        // surévalué avec un faux « tu as encaissé plus ». Le stock, lui, restait
-        // juste : le bug était invisible sur l'écran Stock.
-        tirer(
-          'stock_movements',
-          supabase.from('stock_movements').select().eq('shop_id', shopId),
-        ),
-        // Module B : sans les pertes déclarées, la casse d'un téléphone
-        // redevient de l'inexpliqué sur l'autre — donc du vol présumé.
-        tirer(
-          'inventory_losses',
-          supabase.from('inventory_losses').select().eq('shop_id', shopId),
-        ),
-        // Le prix payé voyage avec l'achat : sans ce pull, un second téléphone
-        // revaloriserait tout au prix actuel du produit.
-        tirer(
-          'stock_purchases',
-          supabase.from('stock_purchases').select().eq('shop_id', shopId),
-        ),
-        // Le tarif pratiqué pendant la période : sans lui, un second
-        // téléphone revaloriserait tout au prix du jour.
-        tirer(
-          'product_prices',
-          supabase.from('product_prices').select().eq('shop_id', shopId),
-        ),
-        // Les deux sens : la boutique voit ce qu'elle a envoyé ET ce qu'elle
-        // doit recevoir. Sans le second, personne ne pourrait confirmer une
-        // réception.
-        tirer(
-          'stock_transfers',
-          supabase
-              .from('stock_transfers')
-              .select()
-              .or('from_shop_id.eq.$shopId,to_shop_id.eq.$shopId'),
-        ),
+      final resultats = await Future.wait([
+        for (final table in tablesTirees)
+          tirer(table.nom, table.tirer(supabase, shopId)),
       ]);
 
-      final productsData = results[0];
-      final cashData = results[1];
-      final salesData = results[2];
-      final saleItemsData = results[3];
-      final closingsData = results[4];
-      final cyclesData = results[5];
-      final unitsData = results[6];
-      final lossesData = results[7];
-      final takingsData = results[8];
-      final inventoryCountsData = results[9];
-      final stockMovementsData = results[10];
-      final inventoryLossesData = results[11];
-      final stockPurchasesData = results[12];
-      final productPricesData = results[13];
-      final transfersData = results[14];
-
-      // Fusionner au lieu de vider les tables protège les écritures hors ligne.
+      // Fusionner au lieu de vider les tables protège les écritures faites
+      // hors ligne qui ne sont pas encore parties.
       await db.transaction(() async {
         await db.batch((batch) {
-          batch.insertAll(
-            db.localProducts,
-            productsData
-                .map(
-                  (p) => LocalProduct(
-                    id: p['id'],
-                    shopId: p['shop_id'],
-                    name: p['name'],
-                    buyPrice: (p['buy_price'] as num).toDouble(),
-                    sellPrice: (p['sell_price'] as num).toDouble(),
-                    quantity: p['quantity'],
-                    minQuantity: p['min_quantity'],
-                    barcode: p['barcode'],
-                    photoUrl: p['photo_url'],
-                    unit: p['unit'] as String?,
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localCashMovements,
-            cashData
-                .map(
-                  (c) => LocalCashMovement(
-                    id: c['id'],
-                    shopId: c['shop_id'],
-                    userId: c['user_id'],
-                    amount: (c['amount'] as num).toDouble(),
-                    type: c['type'],
-                    category: c['category'],
-                    note: c['note'],
-                    createdAt: DateTime.parse(c['created_at']).toLocal(),
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localSales,
-            salesData
-                .map(
-                  (s) => LocalSale(
-                    id: s['id'],
-                    shopId: s['shop_id'],
-                    userId: s['user_id'],
-                    totalAmount: (s['total_amount'] as num).toDouble(),
-                    totalProfit: (s['total_profit'] as num).toDouble(),
-                    createdAt: DateTime.parse(s['created_at']).toLocal(),
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localSaleItems,
-            saleItemsData
-                .map(
-                  (i) => LocalSaleItem(
-                    id: i['id'],
-                    saleId: i['sale_id'],
-                    productId: i['product_id'],
-                    productName: i['product_name'],
-                    quantity: i['quantity'],
-                    sellPrice: (i['sell_price'] as num).toDouble(),
-                    buyPrice: (i['buy_price'] as num).toDouble(),
-                    profit: (i['profit'] as num).toDouble(),
-                    // Module A : sans ces colonnes, le pull efface le lien
-                    // vente ↔ cycle et le rapport retombe à 0 F.
-                    cycleId: i['cycle_id'] as String?,
-                    unitId: i['unit_id'] as String?,
-                    quantityInBase: i['quantity_in_base'] as int?,
-                    unitSellPrice: (i['unit_sell_price'] as num?)?.toDouble(),
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localDailyClosings,
-            closingsData
-                .map(
-                  (c) => LocalDailyClosing(
-                    id: c['id'],
-                    shopId: c['shop_id'],
-                    userId: c['user_id'],
-                    closingDate: DateTime.parse(c['closing_date']),
-                    morningBalance: (c['morning_balance'] as num).toDouble(),
-                    totalSales: (c['total_sales'] as num).toDouble(),
-                    totalWithdrawals: (c['total_withdrawals'] as num)
-                        .toDouble(),
-                    calculatedCash: (c['calculated_cash'] as num).toDouble(),
-                    grossProfit: (c['gross_profit'] as num).toDouble(),
-                    netProfit: (c['net_profit'] as num).toDouble(),
-                    physicalCash: c['physical_cash'] == null
-                        ? null
-                        : (c['physical_cash'] as num).toDouble(),
-                    cashGap: c['cash_gap'] == null
-                        ? null
-                        : (c['cash_gap'] as num).toDouble(),
-                    isClosed: c['is_closed'] ?? false,
-                    note: c['note'],
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localSupplyCycles,
-            cyclesData
-                .map(
-                  (c) => LocalSupplyCycle(
-                    id: c['id'],
-                    shopId: c['shop_id'],
-                    productId: c['product_id'],
-                    openedAt: DateTime.parse(c['opened_at']),
-                    closedAt: c['closed_at'] == null
-                        ? null
-                        : DateTime.parse(c['closed_at']),
-                    quantityReceived: c['quantity_received'],
-                    purchaseCost: (c['purchase_cost'] as num).toDouble(),
-                    referenceMarginPerUnit:
-                        (c['reference_margin_per_unit'] as num?)?.toDouble(),
-                    status: c['status'] ?? 'open',
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localProductUnits,
-            unitsData
-                .map(
-                  (u) => LocalProductUnit(
-                    id: u['id'],
-                    productId: u['product_id'],
-                    unitName: u['unit_name'],
-                    ratioToBase: u['ratio_to_base'],
-                    sortOrder: u['sort_order'] ?? 0,
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localCycleLosses,
-            lossesData
-                .map(
-                  (l) => LocalCycleLossesData(
-                    id: l['id'],
-                    cycleId: l['cycle_id'],
-                    quantity: l['quantity'],
-                    reason: l['reason'],
-                    note: l['note'],
-                    createdAt: DateTime.parse(l['created_at']),
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localShopTakings,
-            takingsData
-                .map(
-                  (taking) => LocalShopTaking(
-                    shopId: taking['shop_id'],
-                    date: DateTime.parse(taking['date']),
-                    amount: (taking['amount'] as num).toDouble(),
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localInventoryCounts,
-            inventoryCountsData
-                .map(
-                  (count) => LocalInventoryCount(
-                    id: count['id'],
-                    shopId: count['shop_id'],
-                    productId: count['product_id'],
-                    countedAt: DateTime.parse(count['counted_at']).toLocal(),
-                    countedQuantity: count['counted_quantity'],
-                    previousCountedAt: count['previous_counted_at'] == null
-                        ? null
-                        : DateTime.parse(
-                            count['previous_counted_at'],
-                          ).toLocal(),
-                    previousQuantity: count['previous_quantity'],
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localStockTransfers,
-            transfersData
-                .map(
-                  (t) => LocalStockTransfer(
-                    id: t['id'],
-                    fromShopId: t['from_shop_id'],
-                    toShopId: t['to_shop_id'],
-                    productId: t['product_id'],
-                    quantity: t['quantity'],
-                    receivedQuantity: t['received_quantity'] as int?,
-                    receivedAt: t['received_at'] == null
-                        ? null
-                        : DateTime.parse(t['received_at']).toLocal(),
-                    transferredAt: DateTime.parse(
-                      t['transferred_at'],
-                    ).toLocal(),
-                    note: t['note'] as String?,
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localProductPrices,
-            productPricesData
-                .map(
-                  (p) => LocalProductPrice(
-                    id: p['id'],
-                    shopId: p['shop_id'],
-                    productId: p['product_id'],
-                    buyPrice: (p['buy_price'] as num).toDouble(),
-                    sellPrice: (p['sell_price'] as num).toDouble(),
-                    effectiveAt: DateTime.parse(p['effective_at']).toLocal(),
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localStockPurchases,
-            stockPurchasesData
-                .map(
-                  (p) => LocalStockPurchase(
-                    id: p['id'],
-                    shopId: p['shop_id'],
-                    productId: p['product_id'],
-                    quantity: p['quantity'],
-                    unitCost: (p['unit_cost'] as num).toDouble(),
-                    purchasedAt: DateTime.parse(p['purchased_at']).toLocal(),
-                    note: p['note'] as String?,
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localInventoryLosses,
-            inventoryLossesData
-                .map(
-                  (l) => LocalInventoryLoss(
-                    id: l['id'],
-                    shopId: l['shop_id'],
-                    productId: l['product_id'],
-                    quantity: l['quantity'],
-                    reason: l['reason'],
-                    note: l['note'] as String?,
-                    occurredAt: DateTime.parse(l['occurred_at']).toLocal(),
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.localStockMovements,
-            stockMovementsData
-                .map(
-                  (m) => LocalStockMovement(
-                    id: m['id'],
-                    shopId: m['shop_id'],
-                    productId: m['product_id'],
-                    quantity: m['quantity'],
-                    type: m['type'],
-                    createdAt: DateTime.parse(m['created_at']).toLocal(),
-                  ),
-                )
-                .toList(),
-            mode: InsertMode.insertOrReplace,
-          );
+          for (var i = 0; i < tablesTirees.length; i++) {
+            tablesTirees[i].appliquer(db, batch, resultats[i]);
+          }
         });
       });
 
+      int compte(String nom) {
+        final index = tablesTirees.indexWhere((table) => table.nom == nom);
+        return index < 0 ? 0 : resultats[index].length;
+      }
+
       debugPrint(
         '[SYNC] téléchargement terminé — '
-        '${productsData.length} produits, ${inventoryCountsData.length} '
-        'comptages, ${takingsData.length} recettes'
+        '${compte('products')} produits, ${compte('inventory_counts')} '
+        'comptages, ${compte('shop_takings')} recettes'
         '${tablesEnEchec.isEmpty ? '' : ' — ÉCHECS : ${tablesEnEchec.join(', ')}'}',
       );
       _emit(

@@ -29,7 +29,9 @@ Synchro (`lib/core/sync/sync_service.dart`) : `processQueue()` (push) puis `pull
 
 Cette garde vaut pour **tout** téléchargement, pas seulement `pullDataFromSupabase()` : `shop_settings_provider` la contournait et faisait revenir un module désactivé, le serveur renvoyant l'ancien réglage encore en file.
 
-**Toute nouvelle colonne/table synchronisée doit être ajoutée aux DEUX côtés de `pullDataFromSupabase()`** (le `select` distant *et* le mapping vers Drift). Oubli = le pull réécrit la ligne locale sans le champ et l'efface silencieusement quelques secondes après sa création — vu sur `sale_items.cycle_id`, invisible sur un seul téléphone.
+**Toute table/colonne synchronisée se déclare dans `tablesTirees` (`lib/core/sync/pull_registry.dart`)**, requête distante et mapping Drift au même endroit. Oubli = le pull réécrit la ligne locale sans le champ et l'efface silencieusement quelques secondes après sa création — vu sur `sale_items.cycle_id`, invisible sur un seul téléphone. `test/sync_pull_coverage_test.dart` nomme la colonne fautive.
+
+Une opération refusée par le serveur ne gèle plus la file : après 5 refus elle est **mise de côté** (gardée, signalée par un bandeau) et seules les opérations de même portée l'attendent. Une panne réseau n'est pas un refus (`estUnRefusDuServeur`).
 
 ## Règles CRITIQUES
 
