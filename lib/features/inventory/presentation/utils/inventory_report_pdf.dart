@@ -43,6 +43,18 @@ Future<Uint8List> buildInventoryReportPdf(
 
   pdf.addPage(
     pw.MultiPage(
+      // Sur chaque page : le document circule seul, souvent photographié ou
+      // renvoyé. Il doit dire d'où il vient et de quand il date.
+      footer: (context) => pw.Container(
+        alignment: pw.Alignment.center,
+        margin: const pw.EdgeInsets.only(top: 12),
+        child: pw.Text(
+          'Généré automatiquement par ShopTrack · '
+          '${DateFormat('dd/MM/yyyy à HH:mm').format(DateTime.now())} · '
+          'page ${context.pageNumber}/${context.pagesCount}',
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+        ),
+      ),
       // Marges resserrées : avec les marges par défaut, une quinzaine de
       // produits repoussait « TON RÉSULTAT » — donc le bénéfice — en page 2,
       // et le patron recevait un papier dont le chiffre principal manquait.

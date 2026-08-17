@@ -263,6 +263,20 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                       ),
                     ),
               ],
+
+              // Le document circule seul, souvent photographié ou renvoyé :
+              // il doit dire d'où il vient et de quand il date.
+              pw.SizedBox(height: 24),
+              pw.Center(
+                child: pw.Text(
+                  'Généré automatiquement par ShopTrack · '
+                  '${DateFormat('dd/MM/yyyy à HH:mm').format(DateTime.now())}',
+                  style: const pw.TextStyle(
+                    fontSize: 8,
+                    color: PdfColors.grey600,
+                  ),
+                ),
+              ),
             ],
           );
         },
