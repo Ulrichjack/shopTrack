@@ -167,11 +167,39 @@ bool doitChangerMotDePasse() {
 }
 
 /// L'employé choisit son mot de passe : le patron ne le connaît plus.
-Future<void> changerMotDePasse(String nouveau) async {
+///
+/// [actuel] est vérifié avant tout changement. Supabase ne le réclame pas —
+/// une session ouverte suffit à sa `updateUser` — mais un téléphone posé sur
+/// un comptoir reste une session ouverte : sans cette vérification, n'importe
+/// qui pouvait changer le mot de passe et enfermer dehors le propriétaire du
+/// compte. On revalide en se reconnectant avec l'ancien.
+Future<void> changerMotDePasse({
+  required String actuel,
+  required String nouveau,
+}) async {
   if (nouveau.trim().length < 6) {
     throw ArgumentError('Le mot de passe doit faire au moins 6 caractères.');
   }
-  await Supabase.instance.client.auth.updateUser(
+  if (actuel.trim() == nouveau.trim()) {
+    throw ArgumentError('Le nouveau mot de passe doit être différent.');
+  }
+
+  final client = Supabase.instance.client;
+  final email = client.auth.currentUser?.email;
+  if (email == null) {
+    throw StateError('Aucune session ouverte.');
+  }
+
+  try {
+    await client.auth.signInWithPassword(
+      email: email,
+      password: actuel.trim(),
+    );
+  } on AuthException {
+    throw ArgumentError('Mot de passe actuel incorrect.');
+  }
+
+  await client.auth.updateUser(
     UserAttributes(
       password: nouveau.trim(),
       data: const {mustChangePasswordKey: false},

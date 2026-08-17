@@ -89,7 +89,12 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: NestedScrollView(
-        floatHeaderSlivers: true,
+        // `false` — et c'est LUI qui décide, pas le `floating` de l'entête.
+        // Tant qu'il valait `true`, le coordinateur redonnait la priorité à
+        // l'entête au premier geste vers le haut : elle revenait recouvrir la
+        // ligne qu'on venait chercher, quoi qu'on mette sur le SliverAppBar.
+        // À `false`, elle ne réapparaît qu'une fois la liste revenue en haut.
+        floatHeaderSlivers: false,
         headerSliverBuilder: (context, innerBoxIsScrolled) => const [
           SliverAppBar(
             title: Text('Comptage du stock'),

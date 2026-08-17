@@ -478,20 +478,22 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // --- FONCTIONS POUR VIDER LA BASE (Utile pour la déconnexion) ---
+  /// Vide **tout**, à la connexion d'un autre compte.
+  ///
+  /// La liste était écrite à la main et s'est retrouvée en retard de quatre
+  /// tables : pertes, arrivages, tarifs et transferts survivaient au
+  /// changement de compte. Le téléphone d'un vendeur gardait donc les prix
+  /// d'achat de son patron — l'exact contraire de ce que cette fonction
+  /// existe pour empêcher.
+  ///
+  /// On parcourt maintenant `allTables` : une table nouvelle est effacée
+  /// d'office, sans que personne ait à y penser.
   Future<void> clearAllData() async {
-    await delete(localProducts).go();
-    await delete(localSales).go();
-    await delete(localSaleItems).go();
-    await delete(localCashMovements).go();
-    await delete(localStockMovements).go();
-    await delete(localDailyClosings).go();
-    await delete(localShopSettings).go();
-    await delete(localProductUnits).go();
-    await delete(localSupplyCycles).go();
-    await delete(localCycleLosses).go();
-    await delete(localShopTakings).go();
-    await delete(localInventoryCounts).go();
-    await delete(syncQueueItems).go();
+    await transaction(() async {
+      for (final table in allTables) {
+        await delete(table).go();
+      }
+    });
   }
 }
 

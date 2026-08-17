@@ -24,16 +24,22 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 /// Efface les données locales quand ce n'est pas le même compte qu'avant.
-Future<void> _nettoyerSiAutreCompte(WidgetRef ref) async {
+///
+/// Renvoie `true` si le ménage a eu lieu : l'appelant doit alors retélécharger,
+/// sinon le commerçant arrive sur une app vide. C'est ce qui manquait — on
+/// vidait le stock et personne ne le redemandait, donc « je me reconnecte et
+/// mon stock n'est plus là ».
+Future<bool> _nettoyerSiAutreCompte(WidgetRef ref) async {
   final prefs = await SharedPreferences.getInstance();
   final precedent = prefs.getString('cached_user_id');
   final actuel = Supabase.instance.client.auth.currentUser?.id;
-  if (actuel == null || precedent == null || precedent == actuel) return;
+  if (actuel == null || precedent == null || precedent == actuel) return false;
 
   await ref.read(localDbProvider).clearAllData();
   await prefs.remove(cachedShopIdKey);
   await prefs.remove('cached_shop_name');
   await prefs.remove('cached_is_owner');
+  return true;
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
@@ -167,7 +173,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 // des données du précédent — sur un téléphone
                                 // partagé, ce serait le stock d'une boutique
                                 // affiché à quelqu'un qui n'y a pas accès.
-                                await _nettoyerSiAutreCompte(ref);
+                                final aEteVide = await _nettoyerSiAutreCompte(
+                                  ref,
+                                );
 
                                 // TOUT ce qui dépend du compte doit repartir
                                 // de zéro. Vider les préférences ne suffit
@@ -191,6 +199,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 // devait réactiver son module à chaque
                                 // connexion.
                                 ref.invalidate(shopSettingsProvider);
+
+                                // Le stock vient d'être effacé : il faut le
+                                // redemander AVANT d'afficher l'accueil, sinon
+                                // le commerçant arrive sur une app vide et
+                                // croit avoir tout perdu. On attend ici, une
+                                // seule fois, au changement de compte.
+                                //
+                                // Sur son propre compte, rien n'a été vidé :
+                                // on n'attend pas, l'entrée reste instantanée
+                                // et marche hors ligne.
+                                if (aEteVide) {
+                                  try {
+                                    await ref
+                                        .read(syncServiceProvider)
+                                        .synchronize();
+                                  } catch (_) {
+                                    // Hors ligne : on entre quand même. La
+                                    // synchro repartira au retour du réseau —
+                                    // bloquer la connexion serait pire.
+                                  }
+                                }
 
                                 // 2. Si l'écran est toujours affiché (bonne pratique Flutter)
                                 if (context.mounted) {

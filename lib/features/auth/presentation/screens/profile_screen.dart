@@ -43,36 +43,50 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   // --- DÉCONNEXION ---
   Future<void> _changerMotDePasse(BuildContext context, WidgetRef ref) async {
+    final ancien = TextEditingController();
     final champ = TextEditingController();
     final confirmation = TextEditingController();
 
     final valide = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Nouveau mot de passe'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: champ,
-              autofocus: true,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Nouveau mot de passe',
-                helperText: '6 caractères minimum',
-                border: OutlineInputBorder(),
+        title: const Text('Changer le mot de passe'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Demandé en premier : sans lui, un téléphone laissé sur le
+              // comptoir suffisait à changer le mot de passe du compte.
+              TextField(
+                controller: ancien,
+                autofocus: true,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Mot de passe actuel',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: confirmation,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Répète-le',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 12),
+              TextField(
+                controller: champ,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Nouveau mot de passe',
+                  helperText: '6 caractères minimum',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmation,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Répète-le',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -101,7 +115,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
 
     try {
-      await changerMotDePasse(champ.text);
+      await changerMotDePasse(actuel: ancien.text, nouveau: champ.text);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -114,7 +128,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$error'),
+            // « Invalid argument(s): » devant chaque refus ne veut rien dire
+            // pour un commerçant : on ne garde que la phrase.
+            content: Text(
+              error is ArgumentError
+                  ? '${error.message}'
+                  : '$error'.replaceFirst('Exception: ', ''),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -202,6 +222,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
       await ref.read(backupServiceProvider).createBackup();
 
+      // Le conteneur, capturé AVANT de naviguer : `context.go` détruit cet
+      // écran, et tout `ref.` qui suivait levait « Cannot use ref after the
+      // widget was disposed ». L'exception partait dans le `catch`, donc
+      // `signOut()` n'était jamais atteint : on croyait s'être déconnecté, la
+      // session tenait toujours, et il fallait recommencer. Le conteneur, lui,
+      // survit à l'écran.
+      final conteneur = ProviderScope.containerOf(context, listen: false);
+
+      // La session d'abord : c'est elle qui décide si on est connecté. Tant
+      // qu'elle vit, tout le reste n'est que du ménage d'affichage.
+      await Supabase.instance.client.auth.signOut();
+
       // Quitter l'accueil AVANT de toucher à l'état : sinon l'écran encore
       // affiché se reconstruit sur une app sans boutique.
       fermerAttente();
@@ -224,15 +256,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // hérite de l'état du précédent — bloqué en Vendeur sur sa propre
       // boutique neuve, ou pire, Patron sans connaître le moindre PIN.
       bossModeAccess.value = false; // rien n'est ouvert tant qu'on ne sait pas
-      ref.invalidate(appModeProvider);
-      ref.invalidate(currentShopIdProvider);
-      ref.invalidate(userShopsProvider);
-      ref.invalidate(estProprietaireProvider);
-      ref.invalidate(shopSettingsProvider);
-      ref.invalidate(productProvider);
-      ref.invalidate(dashboardProvider);
-
-      await Supabase.instance.client.auth.signOut();
+      conteneur.invalidate(appModeProvider);
+      conteneur.invalidate(currentShopIdProvider);
+      conteneur.invalidate(userShopsProvider);
+      conteneur.invalidate(estProprietaireProvider);
+      conteneur.invalidate(shopSettingsProvider);
+      conteneur.invalidate(productProvider);
+      conteneur.invalidate(dashboardProvider);
     } catch (e) {
       fermerAttente();
       if (mounted) {
