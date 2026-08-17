@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/product_entity.dart';
 import '../providers/product_provider.dart';
+import '../widgets/archived_products_sheet.dart';
 
 class ProductListScreen extends ConsumerStatefulWidget {
   const ProductListScreen({super.key});
@@ -38,9 +40,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
       backgroundColor: AppColors.background,
       body: NestedScrollView(
         floatHeaderSlivers: true,
-        headerSliverBuilder: (context, innerBoxIsScrolled) => const [
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            title: Text('Mon stock'),
+            title: const Text('Mon stock'),
             // Ni `floating` ni `snap` : l'entête ne revient qu'une fois
             // remonté tout en haut. En `floating`, il réapparaissait au
             // moindre geste vers le haut et recouvrait la ligne qu'on venait
@@ -48,6 +50,20 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             floating: false,
             snap: false,
             elevation: 0,
+            actions: [
+              // Réservé au patron : ressortir un produit change ce que le
+              // vendeur peut vendre.
+              ValueListenableBuilder<bool>(
+                valueListenable: bossModeAccess,
+                builder: (context, estPatron, _) => estPatron
+                    ? IconButton(
+                        tooltip: 'Produits archivés',
+                        icon: const Icon(Icons.inventory_2_outlined),
+                        onPressed: () => showArchivedProductsSheet(context),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
           ),
         ],
         body: Column(

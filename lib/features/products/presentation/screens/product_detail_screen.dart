@@ -97,6 +97,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
         );
       }
+    } on ProduitAvecHistoireException {
+      // Ce n'est pas une erreur à afficher et à oublier : c'est le moment de
+      // proposer la bonne action. Un message seul laissait le commerçant sans
+      // aucun moyen de retirer un produit qu'il ne vend plus.
+      if (context.mounted) await _proposerArchivage(context, ref, produit);
     } catch (error) {
       if (context.mounted) {
         final texte = error.toString();
@@ -113,6 +118,49 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         );
       }
     }
+  }
+
+  /// L'issue pour un produit qui a une histoire : le placard, pas la gomme.
+  Future<void> _proposerArchivage(
+    BuildContext context,
+    WidgetRef ref,
+    ProductEntity produit,
+  ) async {
+    final archiver = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Impossible de supprimer'),
+        content: Text(
+          '${produit.name} a déjà été vendu, compté ou transféré. '
+          'L\'effacer changerait des bilans déjà consultés.\n\n'
+          'Tu peux l\'archiver : il sort du stock, du comptage et de la '
+          'vente, et tes anciens rapports restent justes. Tu pourras le '
+          'ressortir quand tu veux.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.inventory_2_outlined, size: 18),
+            label: const Text('Archiver'),
+          ),
+        ],
+      ),
+    );
+    if (archiver != true) return;
+
+    await ref.read(productProvider.notifier).archiveProduct(produit.id);
+    if (!context.mounted) return;
+    context.pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${produit.name} archivé.'),
+        backgroundColor: AppColors.primary,
+      ),
+    );
   }
 
   void _showAddStockBottomSheet(

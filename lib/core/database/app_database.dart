@@ -23,6 +23,15 @@ class LocalProducts extends Table {
   /// aucun calcul : le commerçant compte dans une seule unité par produit.
   TextColumn get unit => text().nullable()();
 
+  /// Date de mise au placard. Un produit archivé sort du stock, du comptage et
+  /// de la vente, mais **garde tout son passé** : les périodes closes qui le
+  /// citent restent justes.
+  ///
+  /// C'est la sortie pour un produit qu'on ne vend plus. La suppression, elle,
+  /// reste réservée à ce qui n'a jamais servi — effacer un produit cité par un
+  /// bilan déjà consulté en changerait le bénéfice.
+  DateTimeColumn get archivedAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -331,7 +340,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -375,6 +384,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(syncQueueItems, syncQueueItems.setAside);
         await m.addColumn(syncQueueItems, syncQueueItems.lastError);
         await m.addColumn(syncQueueItems, syncQueueItems.lastAttemptAt);
+      }
+      if (from < 12) {
+        await m.addColumn(localProducts, localProducts.archivedAt);
       }
     },
   );

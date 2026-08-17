@@ -12,6 +12,20 @@ import '../../../../core/network/connectivity_provider.dart';
 import '../../domain/entities/product_entity.dart';
 import '../../../../core/providers/current_shop_provider.dart';
 
+/// Levée quand on tente de supprimer un produit déjà cité par une vente, un
+/// comptage, un mouvement, une perte ou un transfert.
+///
+/// Typée plutôt que générique : l'écran doit pouvoir proposer l'archivage à la
+/// place, ce qu'un message d'erreur ne permet pas.
+class ProduitAvecHistoireException implements Exception {
+  const ProduitAvecHistoireException();
+
+  @override
+  String toString() =>
+      'Ce produit a déjà une histoire : ventes, comptages ou transferts. '
+      'Le supprimer changerait des bilans déjà consultés.';
+}
+
 class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
   @override
   Future<List<ProductEntity>> build() async {
@@ -28,11 +42,38 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     final shopId = await ref.read(currentShopIdProvider.future);
     if (shopId == null || shopId.isEmpty) return const [];
 
-    final localProducts = await (db.select(
-      db.localProducts,
-    )..where((row) => row.shopId.equals(shopId))).get();
+    // Les produits archivés sortent d'ici : ils ne s'affichent plus au stock,
+    // au comptage ni à la vente. Leur passé, lui, reste en base — les rapports
+    // de périodes closes continuent de les citer.
+    final localProducts =
+        await (db.select(db.localProducts)..where(
+              (row) => row.shopId.equals(shopId) & row.archivedAt.isNull(),
+            ))
+            .get();
 
     return localProducts.map(_toEntity).toList();
+  }
+
+  /// Les produits mis au placard, pour pouvoir les ressortir.
+  Future<List<ProductEntity>> fetchArchivedProducts() async {
+    final db = ref.read(localDbProvider);
+    final shopId = await ref.read(currentShopIdProvider.future);
+    if (shopId == null || shopId.isEmpty) return const [];
+
+    final archives =
+        await (db.select(db.localProducts)
+              ..where(
+                (row) => row.shopId.equals(shopId) & row.archivedAt.isNotNull(),
+              )
+              ..orderBy([
+                (row) => drift.OrderingTerm(
+                  expression: row.archivedAt,
+                  mode: drift.OrderingMode.desc,
+                ),
+              ]))
+            .get();
+
+    return archives.map(_toEntity).toList();
   }
 
   ProductEntity _toEntity(LocalProduct p) => ProductEntity(
@@ -50,6 +91,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     // restaient vides, et surtout MODIFIER un produit effaçait son unité —
     // l'écran pré-remplissait le champ avec une valeur toujours nulle.
     unit: p.unit,
+    archivedAt: p.archivedAt,
   );
 
   Future<void> _cacheProduct(Map<String, dynamic> data) async {
@@ -68,6 +110,11 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
             barcode: data['barcode'] as String?,
             photoUrl: data['photo_url'] as String?,
             unit: data['unit'] as String?,
+            // Sans cette ligne, remettre un produit en cache le sortirait du
+            // placard tout seul.
+            archivedAt: data['archived_at'] == null
+                ? null
+                : DateTime.parse(data['archived_at'] as String).toLocal(),
           ),
           mode: drift.InsertMode.insertOrReplace,
         );
@@ -118,9 +165,15 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     if (barcode.isEmpty) return null;
 
     final db = ref.read(localDbProvider);
+    // Un produit archivé garde son code — c'est ce qui évite qu'on réattribue
+    // le même à un autre — mais il ne doit plus se vendre au scan.
     final local =
         await (db.select(db.localProducts)
-              ..where((product) => product.barcode.equals(barcode))
+              ..where(
+                (product) =>
+                    product.barcode.equals(barcode) &
+                    product.archivedAt.isNull(),
+              )
               ..orderBy([(product) => drift.OrderingTerm.asc(product.name)])
               ..limit(1))
             .getSingleOrNull();
@@ -428,11 +481,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
         mouvements.isNotEmpty ||
         pertes.isNotEmpty ||
         transferts.isNotEmpty) {
-      throw Exception(
-        'Ce produit a déjà une histoire : ventes, comptages ou transferts. '
-        'Le supprimer changerait des bilans déjà consultés. Mets plutôt sa '
-        'quantité à zéro pour arrêter de le vendre.',
-      );
+      throw const ProduitAvecHistoireException();
     }
 
     await db.transaction(() async {
@@ -440,6 +489,43 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
         db.localProducts,
       )..where((row) => row.id.equals(productId))).go();
       await db.addToQueue('DELETE_PRODUCT', jsonEncode({'id': productId}));
+    });
+
+    await ref.read(syncServiceProvider).processQueue();
+    state = AsyncValue.data(await _fetchProducts());
+  }
+
+  /// Met un produit au placard : il quitte le stock, le comptage et la vente,
+  /// et garde tout son passé.
+  ///
+  /// C'est la sortie pour un produit qu'on arrête de vendre. La suppression
+  /// n'est possible que sur un produit qui n'a jamais servi ; l'archivage,
+  /// lui, n'a aucune condition parce qu'il ne réécrit rien.
+  Future<void> archiveProduct(String productId) async {
+    await _definirArchivage(productId, DateTime.now());
+  }
+
+  /// Ressort un produit du placard, tel qu'il y est entré.
+  Future<void> unarchiveProduct(String productId) async {
+    await _definirArchivage(productId, null);
+  }
+
+  Future<void> _definirArchivage(String productId, DateTime? moment) async {
+    final db = ref.read(localDbProvider);
+
+    await db.transaction(() async {
+      await (db.update(
+        db.localProducts,
+      )..where((row) => row.id.equals(productId))).write(
+        LocalProductsCompanion(archivedAt: drift.Value(moment)),
+      );
+      await db.addToQueue(
+        'UPDATE_PRODUCT',
+        jsonEncode({
+          'id': productId,
+          'archived_at': moment?.toUtc().toIso8601String(),
+        }),
+      );
     });
 
     await ref.read(syncServiceProvider).processQueue();

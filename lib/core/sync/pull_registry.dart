@@ -127,6 +127,7 @@ final List<TableTiree> tablesTirees = [
       barcode: p['barcode'],
       photoUrl: p['photo_url'],
       unit: p['unit'] as String?,
+      archivedAt: _dateOuNulle(p['archived_at']),
     ),
   ),
   _tableTiree(

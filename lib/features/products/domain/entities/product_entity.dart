@@ -12,6 +12,12 @@ class ProductEntity {
   /// Étiquette d'affichage en mode inventaire (sac, bouteille, casier…).
   final String? unit;
 
+  /// Renseignée, le produit est au placard : il ne s'affiche plus dans le
+  /// stock, le comptage ni la vente, mais son passé reste intact.
+  final DateTime? archivedAt;
+
+  bool get estArchive => archivedAt != null;
+
   ProductEntity({
     required this.id,
     required this.shopId,
@@ -23,6 +29,7 @@ class ProductEntity {
     this.barcode,
     this.photoUrl,
     this.unit,
+    this.archivedAt,
   });
 
   ProductEntity copyWith({
@@ -36,6 +43,7 @@ class ProductEntity {
     String? barcode,
     String? photoUrl,
     String? unit,
+    DateTime? archivedAt,
   }) {
     return ProductEntity(
       id: id ?? this.id,
@@ -48,6 +56,7 @@ class ProductEntity {
       barcode: barcode ?? this.barcode,
       photoUrl: photoUrl ?? this.photoUrl,
       unit: unit ?? this.unit,
+      archivedAt: archivedAt ?? this.archivedAt,
     );
   }
 }

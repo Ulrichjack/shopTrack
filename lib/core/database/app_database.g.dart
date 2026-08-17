@@ -111,6 +111,17 @@ class $LocalProductsTable extends LocalProducts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _archivedAtMeta = const VerificationMeta(
+    'archivedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> archivedAt = GeneratedColumn<DateTime>(
+    'archived_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -123,6 +134,7 @@ class $LocalProductsTable extends LocalProducts
     barcode,
     photoUrl,
     unit,
+    archivedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -210,6 +222,12 @@ class $LocalProductsTable extends LocalProducts
         unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
       );
     }
+    if (data.containsKey('archived_at')) {
+      context.handle(
+        _archivedAtMeta,
+        archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -259,6 +277,10 @@ class $LocalProductsTable extends LocalProducts
         DriftSqlType.string,
         data['${effectivePrefix}unit'],
       ),
+      archivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}archived_at'],
+      ),
     );
   }
 
@@ -282,6 +304,15 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
   /// Étiquette d'affichage (sac, bouteille, casier, g, l…). N'entre dans
   /// aucun calcul : le commerçant compte dans une seule unité par produit.
   final String? unit;
+
+  /// Date de mise au placard. Un produit archivé sort du stock, du comptage et
+  /// de la vente, mais **garde tout son passé** : les périodes closes qui le
+  /// citent restent justes.
+  ///
+  /// C'est la sortie pour un produit qu'on ne vend plus. La suppression, elle,
+  /// reste réservée à ce qui n'a jamais servi — effacer un produit cité par un
+  /// bilan déjà consulté en changerait le bénéfice.
+  final DateTime? archivedAt;
   const LocalProduct({
     required this.id,
     required this.shopId,
@@ -293,6 +324,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     this.barcode,
     this.photoUrl,
     this.unit,
+    this.archivedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -313,6 +345,9 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     if (!nullToAbsent || unit != null) {
       map['unit'] = Variable<String>(unit);
     }
+    if (!nullToAbsent || archivedAt != null) {
+      map['archived_at'] = Variable<DateTime>(archivedAt);
+    }
     return map;
   }
 
@@ -332,6 +367,9 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
           ? const Value.absent()
           : Value(photoUrl),
       unit: unit == null && nullToAbsent ? const Value.absent() : Value(unit),
+      archivedAt: archivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(archivedAt),
     );
   }
 
@@ -351,6 +389,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
       barcode: serializer.fromJson<String?>(json['barcode']),
       photoUrl: serializer.fromJson<String?>(json['photoUrl']),
       unit: serializer.fromJson<String?>(json['unit']),
+      archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
     );
   }
   @override
@@ -367,6 +406,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
       'barcode': serializer.toJson<String?>(barcode),
       'photoUrl': serializer.toJson<String?>(photoUrl),
       'unit': serializer.toJson<String?>(unit),
+      'archivedAt': serializer.toJson<DateTime?>(archivedAt),
     };
   }
 
@@ -381,6 +421,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     Value<String?> barcode = const Value.absent(),
     Value<String?> photoUrl = const Value.absent(),
     Value<String?> unit = const Value.absent(),
+    Value<DateTime?> archivedAt = const Value.absent(),
   }) => LocalProduct(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
@@ -392,6 +433,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     barcode: barcode.present ? barcode.value : this.barcode,
     photoUrl: photoUrl.present ? photoUrl.value : this.photoUrl,
     unit: unit.present ? unit.value : this.unit,
+    archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
   );
   LocalProduct copyWithCompanion(LocalProductsCompanion data) {
     return LocalProduct(
@@ -407,6 +449,9 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
       barcode: data.barcode.present ? data.barcode.value : this.barcode,
       photoUrl: data.photoUrl.present ? data.photoUrl.value : this.photoUrl,
       unit: data.unit.present ? data.unit.value : this.unit,
+      archivedAt: data.archivedAt.present
+          ? data.archivedAt.value
+          : this.archivedAt,
     );
   }
 
@@ -422,7 +467,8 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
           ..write('minQuantity: $minQuantity, ')
           ..write('barcode: $barcode, ')
           ..write('photoUrl: $photoUrl, ')
-          ..write('unit: $unit')
+          ..write('unit: $unit, ')
+          ..write('archivedAt: $archivedAt')
           ..write(')'))
         .toString();
   }
@@ -439,6 +485,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     barcode,
     photoUrl,
     unit,
+    archivedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -453,7 +500,8 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
           other.minQuantity == this.minQuantity &&
           other.barcode == this.barcode &&
           other.photoUrl == this.photoUrl &&
-          other.unit == this.unit);
+          other.unit == this.unit &&
+          other.archivedAt == this.archivedAt);
 }
 
 class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
@@ -467,6 +515,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
   final Value<String?> barcode;
   final Value<String?> photoUrl;
   final Value<String?> unit;
+  final Value<DateTime?> archivedAt;
   final Value<int> rowid;
   const LocalProductsCompanion({
     this.id = const Value.absent(),
@@ -479,6 +528,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     this.barcode = const Value.absent(),
     this.photoUrl = const Value.absent(),
     this.unit = const Value.absent(),
+    this.archivedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalProductsCompanion.insert({
@@ -492,6 +542,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     this.barcode = const Value.absent(),
     this.photoUrl = const Value.absent(),
     this.unit = const Value.absent(),
+    this.archivedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
@@ -511,6 +562,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     Expression<String>? barcode,
     Expression<String>? photoUrl,
     Expression<String>? unit,
+    Expression<DateTime>? archivedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -524,6 +576,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
       if (barcode != null) 'barcode': barcode,
       if (photoUrl != null) 'photo_url': photoUrl,
       if (unit != null) 'unit': unit,
+      if (archivedAt != null) 'archived_at': archivedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -539,6 +592,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     Value<String?>? barcode,
     Value<String?>? photoUrl,
     Value<String?>? unit,
+    Value<DateTime?>? archivedAt,
     Value<int>? rowid,
   }) {
     return LocalProductsCompanion(
@@ -552,6 +606,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
       barcode: barcode ?? this.barcode,
       photoUrl: photoUrl ?? this.photoUrl,
       unit: unit ?? this.unit,
+      archivedAt: archivedAt ?? this.archivedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -589,6 +644,9 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     if (unit.present) {
       map['unit'] = Variable<String>(unit.value);
     }
+    if (archivedAt.present) {
+      map['archived_at'] = Variable<DateTime>(archivedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -608,6 +666,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
           ..write('barcode: $barcode, ')
           ..write('photoUrl: $photoUrl, ')
           ..write('unit: $unit, ')
+          ..write('archivedAt: $archivedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -8462,6 +8521,7 @@ typedef $$LocalProductsTableCreateCompanionBuilder =
       Value<String?> barcode,
       Value<String?> photoUrl,
       Value<String?> unit,
+      Value<DateTime?> archivedAt,
       Value<int> rowid,
     });
 typedef $$LocalProductsTableUpdateCompanionBuilder =
@@ -8476,6 +8536,7 @@ typedef $$LocalProductsTableUpdateCompanionBuilder =
       Value<String?> barcode,
       Value<String?> photoUrl,
       Value<String?> unit,
+      Value<DateTime?> archivedAt,
       Value<int> rowid,
     });
 
@@ -8535,6 +8596,11 @@ class $$LocalProductsTableFilterComposer
 
   ColumnFilters<String> get unit => $composableBuilder(
     column: $table.unit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8597,6 +8663,11 @@ class $$LocalProductsTableOrderingComposer
     column: $table.unit,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalProductsTableAnnotationComposer
@@ -8639,6 +8710,11 @@ class $$LocalProductsTableAnnotationComposer
 
   GeneratedColumn<String> get unit =>
       $composableBuilder(column: $table.unit, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => column,
+  );
 }
 
 class $$LocalProductsTableTableManager
@@ -8682,6 +8758,7 @@ class $$LocalProductsTableTableManager
                 Value<String?> barcode = const Value.absent(),
                 Value<String?> photoUrl = const Value.absent(),
                 Value<String?> unit = const Value.absent(),
+                Value<DateTime?> archivedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalProductsCompanion(
                 id: id,
@@ -8694,6 +8771,7 @@ class $$LocalProductsTableTableManager
                 barcode: barcode,
                 photoUrl: photoUrl,
                 unit: unit,
+                archivedAt: archivedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -8708,6 +8786,7 @@ class $$LocalProductsTableTableManager
                 Value<String?> barcode = const Value.absent(),
                 Value<String?> photoUrl = const Value.absent(),
                 Value<String?> unit = const Value.absent(),
+                Value<DateTime?> archivedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalProductsCompanion.insert(
                 id: id,
@@ -8720,6 +8799,7 @@ class $$LocalProductsTableTableManager
                 barcode: barcode,
                 photoUrl: photoUrl,
                 unit: unit,
+                archivedAt: archivedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
