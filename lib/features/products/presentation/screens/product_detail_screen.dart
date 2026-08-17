@@ -54,6 +54,67 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
+  /// Supprimer un produit créé par erreur.
+  ///
+  /// Refusé dès qu'il a une histoire : l'effacer réécrirait des bilans déjà
+  /// consultés — un rapport de mars perdrait une ligne et changerait de
+  /// bénéfice sans que personne comprenne pourquoi.
+  Future<void> _supprimer(
+    BuildContext context,
+    WidgetRef ref,
+    ProductEntity produit,
+  ) async {
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Supprimer ${produit.name} ?'),
+        content: const Text(
+          'Le produit disparaît de ton stock. Cette action est définitive.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirme != true) return;
+
+    try {
+      await ref.read(productProvider.notifier).deleteProduct(produit.id);
+      if (context.mounted) {
+        context.pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${produit.name} supprimé.'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        final texte = error.toString();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              texte.startsWith('Exception: ')
+                  ? texte.substring('Exception: '.length)
+                  : texte,
+            ),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 7),
+          ),
+        );
+      }
+    }
+  }
+
   void _showAddStockBottomSheet(
     BuildContext context,
     ProductEntity currentProduct,
@@ -365,6 +426,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             icon: const Icon(Icons.edit),
             onPressed: () =>
                 context.push('/edit-product', extra: currentProduct),
+          ),
+          IconButton(
+            tooltip: 'Supprimer',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _supprimer(context, ref, currentProduct),
           ),
         ],
       ),

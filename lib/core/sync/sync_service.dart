@@ -649,6 +649,8 @@ class SyncService {
         await supabase.from('stock_purchases').upsert(payload);
       case 'ADD_PRODUCT_PRICE':
         await supabase.from('product_prices').upsert(payload);
+      case 'DELETE_PRODUCT':
+        await supabase.from('products').delete().eq('id', payload['id']);
       case 'ADD_STOCK_TRANSFER':
         await supabase.from('stock_transfers').upsert(payload);
       case 'CONFIRM_STOCK_TRANSFER':

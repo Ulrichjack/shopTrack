@@ -395,6 +395,57 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     );
   }
 
+  /// Supprime un produit — seulement s'il n'a **aucune histoire**.
+  ///
+  /// Un produit déjà vendu, compté, transféré ou racheté est cité par des
+  /// périodes closes. L'effacer réécrirait des bilans déjà consultés : un
+  /// rapport de mars perdrait une ligne et changerait de bénéfice, sans que
+  /// personne comprenne pourquoi.
+  ///
+  /// On ne supprime donc que ce qui a été créé par erreur, et on explique le
+  /// refus dans les autres cas plutôt que de le faire à moitié.
+  Future<void> deleteProduct(String productId) async {
+    final db = ref.read(localDbProvider);
+
+    final comptages = await (db.select(
+      db.localInventoryCounts,
+    )..where((row) => row.productId.equals(productId))).get();
+    final ventes = await (db.select(
+      db.localSaleItems,
+    )..where((row) => row.productId.equals(productId))).get();
+    final mouvements = await (db.select(
+      db.localStockMovements,
+    )..where((row) => row.productId.equals(productId))).get();
+    final pertes = await (db.select(
+      db.localInventoryLosses,
+    )..where((row) => row.productId.equals(productId))).get();
+    final transferts = await (db.select(
+      db.localStockTransfers,
+    )..where((row) => row.productId.equals(productId))).get();
+
+    if (comptages.isNotEmpty ||
+        ventes.isNotEmpty ||
+        mouvements.isNotEmpty ||
+        pertes.isNotEmpty ||
+        transferts.isNotEmpty) {
+      throw Exception(
+        'Ce produit a déjà une histoire : ventes, comptages ou transferts. '
+        'Le supprimer changerait des bilans déjà consultés. Mets plutôt sa '
+        'quantité à zéro pour arrêter de le vendre.',
+      );
+    }
+
+    await db.transaction(() async {
+      await (db.delete(
+        db.localProducts,
+      )..where((row) => row.id.equals(productId))).go();
+      await db.addToQueue('DELETE_PRODUCT', jsonEncode({'id': productId}));
+    });
+
+    await ref.read(syncServiceProvider).processQueue();
+    state = AsyncValue.data(await _fetchProducts());
+  }
+
   // 👇 NOUVEAU : Fonction pour ajouter du stock (100% Local + File d'attente)
   ///
   /// [unitCost] est le prix payé pour CET arrivage. Fourni, il crée une ligne
