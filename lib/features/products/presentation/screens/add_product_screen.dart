@@ -125,6 +125,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     // comptage. Un champ qu'on remplit pour rien induit en erreur.
     final stockGereParModule =
         isPeriodic || settings?.unitMode == 'hierarchical';
+    // Le code-barres ne sert qu'à retrouver un produit en le scannant pendant
+    // une vente. En cycles comme en inventaire, on ne scanne rien : on saisit
+    // un arrivage ou un comptage, produit par produit, dans une liste. Le
+    // champ et son bouton « Scanner » n'ont alors aucun usage.
+    //
+    // Même condition que le stock, raison différente : un nom à part plutôt
+    // qu'une réutilisation qui laisserait croire que les deux champs
+    // disparaissent pour la même cause — le jour où l'une des deux règles
+    // change, on saurait laquelle toucher.
+    final venteAuScan = !stockGereParModule;
 
     return Scaffold(
       backgroundColor: AppColors.background, // Fond gris très clair
@@ -267,28 +277,30 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   ),
                 ],
 
-                _buildFieldLabel("Code-barres (Optionnel)"),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _barcodeController,
-                        decoration: _buildInputDecoration('Aucun code scanné'),
+                if (venteAuScan) ...[
+                  _buildFieldLabel("Code-barres (Optionnel)"),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _barcodeController,
+                          decoration: _buildInputDecoration('Aucun code scanné'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryDark,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryDark,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: _scanBarcode,
+                        icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+                        label: const Text('Scanner', style: TextStyle(color: Colors.white)),
                       ),
-                      onPressed: _scanBarcode,
-                      icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-                      label: const Text('Scanner', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
 
                 _buildFieldLabel("Photo de l'article"),
                 GestureDetector(

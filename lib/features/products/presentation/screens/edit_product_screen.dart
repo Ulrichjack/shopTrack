@@ -110,6 +110,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     // serait écrasé au prochain mouvement, sans que personne comprenne.
     final stockGereParModule =
         isPeriodic || settings?.unitMode == 'hierarchical';
+    // Voir `add_product_screen` : le scan ne sert qu'à la vente au fil de l'eau.
+    final venteAuScan = !stockGereParModule;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -239,28 +241,36 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   ),
                 ],
 
-                _buildFieldLabel("Code-barres"),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _barcodeController,
-                        decoration: _buildInputDecoration('Aucun code scanné'),
+                // Masqué en cycles et en inventaire, comme à la création : on
+                // n'y scanne rien, on saisit un arrivage ou un comptage.
+                //
+                // Le contrôleur garde la valeur d'origine du produit : cacher
+                // le champ ne l'efface pas. Une boutique qui reviendrait au
+                // mode simple retrouverait ses codes-barres intacts.
+                if (venteAuScan) ...[
+                  _buildFieldLabel("Code-barres"),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _barcodeController,
+                          decoration: _buildInputDecoration('Aucun code scanné'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryDark,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryDark,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: _scanBarcode,
+                        icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+                        label: const Text('Scanner', style: TextStyle(color: Colors.white)),
                       ),
-                      onPressed: _scanBarcode,
-                      icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-                      label: const Text('Scanner', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
 
                 _buildFieldLabel("Photo de l'article"),
                 GestureDetector(
