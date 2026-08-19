@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
+import '../providers/session_handover.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -116,6 +117,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     obscureText: true,
                     decoration: const InputDecoration(
                       labelText: 'Mot de passe',
+                      // Annoncé avant la faute, pas après : le commerçant
+                      // choisit son mot de passe une seule fois et n'a aucune
+                      // raison de deviner la règle en se trompant d'abord.
+                      helperText: 'Au moins 6 caractères',
                       prefixIcon: Icon(Icons.lock),
                       border: OutlineInputBorder(),
                     ),
@@ -167,6 +172,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             _passwordController.text,
                             _shopNameController.text,
                           );
+
+                          // L'inscription ne faisait RIEN de tout ceci : le
+                          // téléphone gardait la boutique active et les
+                          // données locales du compte précédent. Le nouveau
+                          // patron cherchait son rôle dans une boutique qui
+                          // n'était pas la sienne et arrivait en mode vendeur
+                          // sur sa propre boutique.
+                          await prendreEnMainLaSession(ref, inscription: true);
 
                           if (context.mounted) {
                             context.go('/home');

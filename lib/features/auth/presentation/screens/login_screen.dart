@@ -4,42 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../dashboard/presentation/providers/dashboard_provider.dart';
-import '../../../../core/providers/shop_settings_provider.dart';
-import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/auth_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/providers/current_shop_provider.dart';
-import '../../../../core/sync/sync_service.dart';
-import '../../../../core/providers/user_shops_provider.dart';
 import '../../../../core/providers/employees_provider.dart';
-import '../../../../core/providers/app_mode_provider.dart';
+import '../providers/session_handover.dart';
+import '../../../../router.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
-}
-
-/// Efface les données locales quand ce n'est pas le même compte qu'avant.
-///
-/// Renvoie `true` si le ménage a eu lieu : l'appelant doit alors retélécharger,
-/// sinon le commerçant arrive sur une app vide. C'est ce qui manquait — on
-/// vidait le stock et personne ne le redemandait, donc « je me reconnecte et
-/// mon stock n'est plus là ».
-Future<bool> _nettoyerSiAutreCompte(WidgetRef ref) async {
-  final prefs = await SharedPreferences.getInstance();
-  final precedent = prefs.getString('cached_user_id');
-  final actuel = Supabase.instance.client.auth.currentUser?.id;
-  if (actuel == null || precedent == null || precedent == actuel) return false;
-
-  await ref.read(localDbProvider).clearAllData();
-  await prefs.remove(cachedShopIdKey);
-  await prefs.remove('cached_shop_name');
-  await prefs.remove('cached_is_owner');
-  return true;
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
@@ -160,71 +134,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       _passwordController.text,
                                     );
 
-                                // Une nouvelle session doit repartir avec des données
-                                // fraîchement chargées, notamment après une précédente
-                                // erreur ou une déconnexion/reconnexion.
-                                // Le ménage se fait ICI, et seulement si le
-                                // compte a changé. La déconnexion ne vide plus
-                                // rien : revenir sur son propre compte doit
-                                // être instantané et marcher hors ligne, sans
-                                // retélécharger tout l'historique.
-                                //
-                                // Mais un AUTRE compte ne doit jamais hériter
-                                // des données du précédent — sur un téléphone
-                                // partagé, ce serait le stock d'une boutique
-                                // affiché à quelqu'un qui n'y a pas accès.
-                                final aEteVide = await _nettoyerSiAutreCompte(
+                                // Ménage, mémorisation du compte,
+                                // invalidations et rechargement : tout est
+                                // dans `prendreEnMainLaSession`, partagé avec
+                                // l'inscription — qui n'en faisait aucun.
+                                await prendreEnMainLaSession(
                                   ref,
+                                  inscription: false,
                                 );
-
-                                // TOUT ce qui dépend du compte doit repartir
-                                // de zéro. Vider les préférences ne suffit
-                                // pas : un provider garde sa valeur en
-                                // mémoire. Sans ces invalidations, la liste
-                                // des boutiques du compte PRÉCÉDENT restait
-                                // chargée — un vendeur héritait des boutiques
-                                // de son patron, donc de son rôle.
-                                ref.invalidate(currentShopIdProvider);
-                                ref.invalidate(userShopsProvider);
-                                ref.invalidate(estProprietaireProvider);
-                                ref.invalidate(appModeProvider);
-                                ref.invalidate(dashboardProvider);
-                                ref.invalidate(productProvider);
-                                // Le mode de la boutique aussi : il se lit
-                                // depuis `cached_shop_id`, écrit pendant la
-                                // connexion. Sans cette invalidation, le
-                                // provider gardait les valeurs par défaut
-                                // calculées avant que la boutique soit connue
-                                // — le commerçant retrouvait le mode simple et
-                                // devait réactiver son module à chaque
-                                // connexion.
-                                ref.invalidate(shopSettingsProvider);
-
-                                // Le stock vient d'être effacé : il faut le
-                                // redemander AVANT d'afficher l'accueil, sinon
-                                // le commerçant arrive sur une app vide et
-                                // croit avoir tout perdu. On attend ici, une
-                                // seule fois, au changement de compte.
-                                //
-                                // Sur son propre compte, rien n'a été vidé :
-                                // on n'attend pas, l'entrée reste instantanée
-                                // et marche hors ligne.
-                                if (aEteVide) {
-                                  try {
-                                    await ref
-                                        .read(syncServiceProvider)
-                                        .synchronize();
-                                  } catch (_) {
-                                    // Hors ligne : on entre quand même. La
-                                    // synchro repartira au retour du réseau —
-                                    // bloquer la connexion serait pire.
-                                  }
-                                }
 
                                 // 2. Si l'écran est toujours affiché (bonne pratique Flutter)
                                 if (context.mounted) {
-                                  // 3. On navigue vers le Dashboard !
-                                  context.go('/home');
+                                  // 3. On navigue vers le Dashboard — sauf si
+                                  // le vendeur utilise encore le mot de passe
+                                  // provisoire que son patron lui a dit. Le
+                                  // routeur l'y renverrait de toute façon ;
+                                  // passer par ici permet de lui transmettre
+                                  // le mot de passe qu'il vient de taper, pour
+                                  // ne pas le lui redemander à la ligne
+                                  // suivante.
+                                  if (doitChangerMotDePasse()) {
+                                    context.go(
+                                      routePremierMotDePasse,
+                                      extra: _passwordController.text,
+                                    );
+                                  } else {
+                                    context.go('/home');
+                                  }
                                 }
                               } catch (e) {
                                 // Afficher l'erreur (comme on l'a vu précédemment)
