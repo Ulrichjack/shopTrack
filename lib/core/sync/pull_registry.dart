@@ -384,6 +384,8 @@ final List<TableTiree> tablesTirees = [
       transferredAt: _date(t['transferred_at']),
       note: t['note'] as String?,
       cancelledAt: _dateOuNulle(t['cancelled_at']),
+      fromShopName: t['from_shop_name'] as String?,
+      toShopName: t['to_shop_name'] as String?,
     ),
   ),
 ];

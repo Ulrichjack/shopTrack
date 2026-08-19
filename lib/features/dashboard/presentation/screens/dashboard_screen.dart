@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -199,7 +200,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(height: 20),
             TextField(
               controller: controller,
+              autofocus: true,
               keyboardType: TextInputType.number,
+              // Chiffres uniquement : « 20,000 » n'est pas reconnu par
+              // `double.tryParse` et le bouton restait sans effet.
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: const InputDecoration(
                 labelText: 'Montant en FCFA',
                 prefixIcon: Icon(Icons.account_balance_wallet),
@@ -225,11 +230,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               final cleanText = controller.text.replaceAll(' ', '');
               final amount = double.tryParse(cleanText);
 
-              if (amount != null) {
-                ref.read(dashboardProvider.notifier).saveMorningBalance(amount);
-                Navigator.pop(context);
-                setState(() => _isDialogOpen = false); // Libère le verrou
+              // Un champ vide ou illisible ne doit pas laisser le bouton sans
+              // effet : le commerçant appuyait, rien ne se passait, et il ne
+              // pouvait pas distinguer « enregistré » de « ignoré ».
+              if (amount == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Saisis le montant qu\'il y a dans la caisse.'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+                return;
               }
+
+              ref.read(dashboardProvider.notifier).saveMorningBalance(amount);
+              Navigator.pop(context);
+              setState(() => _isDialogOpen = false); // Libère le verrou
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text(

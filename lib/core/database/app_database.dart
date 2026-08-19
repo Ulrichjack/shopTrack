@@ -242,6 +242,16 @@ class LocalStockTransfers extends Table {
   // Nullable comme receivedAt : un transfert non annulé n'a rien à dire ici.
   DateTimeColumn get cancelledAt => dateTime().nullable()();
 
+  // Les noms des deux boutiques, figés à l'envoi.
+  //
+  // Un vendeur n'appartient qu'à une seule boutique : les RLS lui interdisent
+  // de lire la fiche de l'autre, et c'est voulu. Sans ces deux colonnes il
+  // voyait « De Autre boutique » sur toute sa marchandise reçue, sans jamais
+  // pouvoir savoir qui la lui envoyait. Figés aussi par correction : renommer
+  // une boutique ne doit pas réécrire l'historique des transferts passés.
+  TextColumn get fromShopName => text().nullable()();
+  TextColumn get toShopName => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -362,7 +372,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -420,6 +430,16 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(
           localStockTransfers,
           localStockTransfers.cancelledAt,
+        );
+      }
+      if (from < 15) {
+        await m.addColumn(
+          localStockTransfers,
+          localStockTransfers.fromShopName,
+        );
+        await m.addColumn(
+          localStockTransfers,
+          localStockTransfers.toShopName,
         );
       }
     },

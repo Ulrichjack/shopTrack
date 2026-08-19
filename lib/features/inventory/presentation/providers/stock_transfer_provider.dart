@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/providers/current_shop_provider.dart';
+import '../../../../core/providers/user_shops_provider.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import 'inventory_report_provider.dart';
@@ -25,8 +26,18 @@ class TransferEntry {
   /// Envoyé par cette boutique, ou reçu par elle.
   final bool estEnvoi;
 
-  /// Nom de l'autre boutique, quand on le connaît.
+  /// Identifiant de l'autre boutique. Sert de repli quand son nom n'a pas été
+  /// recopié sur le transfert (envois d'avant cette colonne).
   final String autreBoutique;
+
+  /// Le nom de l'autre boutique, figé au moment de l'envoi.
+  ///
+  /// Un vendeur n'est membre que de sa propre boutique : les RLS lui
+  /// interdisent de lire la fiche de celle d'en face, et il voyait « Autre
+  /// boutique » sur toute sa marchandise reçue. Nul pour les transferts
+  /// antérieurs à cette colonne.
+  String? get nomAutreBoutique =>
+      estEnvoi ? transfer.toShopName : transfer.fromShopName;
 
   bool get estConfirme => transfer.receivedQuantity != null;
 
@@ -130,6 +141,15 @@ class StockTransferActions {
       );
     }
 
+    // Les noms des deux boutiques, résolus ICI et recopiés sur le transfert.
+    //
+    // Celui qui envoie est membre des deux : il peut les lire. Le
+    // destinataire, lui, ne le pourra jamais si c'est un vendeur — les RLS
+    // lui interdisent la boutique d'en face, et il voyait « Autre boutique »
+    // sur toute sa marchandise reçue.
+    final boutiques = await ref.read(userShopsProvider.future);
+    final nomDe = {for (final b in boutiques) b.id: b.name};
+
     final id = const Uuid().v4();
     final quand = DateTime.now();
 
@@ -150,6 +170,8 @@ class StockTransferActions {
               buyPrice: produit.buyPrice,
               sellPrice: produit.sellPrice,
               unit: produit.unit,
+              fromShopName: nomDe[shopId],
+              toShopName: nomDe[toShopId],
               quantity: quantity,
               transferredAt: quand,
               note: (note ?? '').trim().isEmpty ? null : note!.trim(),
@@ -167,6 +189,8 @@ class StockTransferActions {
           'buy_price': produit.buyPrice,
           'sell_price': produit.sellPrice,
           'unit': produit.unit,
+          'from_shop_name': nomDe[shopId],
+          'to_shop_name': nomDe[toShopId],
           'quantity': quantity,
           'transferred_at': quand.toUtc().toIso8601String(),
           'note': (note ?? '').trim().isEmpty ? null : note!.trim(),

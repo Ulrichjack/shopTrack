@@ -25,8 +25,16 @@ class TransferDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final boutiques = ref.watch(userShopsProvider).value ?? const [];
     final nomDe = {for (final b in boutiques) b.id: b.name};
-    final de = nomDe[entree.transfer.fromShopId] ?? 'Boutique inconnue';
-    final vers = nomDe[entree.transfer.toShopId] ?? 'Boutique inconnue';
+    // Les noms recopiés sur le transfert d'abord — voir `nomAutreBoutique` :
+    // un vendeur ne peut pas lire la fiche de la boutique d'en face.
+    final de =
+        entree.transfer.fromShopName ??
+        nomDe[entree.transfer.fromShopId] ??
+        'Boutique inconnue';
+    final vers =
+        entree.transfer.toShopName ??
+        nomDe[entree.transfer.toShopId] ??
+        'Boutique inconnue';
     final t = entree.transfer;
 
     return Scaffold(

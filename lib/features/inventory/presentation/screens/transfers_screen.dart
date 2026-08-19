@@ -139,7 +139,14 @@ class _Ligne extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final autre = nomDe[entree.autreBoutique] ?? 'Autre boutique';
+    // Le nom recopié sur le transfert d'abord : un vendeur n'a pas le droit
+    // de lire la fiche de la boutique d'en face, et voyait « Autre boutique »
+    // sur tout ce qu'il recevait. La liste du compte ne sert plus qu'aux
+    // transferts enregistrés avant que cette colonne existe.
+    final autre =
+        entree.nomAutreBoutique ??
+        nomDe[entree.autreBoutique] ??
+        'Autre boutique';
     final quand = DateFormat('dd/MM').format(entree.transfer.transferredAt);
 
     return Card(
@@ -170,7 +177,17 @@ class _Ligne extends ConsumerWidget {
           entree.estAnnule
               ? 'Annulé · $quand'
               : '${entree.estEnvoi ? 'Vers' : 'De'} $autre · $quand'
+                    // Envoyé mais pas encore confirmé : sans cette mention,
+                    // l'expéditeur voyait exactement la même ligne qu'un
+                    // transfert bien arrivé, et ne pouvait pas savoir lequel
+                    // relancer.
+                    '${!entree.estConfirme ? ' · en attente de réception' : ''}'
                     '${entree.manquant > 0 ? ' · ${entree.manquant} perdu(s) en route' : ''}',
+          style: TextStyle(
+            color: !entree.estConfirme && !entree.estAnnule
+                ? AppColors.warningDark
+                : null,
+          ),
         ),
         trailing: aVerifier
             ? FilledButton(
