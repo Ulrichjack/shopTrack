@@ -11,6 +11,7 @@ import 'features/products/presentation/screens/edit_product_screen.dart';
 import 'features/reports/presentation/screens/monthly_report_screen.dart';
 import 'features/sales/presentation/screens/sales_history_screen.dart';
 import 'shared/widgets/main_layout.dart';
+import 'features/auth/presentation/screens/first_password_screen.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/register_screen.dart';
 import 'features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -25,6 +26,7 @@ import 'features/sales/presentation/screens/sale_confirmation_screen.dart';
 import 'core/audit/activity_log_screen.dart';
 import 'core/sync/sync_status_screen.dart';
 import 'core/providers/app_mode_provider.dart';
+import 'core/providers/employees_provider.dart';
 import 'core/providers/shop_settings_provider.dart';
 import 'features/cycles/presentation/screens/create_cycle_screen.dart';
 import 'features/cycles/presentation/screens/cycle_report_screen.dart';
@@ -46,35 +48,64 @@ import 'core/providers/current_shop_provider.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Les deux écrans qu'on peut ouvrir sans être connecté.
+const _routesAuth = {'/login', '/register'};
+
+/// Les écrans réservés au patron.
+///
+/// '/inventory-report' y figure aussi : il donne le bénéfice et l'écart
+/// inexpliqué, exactement ce que le bilan protège en mode simple.
+const bossOnlyRoutes = {
+  '/employees',
+  '/bilan',
+  '/activity-log',
+  '/shop-settings',
+  '/inventory-report',
+};
+
+/// L'écran où le vendeur remplace le mot de passe provisoire de son patron.
+const routePremierMotDePasse = '/first-password';
+
+/// La route à imposer, ou `null` si l'écran demandé est autorisé.
+///
+/// Sortie du `redirect` pour être testable : c'est la seule barrière de
+/// l'application. Cacher un bouton dans l'interface ne protège rien — une
+/// route reste atteignable par un lien direct ou un retour d'historique.
+String? routeImposee({
+  required bool connecte,
+  required bool doitChangerMotDePasse,
+  required bool accesPatron,
+  required String emplacement,
+}) {
+  final surAuth = _routesAuth.contains(emplacement);
+
+  if (!connecte) return surAuth ? null : '/login';
+
+  // Avant tout le reste : un mot de passe provisoire n'ouvre rien d'autre que
+  // l'écran qui sert à le remplacer. Placé après le renvoi vers '/home', la
+  // redirection fonctionnait encore — mais en deux sauts, et l'accueil avait
+  // le temps de lancer ses chargements pour un compte qui n'entre pas encore.
+  if (doitChangerMotDePasse) {
+    return emplacement == routePremierMotDePasse ? null : routePremierMotDePasse;
+  }
+
+  // Mot de passe déjà choisi : cet écran n'a plus lieu d'être.
+  if (surAuth || emplacement == routePremierMotDePasse) return '/home';
+
+  if (bossOnlyRoutes.contains(emplacement) && !accesPatron) return '/profile';
+  return null;
+}
+
 final goRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/login',
 
-  redirect: (context, state) {
-    final session = Supabase.instance.client.auth.currentSession;
-    final isLoggedIn = session != null;
-    final isOnAuth =
-        state.matchedLocation == '/login' ||
-        state.matchedLocation == '/register';
-
-    if (isLoggedIn && isOnAuth) return '/home';
-    if (!isLoggedIn && !isOnAuth) return '/login';
-    // '/inventory-report' y figure aussi : il donne le bénéfice et l'écart
-    // inexpliqué, exactement ce que le bilan protège en mode simple.
-    const bossOnlyRoutes = {
-      '/employees',
-      '/bilan',
-      '/activity-log',
-      '/shop-settings',
-      '/inventory-report',
-    };
-    if (isLoggedIn &&
-        bossOnlyRoutes.contains(state.matchedLocation) &&
-        !bossModeAccess.value) {
-      return '/profile';
-    }
-    return null;
-  },
+  redirect: (context, state) => routeImposee(
+    connecte: Supabase.instance.client.auth.currentSession != null,
+    doitChangerMotDePasse: doitChangerMotDePasse(),
+    accesPatron: bossModeAccess.value,
+    emplacement: state.matchedLocation,
+  ),
 
   routes: [
     // --- ROUTES SANS BARRE DE NAVIGATION (Plein écran) ---
@@ -86,6 +117,18 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/profile',
       builder: (context, state) => const ProfileScreen(),
+    ),
+    GoRoute(
+      path: routePremierMotDePasse,
+      // `extra` n'est conservé que si l'on est arrivé ici par une navigation
+      // explicite depuis la connexion. Une redirection le perd, et une
+      // redirection venue d'un autre écran pourrait y laisser tout autre
+      // chose : on ne le lit que si c'est bien un texte.
+      builder: (context, state) => FirstPasswordScreen(
+        motDePasseProvisoire: state.extra is String
+            ? state.extra as String
+            : null,
+      ),
     ),
     GoRoute(
       path: '/closing',
