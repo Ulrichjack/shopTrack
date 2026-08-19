@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../../core/network/connectivity_provider.dart';
+import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../products/presentation/providers/product_provider.dart';
@@ -24,36 +24,20 @@ class SaleNotifier extends AsyncNotifier<void> {
   ) async {
     state = const AsyncValue.loading();
     try {
-      final isOnline = ref.read(connectivityProvider).value ?? true;
       final db = ref.read(localDbProvider);
 
-      String shopId = '';
       final userId =
           Supabase.instance.client.auth.currentUser?.id ?? 'offline_user';
 
-      if (isOnline && userId != 'offline_user') {
-        try {
-          final memberResponse = await Supabase.instance.client
-              .from('shop_members')
-              .select('shop_id')
-              .eq('user_id', userId)
-              .single();
-          shopId = memberResponse['shop_id'] as String;
-        } catch (e) {
-          final products = ref.read(productProvider).value;
-          if (products != null && products.isNotEmpty)
-            shopId = products.first.shopId;
-        }
-      } else {
-        final products = ref.read(productProvider).value;
-        if (products != null && products.isNotEmpty) {
-          shopId = products.first.shopId;
-        } else {
-          throw Exception(
-            'Impossible de finaliser la vente hors-ligne (ID boutique introuvable).',
-          );
-        }
-      }
+      // La boutique ACTIVE, via la source unique — troisième endroit où
+      // traînait le même `.single()` sur `shop_members`.
+      //
+      // Ici l'échec était avalé par un `catch` qui retombait sur la boutique
+      // du premier produit : la vente marchait, mais par accident, après un
+      // aller-retour réseau voué à échouer dès la deuxième boutique du compte
+      // (« The result contains N rows »). Un repli silencieux qui répare une
+      // requête toujours fautive finit par cacher le jour où il se trompe.
+      final shopId = await requireShopId(ref);
 
       final saleId = const Uuid().v4();
       final now = DateTime.now();

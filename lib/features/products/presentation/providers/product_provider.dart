@@ -29,17 +29,30 @@ class ProduitAvecHistoireException implements Exception {
 class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
   @override
   Future<List<ProductEntity>> build() async {
-    return _fetchProducts();
+    // `watch` et non `read` — le piège documenté dans `current_shop_provider`.
+    //
+    // En `read`, ce provider ne se reconstruisait JAMAIS quand la boutique
+    // changeait. Juste après la création d'une boutique, il se construisait
+    // avant que celle-ci soit connue, concluait « aucun produit », et restait
+    // sur ce vide : l'écran Stock affichait « 0 produit » pendant que le
+    // comptage en listait cinq. Il fallait se déconnecter et se reconnecter
+    // pour que le stock réapparaisse.
+    final shopId = await ref.watch(currentShopIdProvider.future);
+    return _fetchProducts(shopId);
   }
 
-  Future<List<ProductEntity>> _fetchProducts() async {
+  /// [shopIdConnu] évite de relire la boutique quand l'appelant la connaît
+  /// déjà — et surtout, `watch` est interdit hors du `build` : les actions
+  /// passent donc par ici sans observer quoi que ce soit.
+  Future<List<ProductEntity>> _fetchProducts([String? shopIdConnu]) async {
     final db = ref.read(localDbProvider);
 
     // Filtré par boutique : la base locale garde les produits de TOUTES les
     // boutiques du compte. Sans ce filtre, ouvrir une boutique neuve affichait
     // le stock d'une autre — et un arrivage aurait été enregistré au mauvais
     // endroit sans que rien ne le signale.
-    final shopId = await ref.read(currentShopIdProvider.future);
+    final shopId =
+        shopIdConnu ?? await ref.read(currentShopIdProvider.future);
     if (shopId == null || shopId.isEmpty) return const [];
 
     // Les produits archivés sortent d'ici : ils ne s'affichent plus au stock,
@@ -216,30 +229,24 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     String? unit,
     import_io.File? imageFile,
   }) async {
-    final previousProducts = state.value ?? await _fetchProducts();
     state = const AsyncValue.loading();
     try {
       final isOnline = ref.read(connectivityProvider).value ?? true;
       final db = ref.read(localDbProvider);
 
-      String shopId = '';
-
-      if (isOnline) {
-        final userId = Supabase.instance.client.auth.currentUser?.id;
-        final memberResponse = await Supabase.instance.client
-            .from('shop_members')
-            .select('shop_id')
-            .eq('user_id', userId!)
-            .single();
-        shopId = memberResponse['shop_id'] as String;
-      } else {
-        if (previousProducts.isEmpty) {
-          throw Exception(
-            'Connectez-vous à internet au moins une fois pour synchroniser votre boutique.',
-          );
-        }
-        shopId = previousProducts.first.shopId;
-      }
+      // La boutique ACTIVE, via la source unique.
+      //
+      // Ce bloc demandait au serveur « la » boutique du compte, avec un
+      // `.single()` sur `shop_members`. Deux défauts d'un coup : dès la
+      // deuxième boutique, le serveur renvoyait plusieurs lignes et la
+      // création échouait sur un `PGRST116` incompréhensible (« The result
+      // contains 3 rows ») ; et même à une seule ligne, rien ne garantissait
+      // que ce soit la boutique ouverte à l'écran — un patron qui bascule sur
+      // sa deuxième épicerie aurait créé le produit dans la première.
+      //
+      // `requireShopId` lit la boutique active et fonctionne hors ligne :
+      // l'aller-retour réseau et sa branche de repli disparaissent avec lui.
+      final shopId = await requireShopId(ref);
 
       String? photoUrl;
 
@@ -322,10 +329,12 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
       final isOnline = ref.read(connectivityProvider).value ?? true;
       final db = ref.read(localDbProvider);
 
-      if (previousProducts.isEmpty) {
-        throw Exception('Boutique introuvable. Synchronisez les produits.');
-      }
-      final shopId = previousProducts.first.shopId;
+      // Même source que la création. Déduire la boutique du premier produit
+      // de la liste marchait — `_fetchProducts` la filtre déjà sur la
+      // boutique active — mais échouait avec « Boutique introuvable » dès que
+      // la liste était vide, et reposait sur un détail d'implémentation d'une
+      // autre méthode.
+      final shopId = await requireShopId(ref);
 
       String? finalPhotoUrl = existingPhotoUrl;
 
