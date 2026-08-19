@@ -192,3 +192,180 @@ Dans toute méthode d'écran qui `await` puis touche à des providers, capturer
   le voie — un processus oublié a effacé les données de test en pleine session.
 - Le téléchargement **fusionne, il ne supprime jamais** : une ligne effacée sur
   Supabase reste sur le téléphone. Pour repartir à zéro, vider les deux.
+
+---
+
+## 12. « La » boutique du compte — une question sans réponse
+
+**Symptôme** : `PostgrestException PGRST116 — Cannot coerce the result to a
+single JSON object. The result contains 3 rows.` Ou, plus discret : une vente
+qui atterrit dans la mauvaise épicerie.
+
+Trois endroits demandaient encore au serveur la boutique d'un compte via un
+`.single()` sur `shop_members` — une question qui n'a de réponse que si le
+commerçant n'a qu'une boutique. Le client type en a trois.
+
+| Endroit | Ce que ça donnait |
+|---------|-------------------|
+| Création de produit | plantage sec dès la 2ᵉ boutique |
+| Modification de produit | retombait sur la boutique du 1ᵉʳ produit de la liste — juste par coïncidence, cassé sur liste vide |
+| Vente | même appel voué à l'échec, rattrapé par un `catch` silencieux : marchait **par accident** |
+
+**Règle** : la boutique active se lit **toujours** avec `requireShopId(ref)`
+(action) ou `watchShopId(ref)` (build). Jamais une requête réseau, qui ne sait
+de toute façon pas laquelle est ouverte à l'écran.
+
+Le plus instructif est le troisième : un repli silencieux qui rattrape une
+requête toujours fautive finit par masquer le jour où il se trompe de boutique.
+
+---
+
+## 13. `read` au lieu de `watch` sur la boutique active
+
+**Symptôme** : l'écran Stock affiche « 0 produit » pendant que le comptage en
+liste cinq. Une déconnexion/reconnexion « répare » tout.
+
+`productProvider` lisait la boutique avec `ref.read` : il ne se reconstruisait
+donc **jamais** quand elle changeait. Créée juste avant, la boutique n'était pas
+encore connue au moment du build — il concluait « aucun produit » et ne reposait
+plus jamais la question.
+
+`current_shop_provider.dart` **documente ce piège dans son propre commentaire**,
+avec deux cas déjà rencontrés. C'était le troisième.
+
+**Règle** : dans un `build` de provider, la boutique active se `watch`. Le
+`read` est réservé aux actions, où `watch` est de toute façon interdit.
+
+---
+
+## 14. Ce que le destinataire ne peut pas aller chercher
+
+**Symptôme** : « Produit inconnu », « Autre boutique », ou une réception qui
+**ne fait rien du tout, sans un mot**.
+
+`stock_transfers` ne portait que des identifiants : `product_id` désigne la
+fiche de la boutique **expéditrice**, `from_shop_id` une boutique dont le
+destinataire n'est pas membre. Or :
+
+- le pull filtre par boutique active → la fiche produit de l'expéditeur n'est
+  jamais téléchargée chez le destinataire ;
+- les RLS interdisent à un vendeur de lire une boutique dont il n'est pas
+  membre — **à raison**.
+
+Chez le patron, membre de tout, les noms se résolvaient : le bug était
+invisible. Il n'apparaît que côté vendeur, ou sur un second appareil.
+
+**Règle** : une ligne qui traverse une frontière de permission emporte ce
+qu'il faut pour être lue de l'autre côté. `sale_items` le fait depuis toujours
+avec `product_name`, `buy_price`, `sell_price`. `stock_transfers` porte
+désormais `product_name`, `buy_price`, `sell_price`, `unit`, `from_shop_name`,
+`to_shop_name` — figés à l'envoi, ce qui est aussi plus juste : renommer une
+boutique ne doit pas réécrire l'historique.
+
+**Corollaire** : comparer des noms de produits **en ignorant la casse et les
+espaces**. « pain » et « Pain » sur deux boutiques tenues par la même personne
+est le cas normal, pas l'exception — la comparaison exacte créait deux fiches
+du même article.
+
+---
+
+## 15. Le ménage de session n'a qu'un seul propriétaire
+
+**Symptôme** : un commerçant crée un second compte sur le même téléphone et se
+retrouve **vendeur sur sa propre boutique**, avec les produits de l'autre compte
+en base. Ou : un appareil neuf ouvre une boutique vide alors que le stock est
+sur le serveur.
+
+Trois défauts empilés, tous dans le même geste :
+
+| Défaut | Conséquence |
+|--------|-------------|
+| L'inscription ne faisait **aucun** des ménages que faisait la connexion | boutique active et données locales du compte précédent conservées |
+| `cached_user_id` n'était écrit que par le tableau de bord | jamais en mode inventaire (autre accueil) → changement de compte jamais détecté |
+| Le rechargement ne se déclenchait qu'au **changement** de compte | un appareil neuf n'a pas de compte précédent → aucun téléchargement, jamais |
+
+**Règle** : tout ce qui suit une authentification vit dans
+`prendreEnMainLaSession()` — un seul endroit, appelé par la connexion **et**
+l'inscription. Deux chemins qui font « presque » la même chose divergent
+toujours.
+
+---
+
+## 16. Un `await` réseau ne doit pas faire mentir une écriture locale
+
+**Symptôme** : le commerçant saisit son fonds de caisse, l'écran passe en
+erreur, il recommence. Quatre fonds de caisse enregistrés pour une journée.
+
+`saveMorningBalance`, `closeDay` et `reopenDay` écrivaient en local puis
+laissaient l'échec de l'envoi remonter jusqu'à l'écran — alors que la saisie
+avait bel et bien réussi. Sur la clôture, le même défaut aurait produit deux
+clôtures pour un même jour, la seconde refusée par le serveur.
+
+**Règle** : local-first veut dire que l'écran se rafraîchit **avant** l'envoi.
+Le réseau part ensuite, en tâche de fond, et ne peut plus faire paraître ratée
+une écriture déjà en base.
+
+**Corollaire d'interface** : un bouton qui ne fait rien quand la saisie est
+invalide est pire qu'une erreur. Le commerçant ne peut pas distinguer
+« enregistré » de « ignoré ».
+
+---
+
+## 17. Ce que l'app sait mais ne dit pas
+
+Une famille entière de défauts trouvés en une campagne : l'app calcule juste,
+et se tait au moment où il faudrait parler.
+
+| Cas | Ce que le commerçant voyait |
+|-----|------------------------------|
+| Recettes notées avant le tout premier comptage | « 0 F » — 443 250 F évaporés sans un mot |
+| Quantité vendue et nombre de pertes d'un cycle | calculés, gardés en variable locale, jamais affichés |
+| Transfert envoyé, pas encore reçu | ligne identique à un transfert terminé |
+| Unité de base manquante | vente au détail impossible, sans explication |
+| Deuxième cycle ouvert sur un produit | les ventes basculaient dessus **en silence** |
+| Date de comptage choisie puis écrasée | trois périodes identiques, incompréhensibles |
+
+**Règle** : quand un calcul écarte une donnée, le dire. Un bandeau
+d'explication — bleu, pas rouge, quand c'est une explication et non une
+anomalie — vaut mieux qu'un zéro que personne ne sait interpréter.
+
+---
+
+## 18. Ce que seuls deux appareils révèlent
+
+Une journée entière de tests sur un seul téléphone n'avait rien montré des
+défauts n° 14, 15 et 13. Trente minutes avec un émulateur à côté les ont tous
+sortis.
+
+La raison est mécanique : **un seul appareil accumule**. Sa base locale finit
+par contenir les produits de toutes les boutiques ouvertes, son
+`cached_user_id` est toujours renseigné, tous les noms se résolvent. Il ne
+ressemble à aucun appareil de client.
+
+**Règle** : avant toute livraison, rejouer sur un **second appareil vierge** —
+`emulator -avd Pixel_5` suffit — au minimum : première connexion d'un compte
+jamais vu, parcours vendeur, et un transfert reçu depuis une boutique que cet
+appareil n'a jamais ouverte.
+
+---
+
+## 19. Les tests automatiques ne voient pas ces bugs-là
+
+**117 tests au vert du début à la fin** de la campagne des 18-19/08/2026, qui a
+pourtant trouvé vingt-six défauts. Aucun n'a été détecté par la suite de tests.
+
+Ce n'est pas un défaut de la suite, c'est sa nature : elle vérifie des
+**calculs purs** — bénéfice d'un cycle, écart d'un inventaire, quelle route
+s'ouvre à qui — sans téléphone, sans réseau, sans Supabase. Elle ne peut pas
+voir un `.single()` qui casse à la deuxième boutique, un `read` au lieu d'un
+`watch`, une synchro qui ne se déclenche jamais, ou une casse de nom qui
+duplique une fiche. Tout ce qui a été trouvé est de l'**intégration**.
+
+**Ce que la suite apporte quand même** : chaque bug de calcul corrigé y est
+verrouillé. Le recasser en touchant un fichier voisin se voit en trente
+secondes, sans téléphone.
+
+**Ce qu'elle ne remplacera jamais** : quelqu'un qui utilise l'application comme
+un commerçant, pas comme un développeur. Les tests vérifient ce qu'on a pensé à
+vérifier ; le test manuel tombe sur ce qu'on n'avait pas prévu. Les deux, pas
+l'un ou l'autre.
