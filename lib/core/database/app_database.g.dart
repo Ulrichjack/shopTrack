@@ -7496,6 +7496,17 @@ class $LocalStockTransfersTable extends LocalStockTransfers
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _cancelledAtMeta = const VerificationMeta(
+    'cancelledAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cancelledAt = GeneratedColumn<DateTime>(
+    'cancelled_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -7511,6 +7522,7 @@ class $LocalStockTransfersTable extends LocalStockTransfers
     receivedAt,
     transferredAt,
     note,
+    cancelledAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7623,6 +7635,15 @@ class $LocalStockTransfersTable extends LocalStockTransfers
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
+    if (data.containsKey('cancelled_at')) {
+      context.handle(
+        _cancelledAtMeta,
+        cancelledAt.isAcceptableOrUnknown(
+          data['cancelled_at']!,
+          _cancelledAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7684,6 +7705,10 @@ class $LocalStockTransfersTable extends LocalStockTransfers
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      cancelledAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cancelled_at'],
+      ),
     );
   }
 
@@ -7708,6 +7733,7 @@ class LocalStockTransfer extends DataClass
   final DateTime? receivedAt;
   final DateTime transferredAt;
   final String? note;
+  final DateTime? cancelledAt;
   const LocalStockTransfer({
     required this.id,
     required this.fromShopId,
@@ -7722,6 +7748,7 @@ class LocalStockTransfer extends DataClass
     this.receivedAt,
     required this.transferredAt,
     this.note,
+    this.cancelledAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7753,6 +7780,9 @@ class LocalStockTransfer extends DataClass
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    if (!nullToAbsent || cancelledAt != null) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt);
+    }
     return map;
   }
 
@@ -7781,6 +7811,9 @@ class LocalStockTransfer extends DataClass
           : Value(receivedAt),
       transferredAt: Value(transferredAt),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      cancelledAt: cancelledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancelledAt),
     );
   }
 
@@ -7803,6 +7836,7 @@ class LocalStockTransfer extends DataClass
       receivedAt: serializer.fromJson<DateTime?>(json['receivedAt']),
       transferredAt: serializer.fromJson<DateTime>(json['transferredAt']),
       note: serializer.fromJson<String?>(json['note']),
+      cancelledAt: serializer.fromJson<DateTime?>(json['cancelledAt']),
     );
   }
   @override
@@ -7822,6 +7856,7 @@ class LocalStockTransfer extends DataClass
       'receivedAt': serializer.toJson<DateTime?>(receivedAt),
       'transferredAt': serializer.toJson<DateTime>(transferredAt),
       'note': serializer.toJson<String?>(note),
+      'cancelledAt': serializer.toJson<DateTime?>(cancelledAt),
     };
   }
 
@@ -7839,6 +7874,7 @@ class LocalStockTransfer extends DataClass
     Value<DateTime?> receivedAt = const Value.absent(),
     DateTime? transferredAt,
     Value<String?> note = const Value.absent(),
+    Value<DateTime?> cancelledAt = const Value.absent(),
   }) => LocalStockTransfer(
     id: id ?? this.id,
     fromShopId: fromShopId ?? this.fromShopId,
@@ -7855,6 +7891,7 @@ class LocalStockTransfer extends DataClass
     receivedAt: receivedAt.present ? receivedAt.value : this.receivedAt,
     transferredAt: transferredAt ?? this.transferredAt,
     note: note.present ? note.value : this.note,
+    cancelledAt: cancelledAt.present ? cancelledAt.value : this.cancelledAt,
   );
   LocalStockTransfer copyWithCompanion(LocalStockTransfersCompanion data) {
     return LocalStockTransfer(
@@ -7881,6 +7918,9 @@ class LocalStockTransfer extends DataClass
           ? data.transferredAt.value
           : this.transferredAt,
       note: data.note.present ? data.note.value : this.note,
+      cancelledAt: data.cancelledAt.present
+          ? data.cancelledAt.value
+          : this.cancelledAt,
     );
   }
 
@@ -7899,7 +7939,8 @@ class LocalStockTransfer extends DataClass
           ..write('receivedQuantity: $receivedQuantity, ')
           ..write('receivedAt: $receivedAt, ')
           ..write('transferredAt: $transferredAt, ')
-          ..write('note: $note')
+          ..write('note: $note, ')
+          ..write('cancelledAt: $cancelledAt')
           ..write(')'))
         .toString();
   }
@@ -7919,6 +7960,7 @@ class LocalStockTransfer extends DataClass
     receivedAt,
     transferredAt,
     note,
+    cancelledAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -7936,7 +7978,8 @@ class LocalStockTransfer extends DataClass
           other.receivedQuantity == this.receivedQuantity &&
           other.receivedAt == this.receivedAt &&
           other.transferredAt == this.transferredAt &&
-          other.note == this.note);
+          other.note == this.note &&
+          other.cancelledAt == this.cancelledAt);
 }
 
 class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
@@ -7953,6 +7996,7 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
   final Value<DateTime?> receivedAt;
   final Value<DateTime> transferredAt;
   final Value<String?> note;
+  final Value<DateTime?> cancelledAt;
   final Value<int> rowid;
   const LocalStockTransfersCompanion({
     this.id = const Value.absent(),
@@ -7968,6 +8012,7 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
     this.receivedAt = const Value.absent(),
     this.transferredAt = const Value.absent(),
     this.note = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalStockTransfersCompanion.insert({
@@ -7984,6 +8029,7 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
     this.receivedAt = const Value.absent(),
     required DateTime transferredAt,
     this.note = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        fromShopId = Value(fromShopId),
@@ -8005,6 +8051,7 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
     Expression<DateTime>? receivedAt,
     Expression<DateTime>? transferredAt,
     Expression<String>? note,
+    Expression<DateTime>? cancelledAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -8021,6 +8068,7 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
       if (receivedAt != null) 'received_at': receivedAt,
       if (transferredAt != null) 'transferred_at': transferredAt,
       if (note != null) 'note': note,
+      if (cancelledAt != null) 'cancelled_at': cancelledAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -8039,6 +8087,7 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
     Value<DateTime?>? receivedAt,
     Value<DateTime>? transferredAt,
     Value<String?>? note,
+    Value<DateTime?>? cancelledAt,
     Value<int>? rowid,
   }) {
     return LocalStockTransfersCompanion(
@@ -8055,6 +8104,7 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
       receivedAt: receivedAt ?? this.receivedAt,
       transferredAt: transferredAt ?? this.transferredAt,
       note: note ?? this.note,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -8101,6 +8151,9 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (cancelledAt.present) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -8123,6 +8176,7 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
           ..write('receivedAt: $receivedAt, ')
           ..write('transferredAt: $transferredAt, ')
           ..write('note: $note, ')
+          ..write('cancelledAt: $cancelledAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -12633,6 +12687,7 @@ typedef $$LocalStockTransfersTableCreateCompanionBuilder =
       Value<DateTime?> receivedAt,
       required DateTime transferredAt,
       Value<String?> note,
+      Value<DateTime?> cancelledAt,
       Value<int> rowid,
     });
 typedef $$LocalStockTransfersTableUpdateCompanionBuilder =
@@ -12650,6 +12705,7 @@ typedef $$LocalStockTransfersTableUpdateCompanionBuilder =
       Value<DateTime?> receivedAt,
       Value<DateTime> transferredAt,
       Value<String?> note,
+      Value<DateTime?> cancelledAt,
       Value<int> rowid,
     });
 
@@ -12724,6 +12780,11 @@ class $$LocalStockTransfersTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -12801,6 +12862,11 @@ class $$LocalStockTransfersTableOrderingComposer
     column: $table.note,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalStockTransfersTableAnnotationComposer
@@ -12860,6 +12926,11 @@ class $$LocalStockTransfersTableAnnotationComposer
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => column,
+  );
 }
 
 class $$LocalStockTransfersTableTableManager
@@ -12918,6 +12989,7 @@ class $$LocalStockTransfersTableTableManager
                 Value<DateTime?> receivedAt = const Value.absent(),
                 Value<DateTime> transferredAt = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalStockTransfersCompanion(
                 id: id,
@@ -12933,6 +13005,7 @@ class $$LocalStockTransfersTableTableManager
                 receivedAt: receivedAt,
                 transferredAt: transferredAt,
                 note: note,
+                cancelledAt: cancelledAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -12950,6 +13023,7 @@ class $$LocalStockTransfersTableTableManager
                 Value<DateTime?> receivedAt = const Value.absent(),
                 required DateTime transferredAt,
                 Value<String?> note = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalStockTransfersCompanion.insert(
                 id: id,
@@ -12965,6 +13039,7 @@ class $$LocalStockTransfersTableTableManager
                 receivedAt: receivedAt,
                 transferredAt: transferredAt,
                 note: note,
+                cancelledAt: cancelledAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

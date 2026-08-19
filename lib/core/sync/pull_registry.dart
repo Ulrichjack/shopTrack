@@ -383,6 +383,7 @@ final List<TableTiree> tablesTirees = [
       receivedAt: _dateOuNulle(t['received_at']),
       transferredAt: _date(t['transferred_at']),
       note: t['note'] as String?,
+      cancelledAt: _dateOuNulle(t['cancelled_at']),
     ),
   ),
 ];

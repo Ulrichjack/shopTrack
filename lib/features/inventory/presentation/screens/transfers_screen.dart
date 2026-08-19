@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../../shared/widgets/product_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -52,7 +53,7 @@ class TransfersScreen extends ConsumerWidget {
               return const _Vide();
             }
             final aVerifier = liste
-                .where((t) => !t.estEnvoi && !t.estConfirme)
+                .where((t) => !t.estEnvoi && !t.estConfirme && !t.estAnnule)
                 .toList();
             final reste = liste.where((t) => !aVerifier.contains(t)).toList();
 
@@ -144,23 +145,40 @@ class _Ligne extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
+        // Toucher la ligne ouvre le détail — le bouton « Reçu » à droite
+        // reste le raccourci rapide, les deux mènent au même geste.
+        onTap: () => context.push('/transfer-detail', extra: entree),
         leading: Icon(
-          entree.estEnvoi ? Icons.north_east : Icons.south_west,
-          color: entree.estEnvoi ? AppColors.error : AppColors.primaryDark,
+          entree.estAnnule
+              ? Icons.block
+              : (entree.estEnvoi ? Icons.north_east : Icons.south_west),
+          color: entree.estAnnule
+              ? Colors.grey
+              : (entree.estEnvoi ? AppColors.error : AppColors.primaryDark),
         ),
         title: Text(
           entree.productName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            decoration: entree.estAnnule
+                ? TextDecoration.lineThrough
+                : TextDecoration.none,
+            color: entree.estAnnule ? Colors.grey.shade600 : null,
+          ),
         ),
         subtitle: Text(
-          '${entree.estEnvoi ? 'Vers' : 'De'} $autre · $quand'
-          '${entree.manquant > 0 ? ' · ${entree.manquant} perdu(s) en route' : ''}',
+          entree.estAnnule
+              ? 'Annulé · $quand'
+              : '${entree.estEnvoi ? 'Vers' : 'De'} $autre · $quand'
+                    '${entree.manquant > 0 ? ' · ${entree.manquant} perdu(s) en route' : ''}',
         ),
         trailing: aVerifier
             ? FilledButton(
                 onPressed: () => _confirmer(context, ref),
                 child: const Text('Reçu'),
               )
+            : entree.estAnnule
+            ? null
             : Text(
                 '${entree.transfer.receivedQuantity ?? entree.transfer.quantity}',
                 style: const TextStyle(

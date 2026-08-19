@@ -30,10 +30,21 @@ class TransferEntry {
 
   bool get estConfirme => transfer.receivedQuantity != null;
 
+  bool get estAnnule => transfer.cancelledAt != null;
+
+  /// Annulable : il faut l'avoir envoyé, et que personne n'ait encore rien
+  /// confirmé de l'autre côté.
+  bool get estAnnulable => estEnvoi && !estConfirme && !estAnnule;
+
   /// Ce qui s'est perdu en route, une fois la réception confirmée.
   int get manquant => estConfirme
       ? (transfer.quantity - transfer.receivedQuantity!).clamp(0, 1 << 31)
       : 0;
+
+  /// Valeur au prix d'achat retenu au moment de l'envoi — ce que cette
+  /// marchandise a coûté, pas ce qu'elle coûterait aujourd'hui si le produit
+  /// a changé de prix depuis.
+  double get valeurAchat => (transfer.buyPrice ?? 0) * transfer.quantity;
 }
 
 final stockTransfersProvider = FutureProvider<List<TransferEntry>>((ref) async {
@@ -340,6 +351,77 @@ class StockTransferActions {
           'shop_id': shopId,
           'quantity': receivedQuantity,
           'type': 'transfer_in',
+        }),
+      );
+    });
+
+    await ref.read(syncServiceProvider).processQueue();
+    _rafraichir();
+  }
+
+  /// Annule un transfert envoyé par erreur — le seul cas sûr, celui où rien
+  /// n'a encore bougé de l'autre côté.
+  ///
+  /// Restreint à l'EXPÉDITEUR et à l'AVANT réception : une fois que le
+  /// destinataire a confirmé, la marchandise a déjà pu repartir de sa
+  /// boutique à lui — annuler créditerait un stock qui n'existe plus chez
+  /// lui. Le stock est rendu à l'expéditeur exactement comme il avait été
+  /// retiré à l'envoi.
+  Future<void> annuler(TransferEntry entree) async {
+    final shopId = await requireShopId(ref);
+    final transfert = entree.transfer;
+
+    if (transfert.fromShopId != shopId) {
+      throw Exception('Seule la boutique qui a envoyé peut annuler.');
+    }
+    if (transfert.receivedQuantity != null) {
+      throw Exception(
+        'Ce transfert a déjà été reçu, il ne peut plus être annulé.',
+      );
+    }
+    if (transfert.cancelledAt != null) return;
+
+    final db = ref.read(localDbProvider);
+    final quand = DateTime.now();
+
+    await db.transaction(() async {
+      await (db.update(
+        db.localStockTransfers,
+      )..where((row) => row.id.equals(transfert.id))).write(
+        LocalStockTransfersCompanion(cancelledAt: Value(quand)),
+      );
+      await db.addToQueue(
+        'CANCEL_STOCK_TRANSFER',
+        jsonEncode({
+          'id': transfert.id,
+          'cancelled_at': quand.toUtc().toIso8601String(),
+        }),
+      );
+
+      final produit = await (db.select(
+        db.localProducts,
+      )..where((row) => row.id.equals(transfert.productId))).getSingleOrNull();
+      // Le produit peut avoir été archivé ou supprimé entre-temps : le stock
+      // local ne peut alors plus être rendu, mais le transfert doit rester
+      // annulable — sinon un produit disparu bloquerait l'annulation pour de
+      // bon.
+      if (produit == null) return;
+
+      await (db.update(
+        db.localProducts,
+      )..where((row) => row.id.equals(transfert.productId))).write(
+        LocalProductsCompanion(
+          quantity: Value(produit.quantity + transfert.quantity),
+        ),
+      );
+      await db.addToQueue(
+        'ADD_STOCK',
+        jsonEncode({
+          'movement_id': const Uuid().v4(),
+          'product_id': transfert.productId,
+          'shop_id': shopId,
+          'quantity': transfert.quantity,
+          'type': 'transfer_cancelled',
         }),
       );
     });

@@ -38,7 +38,9 @@ import 'features/inventory/presentation/screens/daily_takings_screen.dart';
 import 'features/inventory/presentation/screens/inventory_dashboard_screen.dart';
 import 'features/inventory/presentation/screens/inventory_count_screen.dart';
 import 'features/inventory/presentation/screens/declare_loss_screen.dart';
+import 'features/inventory/presentation/screens/transfer_detail_screen.dart';
 import 'features/inventory/presentation/screens/transfers_screen.dart';
+import 'features/inventory/presentation/providers/stock_transfer_provider.dart';
 import 'features/inventory/presentation/screens/inventory_hub_screen.dart';
 import 'features/inventory/presentation/screens/inventory_report_screen.dart';
 import 'core/constants/app_colors.dart';
@@ -190,6 +192,11 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/transfers',
       builder: (context, state) => const TransfersScreen(),
+    ),
+    GoRoute(
+      path: '/transfer-detail',
+      builder: (context, state) =>
+          TransferDetailScreen(entree: state.extra as TransferEntry),
     ),
     GoRoute(
       path: '/declare-loss',

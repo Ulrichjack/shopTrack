@@ -236,6 +236,12 @@ class LocalStockTransfers extends Table {
   DateTimeColumn get transferredAt => dateTime()();
   TextColumn get note => text().nullable()();
 
+  // Un transfert envoyé par erreur ne pouvait pas revenir en arrière : le
+  // stock avait déjà quitté la boutique expéditrice au moment de l'envoi,
+  // sans aucun moyen de le récupérer sans refaire l'inverse à la main.
+  // Nullable comme receivedAt : un transfert non annulé n'a rien à dire ici.
+  DateTimeColumn get cancelledAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -356,7 +362,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -409,6 +415,12 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(localStockTransfers, localStockTransfers.buyPrice);
         await m.addColumn(localStockTransfers, localStockTransfers.sellPrice);
         await m.addColumn(localStockTransfers, localStockTransfers.unit);
+      }
+      if (from < 14) {
+        await m.addColumn(
+          localStockTransfers,
+          localStockTransfers.cancelledAt,
+        );
       }
     },
   );

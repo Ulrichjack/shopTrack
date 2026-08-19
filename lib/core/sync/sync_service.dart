@@ -372,6 +372,7 @@ class SyncService {
         return {'unite:${payload['id']}'};
       case 'ADD_STOCK_TRANSFER':
       case 'CONFIRM_STOCK_TRANSFER':
+      case 'CANCEL_STOCK_TRANSFER':
         return {
           'transfert:${payload['id']}',
           if (payload['product_id'] != null) produit(payload['product_id']),
@@ -463,6 +464,11 @@ class SyncService {
               'received_quantity': payload['received_quantity'],
               'received_at': payload['received_at'],
             })
+            .eq('id', payload['id']);
+      case 'CANCEL_STOCK_TRANSFER':
+        await supabase
+            .from('stock_transfers')
+            .update({'cancelled_at': payload['cancelled_at']})
             .eq('id', payload['id']);
       case 'ADD_SUPPLY_CYCLE':
         await supabase.from('supply_cycles').upsert(payload);
