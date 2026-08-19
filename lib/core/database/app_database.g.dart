@@ -7400,6 +7400,48 @@ class $LocalStockTransfersTable extends LocalStockTransfers
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _productNameMeta = const VerificationMeta(
+    'productName',
+  );
+  @override
+  late final GeneratedColumn<String> productName = GeneratedColumn<String>(
+    'product_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _buyPriceMeta = const VerificationMeta(
+    'buyPrice',
+  );
+  @override
+  late final GeneratedColumn<double> buyPrice = GeneratedColumn<double>(
+    'buy_price',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sellPriceMeta = const VerificationMeta(
+    'sellPrice',
+  );
+  @override
+  late final GeneratedColumn<double> sellPrice = GeneratedColumn<double>(
+    'sell_price',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
+  @override
+  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
+    'unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _quantityMeta = const VerificationMeta(
     'quantity',
   );
@@ -7460,6 +7502,10 @@ class $LocalStockTransfersTable extends LocalStockTransfers
     fromShopId,
     toShopId,
     productId,
+    productName,
+    buyPrice,
+    sellPrice,
+    unit,
     quantity,
     receivedQuantity,
     receivedAt,
@@ -7509,6 +7555,33 @@ class $LocalStockTransfersTable extends LocalStockTransfers
       );
     } else if (isInserting) {
       context.missing(_productIdMeta);
+    }
+    if (data.containsKey('product_name')) {
+      context.handle(
+        _productNameMeta,
+        productName.isAcceptableOrUnknown(
+          data['product_name']!,
+          _productNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('buy_price')) {
+      context.handle(
+        _buyPriceMeta,
+        buyPrice.isAcceptableOrUnknown(data['buy_price']!, _buyPriceMeta),
+      );
+    }
+    if (data.containsKey('sell_price')) {
+      context.handle(
+        _sellPriceMeta,
+        sellPrice.isAcceptableOrUnknown(data['sell_price']!, _sellPriceMeta),
+      );
+    }
+    if (data.containsKey('unit')) {
+      context.handle(
+        _unitMeta,
+        unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
+      );
     }
     if (data.containsKey('quantity')) {
       context.handle(
@@ -7575,6 +7648,22 @@ class $LocalStockTransfersTable extends LocalStockTransfers
         DriftSqlType.string,
         data['${effectivePrefix}product_id'],
       )!,
+      productName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_name'],
+      ),
+      buyPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}buy_price'],
+      ),
+      sellPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sell_price'],
+      ),
+      unit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit'],
+      ),
       quantity: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}quantity'],
@@ -7610,6 +7699,10 @@ class LocalStockTransfer extends DataClass
   final String fromShopId;
   final String toShopId;
   final String productId;
+  final String? productName;
+  final double? buyPrice;
+  final double? sellPrice;
+  final String? unit;
   final int quantity;
   final int? receivedQuantity;
   final DateTime? receivedAt;
@@ -7620,6 +7713,10 @@ class LocalStockTransfer extends DataClass
     required this.fromShopId,
     required this.toShopId,
     required this.productId,
+    this.productName,
+    this.buyPrice,
+    this.sellPrice,
+    this.unit,
     required this.quantity,
     this.receivedQuantity,
     this.receivedAt,
@@ -7633,6 +7730,18 @@ class LocalStockTransfer extends DataClass
     map['from_shop_id'] = Variable<String>(fromShopId);
     map['to_shop_id'] = Variable<String>(toShopId);
     map['product_id'] = Variable<String>(productId);
+    if (!nullToAbsent || productName != null) {
+      map['product_name'] = Variable<String>(productName);
+    }
+    if (!nullToAbsent || buyPrice != null) {
+      map['buy_price'] = Variable<double>(buyPrice);
+    }
+    if (!nullToAbsent || sellPrice != null) {
+      map['sell_price'] = Variable<double>(sellPrice);
+    }
+    if (!nullToAbsent || unit != null) {
+      map['unit'] = Variable<String>(unit);
+    }
     map['quantity'] = Variable<int>(quantity);
     if (!nullToAbsent || receivedQuantity != null) {
       map['received_quantity'] = Variable<int>(receivedQuantity);
@@ -7653,6 +7762,16 @@ class LocalStockTransfer extends DataClass
       fromShopId: Value(fromShopId),
       toShopId: Value(toShopId),
       productId: Value(productId),
+      productName: productName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(productName),
+      buyPrice: buyPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyPrice),
+      sellPrice: sellPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sellPrice),
+      unit: unit == null && nullToAbsent ? const Value.absent() : Value(unit),
       quantity: Value(quantity),
       receivedQuantity: receivedQuantity == null && nullToAbsent
           ? const Value.absent()
@@ -7675,6 +7794,10 @@ class LocalStockTransfer extends DataClass
       fromShopId: serializer.fromJson<String>(json['fromShopId']),
       toShopId: serializer.fromJson<String>(json['toShopId']),
       productId: serializer.fromJson<String>(json['productId']),
+      productName: serializer.fromJson<String?>(json['productName']),
+      buyPrice: serializer.fromJson<double?>(json['buyPrice']),
+      sellPrice: serializer.fromJson<double?>(json['sellPrice']),
+      unit: serializer.fromJson<String?>(json['unit']),
       quantity: serializer.fromJson<int>(json['quantity']),
       receivedQuantity: serializer.fromJson<int?>(json['receivedQuantity']),
       receivedAt: serializer.fromJson<DateTime?>(json['receivedAt']),
@@ -7690,6 +7813,10 @@ class LocalStockTransfer extends DataClass
       'fromShopId': serializer.toJson<String>(fromShopId),
       'toShopId': serializer.toJson<String>(toShopId),
       'productId': serializer.toJson<String>(productId),
+      'productName': serializer.toJson<String?>(productName),
+      'buyPrice': serializer.toJson<double?>(buyPrice),
+      'sellPrice': serializer.toJson<double?>(sellPrice),
+      'unit': serializer.toJson<String?>(unit),
       'quantity': serializer.toJson<int>(quantity),
       'receivedQuantity': serializer.toJson<int?>(receivedQuantity),
       'receivedAt': serializer.toJson<DateTime?>(receivedAt),
@@ -7703,6 +7830,10 @@ class LocalStockTransfer extends DataClass
     String? fromShopId,
     String? toShopId,
     String? productId,
+    Value<String?> productName = const Value.absent(),
+    Value<double?> buyPrice = const Value.absent(),
+    Value<double?> sellPrice = const Value.absent(),
+    Value<String?> unit = const Value.absent(),
     int? quantity,
     Value<int?> receivedQuantity = const Value.absent(),
     Value<DateTime?> receivedAt = const Value.absent(),
@@ -7713,6 +7844,10 @@ class LocalStockTransfer extends DataClass
     fromShopId: fromShopId ?? this.fromShopId,
     toShopId: toShopId ?? this.toShopId,
     productId: productId ?? this.productId,
+    productName: productName.present ? productName.value : this.productName,
+    buyPrice: buyPrice.present ? buyPrice.value : this.buyPrice,
+    sellPrice: sellPrice.present ? sellPrice.value : this.sellPrice,
+    unit: unit.present ? unit.value : this.unit,
     quantity: quantity ?? this.quantity,
     receivedQuantity: receivedQuantity.present
         ? receivedQuantity.value
@@ -7729,6 +7864,12 @@ class LocalStockTransfer extends DataClass
           : this.fromShopId,
       toShopId: data.toShopId.present ? data.toShopId.value : this.toShopId,
       productId: data.productId.present ? data.productId.value : this.productId,
+      productName: data.productName.present
+          ? data.productName.value
+          : this.productName,
+      buyPrice: data.buyPrice.present ? data.buyPrice.value : this.buyPrice,
+      sellPrice: data.sellPrice.present ? data.sellPrice.value : this.sellPrice,
+      unit: data.unit.present ? data.unit.value : this.unit,
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
       receivedQuantity: data.receivedQuantity.present
           ? data.receivedQuantity.value
@@ -7750,6 +7891,10 @@ class LocalStockTransfer extends DataClass
           ..write('fromShopId: $fromShopId, ')
           ..write('toShopId: $toShopId, ')
           ..write('productId: $productId, ')
+          ..write('productName: $productName, ')
+          ..write('buyPrice: $buyPrice, ')
+          ..write('sellPrice: $sellPrice, ')
+          ..write('unit: $unit, ')
           ..write('quantity: $quantity, ')
           ..write('receivedQuantity: $receivedQuantity, ')
           ..write('receivedAt: $receivedAt, ')
@@ -7765,6 +7910,10 @@ class LocalStockTransfer extends DataClass
     fromShopId,
     toShopId,
     productId,
+    productName,
+    buyPrice,
+    sellPrice,
+    unit,
     quantity,
     receivedQuantity,
     receivedAt,
@@ -7779,6 +7928,10 @@ class LocalStockTransfer extends DataClass
           other.fromShopId == this.fromShopId &&
           other.toShopId == this.toShopId &&
           other.productId == this.productId &&
+          other.productName == this.productName &&
+          other.buyPrice == this.buyPrice &&
+          other.sellPrice == this.sellPrice &&
+          other.unit == this.unit &&
           other.quantity == this.quantity &&
           other.receivedQuantity == this.receivedQuantity &&
           other.receivedAt == this.receivedAt &&
@@ -7791,6 +7944,10 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
   final Value<String> fromShopId;
   final Value<String> toShopId;
   final Value<String> productId;
+  final Value<String?> productName;
+  final Value<double?> buyPrice;
+  final Value<double?> sellPrice;
+  final Value<String?> unit;
   final Value<int> quantity;
   final Value<int?> receivedQuantity;
   final Value<DateTime?> receivedAt;
@@ -7802,6 +7959,10 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
     this.fromShopId = const Value.absent(),
     this.toShopId = const Value.absent(),
     this.productId = const Value.absent(),
+    this.productName = const Value.absent(),
+    this.buyPrice = const Value.absent(),
+    this.sellPrice = const Value.absent(),
+    this.unit = const Value.absent(),
     this.quantity = const Value.absent(),
     this.receivedQuantity = const Value.absent(),
     this.receivedAt = const Value.absent(),
@@ -7814,6 +7975,10 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
     required String fromShopId,
     required String toShopId,
     required String productId,
+    this.productName = const Value.absent(),
+    this.buyPrice = const Value.absent(),
+    this.sellPrice = const Value.absent(),
+    this.unit = const Value.absent(),
     required int quantity,
     this.receivedQuantity = const Value.absent(),
     this.receivedAt = const Value.absent(),
@@ -7831,6 +7996,10 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
     Expression<String>? fromShopId,
     Expression<String>? toShopId,
     Expression<String>? productId,
+    Expression<String>? productName,
+    Expression<double>? buyPrice,
+    Expression<double>? sellPrice,
+    Expression<String>? unit,
     Expression<int>? quantity,
     Expression<int>? receivedQuantity,
     Expression<DateTime>? receivedAt,
@@ -7843,6 +8012,10 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
       if (fromShopId != null) 'from_shop_id': fromShopId,
       if (toShopId != null) 'to_shop_id': toShopId,
       if (productId != null) 'product_id': productId,
+      if (productName != null) 'product_name': productName,
+      if (buyPrice != null) 'buy_price': buyPrice,
+      if (sellPrice != null) 'sell_price': sellPrice,
+      if (unit != null) 'unit': unit,
       if (quantity != null) 'quantity': quantity,
       if (receivedQuantity != null) 'received_quantity': receivedQuantity,
       if (receivedAt != null) 'received_at': receivedAt,
@@ -7857,6 +8030,10 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
     Value<String>? fromShopId,
     Value<String>? toShopId,
     Value<String>? productId,
+    Value<String?>? productName,
+    Value<double?>? buyPrice,
+    Value<double?>? sellPrice,
+    Value<String?>? unit,
     Value<int>? quantity,
     Value<int?>? receivedQuantity,
     Value<DateTime?>? receivedAt,
@@ -7869,6 +8046,10 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
       fromShopId: fromShopId ?? this.fromShopId,
       toShopId: toShopId ?? this.toShopId,
       productId: productId ?? this.productId,
+      productName: productName ?? this.productName,
+      buyPrice: buyPrice ?? this.buyPrice,
+      sellPrice: sellPrice ?? this.sellPrice,
+      unit: unit ?? this.unit,
       quantity: quantity ?? this.quantity,
       receivedQuantity: receivedQuantity ?? this.receivedQuantity,
       receivedAt: receivedAt ?? this.receivedAt,
@@ -7892,6 +8073,18 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
     }
     if (productId.present) {
       map['product_id'] = Variable<String>(productId.value);
+    }
+    if (productName.present) {
+      map['product_name'] = Variable<String>(productName.value);
+    }
+    if (buyPrice.present) {
+      map['buy_price'] = Variable<double>(buyPrice.value);
+    }
+    if (sellPrice.present) {
+      map['sell_price'] = Variable<double>(sellPrice.value);
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
     }
     if (quantity.present) {
       map['quantity'] = Variable<int>(quantity.value);
@@ -7921,6 +8114,10 @@ class LocalStockTransfersCompanion extends UpdateCompanion<LocalStockTransfer> {
           ..write('fromShopId: $fromShopId, ')
           ..write('toShopId: $toShopId, ')
           ..write('productId: $productId, ')
+          ..write('productName: $productName, ')
+          ..write('buyPrice: $buyPrice, ')
+          ..write('sellPrice: $sellPrice, ')
+          ..write('unit: $unit, ')
           ..write('quantity: $quantity, ')
           ..write('receivedQuantity: $receivedQuantity, ')
           ..write('receivedAt: $receivedAt, ')
@@ -12427,6 +12624,10 @@ typedef $$LocalStockTransfersTableCreateCompanionBuilder =
       required String fromShopId,
       required String toShopId,
       required String productId,
+      Value<String?> productName,
+      Value<double?> buyPrice,
+      Value<double?> sellPrice,
+      Value<String?> unit,
       required int quantity,
       Value<int?> receivedQuantity,
       Value<DateTime?> receivedAt,
@@ -12440,6 +12641,10 @@ typedef $$LocalStockTransfersTableUpdateCompanionBuilder =
       Value<String> fromShopId,
       Value<String> toShopId,
       Value<String> productId,
+      Value<String?> productName,
+      Value<double?> buyPrice,
+      Value<double?> sellPrice,
+      Value<String?> unit,
       Value<int> quantity,
       Value<int?> receivedQuantity,
       Value<DateTime?> receivedAt,
@@ -12474,6 +12679,26 @@ class $$LocalStockTransfersTableFilterComposer
 
   ColumnFilters<String> get productId => $composableBuilder(
     column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get buyPrice => $composableBuilder(
+    column: $table.buyPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sellPrice => $composableBuilder(
+    column: $table.sellPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get unit => $composableBuilder(
+    column: $table.unit,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12532,6 +12757,26 @@ class $$LocalStockTransfersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get buyPrice => $composableBuilder(
+    column: $table.buyPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sellPrice => $composableBuilder(
+    column: $table.sellPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get quantity => $composableBuilder(
     column: $table.quantity,
     builder: (column) => ColumnOrderings(column),
@@ -12580,6 +12825,20 @@ class $$LocalStockTransfersTableAnnotationComposer
 
   GeneratedColumn<String> get productId =>
       $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get buyPrice =>
+      $composableBuilder(column: $table.buyPrice, builder: (column) => column);
+
+  GeneratedColumn<double> get sellPrice =>
+      $composableBuilder(column: $table.sellPrice, builder: (column) => column);
+
+  GeneratedColumn<String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
 
   GeneratedColumn<int> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
@@ -12650,6 +12909,10 @@ class $$LocalStockTransfersTableTableManager
                 Value<String> fromShopId = const Value.absent(),
                 Value<String> toShopId = const Value.absent(),
                 Value<String> productId = const Value.absent(),
+                Value<String?> productName = const Value.absent(),
+                Value<double?> buyPrice = const Value.absent(),
+                Value<double?> sellPrice = const Value.absent(),
+                Value<String?> unit = const Value.absent(),
                 Value<int> quantity = const Value.absent(),
                 Value<int?> receivedQuantity = const Value.absent(),
                 Value<DateTime?> receivedAt = const Value.absent(),
@@ -12661,6 +12924,10 @@ class $$LocalStockTransfersTableTableManager
                 fromShopId: fromShopId,
                 toShopId: toShopId,
                 productId: productId,
+                productName: productName,
+                buyPrice: buyPrice,
+                sellPrice: sellPrice,
+                unit: unit,
                 quantity: quantity,
                 receivedQuantity: receivedQuantity,
                 receivedAt: receivedAt,
@@ -12674,6 +12941,10 @@ class $$LocalStockTransfersTableTableManager
                 required String fromShopId,
                 required String toShopId,
                 required String productId,
+                Value<String?> productName = const Value.absent(),
+                Value<double?> buyPrice = const Value.absent(),
+                Value<double?> sellPrice = const Value.absent(),
+                Value<String?> unit = const Value.absent(),
                 required int quantity,
                 Value<int?> receivedQuantity = const Value.absent(),
                 Value<DateTime?> receivedAt = const Value.absent(),
@@ -12685,6 +12956,10 @@ class $$LocalStockTransfersTableTableManager
                 fromShopId: fromShopId,
                 toShopId: toShopId,
                 productId: productId,
+                productName: productName,
+                buyPrice: buyPrice,
+                sellPrice: sellPrice,
+                unit: unit,
                 quantity: quantity,
                 receivedQuantity: receivedQuantity,
                 receivedAt: receivedAt,

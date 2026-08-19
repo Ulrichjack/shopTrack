@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../../../../core/sync/sync_service.dart';
+import '../../../../shared/widgets/product_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -53,7 +56,18 @@ class TransfersScreen extends ConsumerWidget {
                 .toList();
             final reste = liste.where((t) => !aVerifier.contains(t)).toList();
 
-            return ListView(
+            return RefreshIndicator(
+              // La liste ne lit que la base LOCALE : invalider ne redemande
+              // rien au serveur. Sans ce geste, un patron qui envoie et
+              // l'autre boutique qui confirme ne se voyaient jamais mis à
+              // jour l'un l'autre en restant simplement sur cet écran — il
+              // fallait qu'un téléchargement se déclenche PAR AILLEURS
+              // (réseau qui revient, tableau de bord ouvert).
+              onRefresh: () async {
+                await ref.read(syncServiceProvider).synchronize();
+                ref.invalidate(stockTransfersProvider);
+              },
+              child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
               children: [
                 // Ce qui attend un geste passe en premier : c'est la seule
@@ -68,6 +82,7 @@ class TransfersScreen extends ConsumerWidget {
                 for (final t in reste)
                   _Ligne(entree: t, nomDe: nomDe, aVerifier: false),
               ],
+              ),
             );
           },
         ),
@@ -289,29 +304,15 @@ class _FeuilleEnvoiState extends ConsumerState<_FeuilleEnvoi> {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                initialValue: _produit?.id,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Produit',
-                  border: OutlineInputBorder(),
-                ),
-                items: produits
-                    .map(
-                      (p) => DropdownMenuItem(
-                        value: p.id,
-                        child: Text(
-                          '${p.name} (${p.quantity})',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(),
+              // Le sélecteur partagé, comme partout ailleurs : une liste
+              // déroulante native tronque les noms longs, n'a pas de recherche
+              // et oblige à parcourir tout le catalogue. Cet écran était le
+              // dernier à ne pas l'utiliser.
+              ProductPicker(
+                selectedProductId: _produit?.id,
                 onChanged: (value) => setState(
                   () => _produit = produits.firstWhere((p) => p.id == value),
                 ),
-                validator: (value) =>
-                    value == null ? 'Choisis un produit' : null,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(

@@ -57,7 +57,13 @@ final stockTransfersProvider = FutureProvider<List<TransferEntry>>((ref) async {
       .map(
         (ligne) => TransferEntry(
           transfer: ligne,
-          productName: parId[ligne.productId]?.name ?? 'Produit inconnu',
+          // Le nom recopié sur le transfert d'abord : c'est le seul que le
+          // destinataire possède. La fiche locale ne sert plus qu'aux
+          // transferts enregistrés avant que cette colonne existe.
+          productName:
+              ligne.productName ??
+              parId[ligne.productId]?.name ??
+              'Produit inconnu',
           estEnvoi: ligne.fromShopId == shopId,
           // Le nom de l'autre boutique n'est pas dans la base locale : seules
           // les données de la boutique active y descendent. On l'affichera
@@ -125,6 +131,14 @@ class StockTransferActions {
               fromShopId: shopId,
               toShopId: toShopId,
               productId: productId,
+              // L'identité voyage AVEC la marchandise. `productId` désigne la
+              // fiche de cette boutique-ci ; la boutique qui reçoit ne l'aura
+              // jamais en base. Sans ces quatre champs, elle affiche
+              // « Produit inconnu » et sa réception ne sait pas quoi créditer.
+              productName: produit.name,
+              buyPrice: produit.buyPrice,
+              sellPrice: produit.sellPrice,
+              unit: produit.unit,
               quantity: quantity,
               transferredAt: quand,
               note: (note ?? '').trim().isEmpty ? null : note!.trim(),
@@ -138,6 +152,10 @@ class StockTransferActions {
           'from_shop_id': shopId,
           'to_shop_id': toShopId,
           'product_id': productId,
+          'product_name': produit.name,
+          'buy_price': produit.buyPrice,
+          'sell_price': produit.sellPrice,
+          'unit': produit.unit,
           'quantity': quantity,
           'transferred_at': quand.toUtc().toIso8601String(),
           'note': (note ?? '').trim().isEmpty ? null : note!.trim(),
@@ -225,33 +243,69 @@ class StockTransferActions {
       // l'expéditeur lui rendait le stock qu'il venait d'envoyer, et le
       // serveur refusait le mouvement (`apply_stock_movement` exige que le
       // produit appartienne à la boutique) — ce qui bloquait toute la file.
+      if (receivedQuantity <= 0) return;
+
+      // L'identité de l'article vient du TRANSFERT, plus de la fiche de
+      // l'expéditeur.
+      //
+      // Cette fiche n'existe que dans la base de la boutique émettrice : le
+      // destinataire ne l'a jamais téléchargée, puisque le pull filtre par
+      // boutique active. La réception faisait donc `return` en silence dès
+      // qu'on recevait depuis une boutique jamais ouverte sur cet appareil —
+      // c'est-à-dire le cas normal du multi-boutique, deux téléphones. La
+      // marchandise n'arrivait pas, et rien ne le disait.
+      //
+      // La fiche locale reste une roue de secours pour les transferts
+      // enregistrés avant que ces colonnes existent.
       final envoye =
           await (db.select(db.localProducts)
                 ..where((row) => row.id.equals(transfert.productId)))
               .getSingleOrNull();
-      if (envoye == null || receivedQuantity <= 0) return;
 
-      var destination =
-          await (db.select(db.localProducts)..where(
-                (row) =>
-                    row.shopId.equals(shopId) & row.name.equals(envoye.name),
-              ))
-              .getSingleOrNull();
+      final nom = transfert.productName ?? envoye?.name;
+      if (nom == null) {
+        throw Exception(
+          'Ce transfert ne dit pas quel article il transporte : il a été '
+          'envoyé par une version trop ancienne de l\'application. '
+          'Demande à la boutique expéditrice de le refaire.',
+        );
+      }
+      final prixAchat = transfert.buyPrice ?? envoye?.buyPrice ?? 0;
+      final prixVente = transfert.sellPrice ?? envoye?.sellPrice ?? 0;
+      final unite = transfert.unit ?? envoye?.unit;
+
+      // Comparaison insensible à la casse et aux espaces.
+      //
+      // Une correspondance exacte fait déjà foi entre deux boutiques tenues
+      // par la même personne — mais un commerçant qui a tapé « pain » ici et
+      // « Pain » là-bas est le cas normal, pas l'exception : deux vendeurs
+      // sur deux téléphones ne s'accordent jamais sur la casse d'un nom. Sans
+      // ce nettoyage, la réception ne trouvait pas le jumeau, en créait un
+      // second, et le stock se retrouvait scindé en deux fiches distinctes
+      // du même article. Constaté le 19/08/2026 : « pain » (10) à côté de
+      // « Pain » (110) dans la même boutique.
+      final nomNormalise = nom.trim().toLowerCase();
+      final produitsDeLaBoutique = await (db.select(
+        db.localProducts,
+      )..where((row) => row.shopId.equals(shopId))).get();
+      var destination = produitsDeLaBoutique
+          .where((p) => p.name.trim().toLowerCase() == nomNormalise)
+          .firstOrNull;
 
       if (destination == null) {
-        // Première réception de cet article ici : on le crée en reprenant sa
-        // fiche. C'est ce qu'attend le commerçant — envoyer du riz vers une
-        // boutique qui n'en vendait pas, c'est l'y introduire.
+        // Première réception de cet article ici : on le crée. C'est ce
+        // qu'attend le commerçant — envoyer du riz vers une boutique qui n'en
+        // vendait pas, c'est l'y introduire.
         final nouvelId = const Uuid().v4();
         destination = LocalProduct(
           id: nouvelId,
           shopId: shopId,
-          name: envoye.name,
-          buyPrice: envoye.buyPrice,
-          sellPrice: envoye.sellPrice,
+          name: nom,
+          buyPrice: prixAchat,
+          sellPrice: prixVente,
           quantity: 0,
-          minQuantity: envoye.minQuantity,
-          unit: envoye.unit,
+          minQuantity: envoye?.minQuantity ?? 0,
+          unit: unite,
         );
         await db.into(db.localProducts).insert(destination);
         await db.addToQueue(
@@ -259,14 +313,14 @@ class StockTransferActions {
           jsonEncode({
             'id': nouvelId,
             'shop_id': shopId,
-            'name': envoye.name,
-            'buy_price': envoye.buyPrice,
-            'sell_price': envoye.sellPrice,
+            'name': nom,
+            'buy_price': prixAchat,
+            'sell_price': prixVente,
             'quantity': 0,
-            'min_quantity': envoye.minQuantity,
+            'min_quantity': envoye?.minQuantity ?? 0,
             'barcode': null,
             'photo_url': null,
-            if (envoye.unit != null) 'unit': envoye.unit,
+            if (unite != null) 'unit': unite,
           }),
         );
       }

@@ -214,6 +214,22 @@ class LocalStockTransfers extends Table {
   TextColumn get fromShopId => text()();
   TextColumn get toShopId => text()();
   TextColumn get productId => text()();
+
+  // L'identité du produit, recopiée au moment de l'envoi.
+  //
+  // `productId` désigne la fiche de la boutique EXPÉDITRICE, et un produit
+  // n'appartient qu'à une boutique. Le destinataire ne l'a donc pas en base :
+  // il affichait « Produit inconnu », et surtout sa réception abandonnait en
+  // silence faute de pouvoir lire le nom, le prix et l'unité de l'article
+  // reçu. Nullable : les transferts d'avant cette colonne n'ont rien à dire.
+  //
+  // Même principe que `sale_items`, qui recopie déjà nom et prix pour qu'un
+  // bilan reste lisible quand le produit change ou disparaît.
+  TextColumn get productName => text().nullable()();
+  RealColumn get buyPrice => real().nullable()();
+  RealColumn get sellPrice => real().nullable()();
+  TextColumn get unit => text().nullable()();
+
   IntColumn get quantity => integer()();
   IntColumn get receivedQuantity => integer().nullable()();
   DateTimeColumn get receivedAt => dateTime().nullable()();
@@ -340,7 +356,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -387,6 +403,12 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 12) {
         await m.addColumn(localProducts, localProducts.archivedAt);
+      }
+      if (from < 13) {
+        await m.addColumn(localStockTransfers, localStockTransfers.productName);
+        await m.addColumn(localStockTransfers, localStockTransfers.buyPrice);
+        await m.addColumn(localStockTransfers, localStockTransfers.sellPrice);
+        await m.addColumn(localStockTransfers, localStockTransfers.unit);
       }
     },
   );

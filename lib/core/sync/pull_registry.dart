@@ -370,6 +370,14 @@ final List<TableTiree> tablesTirees = [
       fromShopId: t['from_shop_id'],
       toShopId: t['to_shop_id'],
       productId: t['product_id'],
+      // L'identité recopiée à l'envoi : sans elle ici, le téléchargement
+      // réécrirait la ligne locale en effaçant le nom du produit, et le
+      // destinataire retomberait sur « Produit inconnu » quelques secondes
+      // après l'avoir reçu.
+      productName: t['product_name'] as String?,
+      buyPrice: _reelOuNul(t['buy_price']),
+      sellPrice: _reelOuNul(t['sell_price']),
+      unit: t['unit'] as String?,
       quantity: t['quantity'],
       receivedQuantity: t['received_quantity'] as int?,
       receivedAt: _dateOuNulle(t['received_at']),
