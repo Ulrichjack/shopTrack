@@ -1,7 +1,10 @@
 
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../domain/auth_error_message.dart';
 
 class AuthNotifier extends Notifier<bool> {
 
@@ -18,22 +21,26 @@ class AuthNotifier extends Notifier<bool> {
       final cleanPhone = phone.replaceAll(' ', '');
       final fakeEmail = '$cleanPhone@shoptrack.cm';
 
+      // `trim()` comme partout ailleurs : la création d'un vendeur et le
+      // changement de mot de passe nettoient déjà. Sans lui ici, un clavier
+      // qui ajoute une espace après le mot — celui de Samsung le fait —
+      // envoyait « 123456 » pour un compte enregistré avec « 123456 », et le
+      // serveur refusait un mot de passe pourtant juste.
       final response = await Supabase.instance.client.auth.signInWithPassword(
         email: fakeEmail,
-        password: password,
+        password: password.trim(),
       );
 
       if(response.user != null){
         state = false;
       }
-    } on AuthException catch (e){
-      state = false;
-      print('Erreur supabase: ${e.message}');
-      throw Exception('Erreur de connexion');
     } catch (e){
       state = false;
-      print('Erreur inattendue: $e');
-      throw Exception('Erreur réseau');
+      // Le motif exact remonte à l'écran. Auparavant tout devenait « Erreur de
+      // connexion » : le commerçant ne savait pas s'il avait tapé le mauvais
+      // numéro, le mauvais mot de passe, ou s'il manquait simplement de réseau.
+      debugPrint('[AUTH] échec de la connexion : $e');
+      throw Exception(messageDErreurAuth(e));
     }
   }
 
@@ -44,9 +51,11 @@ class AuthNotifier extends Notifier<bool> {
       final fakeEmail = '$cleanPhone@shoptrack.cm';
 
       // 1. Création de l'utilisateur dans Supabase Auth
+      // Nettoyé à l'inscription aussi : un mot de passe enregistré avec une
+      // espace finale ne serait plus jamais retapé à l'identique.
       final response = await Supabase.instance.client.auth.signUp(
         email: fakeEmail,
-        password: password,
+        password: password.trim(),
       );
 
       final userId = response.user?.id;
@@ -70,14 +79,10 @@ class AuthNotifier extends Notifier<bool> {
 
         state = false;
       }
-    } on AuthException catch (e) {
-      state = false;
-      print('Erreur Auth: ${e.message}');
-      throw Exception('Erreur lors de la création du compte');
     } catch (e) {
       state = false;
-      print('Erreur inattendue: $e');
-      throw Exception('Erreur réseau ou base de données');
+      debugPrint('[AUTH] échec de l\'inscription : $e');
+      throw Exception(messageDErreurAuth(e));
     }
   }
 
