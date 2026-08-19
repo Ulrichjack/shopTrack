@@ -168,8 +168,20 @@ class _ManageUnitsScreenState extends ConsumerState<ManageUnitsScreen> {
                       );
                       return unitsAsync.when(
                         data: (units) => units.isEmpty
-                            ? const Center(
-                                child: Text('Aucune unité définie.'),
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                child: Text(
+                                  'Aucune unité. Commence par la plus petite '
+                                  '— celle que tu vends à l\'unité — avec '
+                                  'une quantité de 1. Les autres (plateau, '
+                                  'carton…) s\'ajoutent après.',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               )
                             : ListView.separated(
                                 shrinkWrap: true,

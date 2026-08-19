@@ -8,6 +8,7 @@ import '../../../../core/errors/sync_error_message.dart';
 import '../../../products/domain/entities/product_entity.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/inventory_loss_provider.dart';
+import '../../../../shared/widgets/product_picker.dart';
 
 /// Ouvre la déclaration de perte en feuille, comme « Nouvel arrivage ».
 ///
@@ -53,16 +54,6 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
     super.dispose();
   }
 
-  /// Liste cherchable en feuille : elle occupe l'écran le temps du choix puis
-  /// disparaît, au lieu d'allonger un formulaire déjà long.
-  Future<ProductEntity?> _pickProduct(List<ProductEntity> products) {
-    return showModalBottomSheet<ProductEntity>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => _ProductPicker(products: products),
-    );
-  }
-
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -76,6 +67,18 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
   }
 
   Future<void> _save() async {
+    // Le sélecteur partagé ne s'intègre pas au FormField : la présence d'un
+    // produit se vérifie donc ici, avant le reste du formulaire — comme sur
+    // l'écran de cycle qui utilise le même widget.
+    if (_product == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Choisis un produit'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
@@ -163,40 +166,14 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Un menu déroulant devient inutilisable passé une dizaine
-                  // de produits : on ouvre une liste cherchable, comme au
-                  // comptage. Le champ reste un champ de formulaire pour
-                  // garder la validation.
-                  FormField<String>(
-                    initialValue: _product?.id,
-                    validator: (value) =>
-                        value == null ? 'Choisis un produit' : null,
-                    builder: (field) => InkWell(
-                      onTap: () async {
-                        final chosen = await _pickProduct(products);
-                        if (chosen == null) return;
-                        setState(() => _product = chosen);
-                        field.didChange(chosen.id);
-                      },
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: 'Produit',
-                          filled: true,
-                          fillColor: Colors.white,
-                          errorText: field.errorText,
-                          suffixIcon: const Icon(Icons.search),
-                        ),
-                        child: Text(
-                          _product?.name ?? 'Choisir un produit',
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: _product == null
-                                ? Colors.grey.shade600
-                                : AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ),
+                  // Le sélecteur partagé (comptage, cycles, transferts) : une
+                  // copie privée vivait ici, avec son propre code de
+                  // recherche à maintenir en double pour rien.
+                  ProductPicker(
+                    selectedProductId: _product?.id,
+                    onChanged: (id) => setState(() {
+                      _product = products.where((p) => p.id == id).firstOrNull;
+                    }),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -332,83 +309,6 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
                               const Divider(height: 1),
                           ],
                         ],
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Sélecteur de produit avec recherche, repris du geste du comptage : on tape
-/// les premières lettres plutôt que de faire défiler vingt lignes.
-class _ProductPicker extends StatefulWidget {
-  const _ProductPicker({required this.products});
-
-  final List<ProductEntity> products;
-
-  @override
-  State<_ProductPicker> createState() => _ProductPickerState();
-}
-
-class _ProductPickerState extends State<_ProductPicker> {
-  final _controller = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final visible = widget.products
-        .where((p) => _query.isEmpty || p.name.toLowerCase().contains(_query))
-        .toList();
-
-    return Padding(
-      // Le clavier remonte la feuille : sans ça il masque la liste filtrée.
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: _controller,
-                autofocus: true,
-                onChanged: (value) =>
-                    setState(() => _query = value.trim().toLowerCase()),
-                decoration: InputDecoration(
-                  hintText: 'Rechercher un produit',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: AppColors.cardBg,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: visible.isEmpty
-                  ? const Center(child: Text('Aucun produit ne correspond.'))
-                  : ListView.separated(
-                      itemCount: visible.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (context, index) => ListTile(
-                        title: Text(visible[index].name),
-                        subtitle: (visible[index].unit ?? '').trim().isEmpty
-                            ? null
-                            : Text(visible[index].unit!.trim()),
-                        onTap: () => Navigator.of(context).pop(visible[index]),
                       ),
                     ),
             ),

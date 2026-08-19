@@ -220,7 +220,15 @@ class _Body extends StatelessWidget {
           const SizedBox(height: 12),
           _MissingTakingsWarning(days: report.daysWithoutTakings),
         ],
-        if (!report.isComplete || report.daysWithoutTakings.isNotEmpty)
+        if (report.recettesAvantLePremierComptage > 0) ...[
+          const SizedBox(height: 12),
+          _RecettesOrphelinesNotice(
+            nombre: report.recettesAvantLePremierComptage,
+          ),
+        ],
+        if (!report.isComplete ||
+            report.daysWithoutTakings.isNotEmpty ||
+            report.recettesAvantLePremierComptage > 0)
           const SizedBox(height: 16),
 
         const Text(
@@ -500,6 +508,45 @@ class _MissingTakingsWarning extends StatelessWidget {
             child: Text(
               '${days.length} jour(s) sans recette notée : l\'écart peut '
               'venir de là.',
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Recettes notées avant le tout premier comptage — invisibles à jamais.
+///
+/// En bleu et non en rouge : ce n'est pas une anomalie à corriger, c'est une
+/// explication. Elles ne réapparaîtront dans aucune période, jamais, parce
+/// que le premier comptage est le point de départ et qu'on ne reconstitue
+/// pas le stock d'avant. Le dire évite de chercher une erreur qui n'existe
+/// pas — jusqu'ici, elles s'évaporaient sans un mot.
+class _RecettesOrphelinesNotice extends StatelessWidget {
+  const _RecettesOrphelinesNotice({required this.nombre});
+
+  final int nombre;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.shade300),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: Colors.blue.shade700),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '$nombre recette(s) notée(s) avant ton premier comptage ne '
+              'sont comptées dans aucune période : il n\'y avait pas encore '
+              'de stock de départ pour les rapprocher.',
               style: const TextStyle(fontSize: 13),
             ),
           ),

@@ -276,6 +276,36 @@ class _FeuilleEnvoiState extends ConsumerState<_FeuilleEnvoi> {
 
   Future<void> _envoyer() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Un aperçu avant que le stock ne parte, pas juste une phrase grise sous
+    // le bouton : c'est le seul moment où on peut encore se raviser — une
+    // fois envoyé, le stock a déjà quitté la boutique, et rien ne permettait
+    // jusqu'ici de revenir en arrière sans annuler après coup.
+    final destination = widget.boutiques
+        .firstWhere((b) => b.id == _destination)
+        .name;
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Envoyer ce transfert ?'),
+        content: Text(
+          '${_quantite.text.trim()} ${_produit!.name} vers $destination.\n'
+          'Le stock quitte cette boutique tout de suite.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Revoir'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Envoyer'),
+          ),
+        ],
+      ),
+    );
+    if (confirme != true) return;
+
     setState(() => _envoi = true);
     try {
       await ref

@@ -33,6 +33,27 @@ class ProductUnitActions {
     int sortOrder = 0,
   }) async {
     final db = ref.read(localDbProvider);
+
+    // La toute première unité d'un produit DOIT être sa base (ratio 1).
+    //
+    // Rien n'empêchait de créer « plateau = 30 » sans jamais poser
+    // « œuf = 1 » — l'app acceptait, et personne ne demandait « 30 quoi ? ».
+    // Sans la base, la vente au détail n'a aucune unité à proposer (aucune
+    // pastille de ratio 1), et le reste de stock ne peut plus s'exprimer.
+    if (ratioToBase != 1) {
+      final existantes = await (db.select(
+        db.localProductUnits,
+      )..where((row) => row.productId.equals(productId))).get();
+      final aDejaUneBase = existantes.any((u) => u.ratioToBase == 1);
+      if (!aDejaUneBase) {
+        throw Exception(
+          'Crée d\'abord l\'unité de base de ce produit (quantité 1) — '
+          'par exemple « œuf » ou « bouteille ». Les autres, comme '
+          '« $unitName », s\'ajoutent après.',
+        );
+      }
+    }
+
     final id = const Uuid().v4();
 
     await db

@@ -20,6 +20,7 @@ class InventoryPeriodReport {
     required this.productsNeverCounted,
     required this.daysWithoutTakings,
     this.periodesDisponibles = const [],
+    this.recettesAvantLePremierComptage = 0,
   });
 
   final InventoryPeriodResult result;
@@ -38,6 +39,16 @@ class InventoryPeriodReport {
 
   final List<DateTime> daysWithoutTakings;
   final List<PeriodeRapportInventaire> periodesDisponibles;
+
+  /// Recettes notées AVANT le tout premier comptage jamais fait.
+  ///
+  /// Aucune période, présente ou future, ne peut les compter : le premier
+  /// comptage est le point de départ, et on ne reconstitue jamais le stock
+  /// d'avant. Sans ce compteur, ces recettes disparaissaient du rapport sans
+  /// un mot — un commerçant qui note sa semaine puis compte pour la première
+  /// fois le dimanche perdait ses six jours sans jamais comprendre pourquoi.
+  /// Constaté le 18/08/2026 : 443 250 F envolés, silencieusement, à « 0 F ».
+  final int recettesAvantLePremierComptage;
 
   bool get hasData => result.products.isNotEmpty;
 
@@ -397,6 +408,27 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
         toutPremierComptage != null &&
         !periodStart.isAfter(toutPremierComptage);
 
+    // Ce que le premier comptage rend à jamais incomptable. Indépendant de la
+    // période affichée : ce n'est pas « pas dans CETTE période », c'est
+    // « dans AUCUNE période, jamais ».
+    final recettesOrphelines = toutPremierComptage == null
+        ? 0
+        : takings.where((t) {
+            final jourRecette = DateTime(
+              t.date.year,
+              t.date.month,
+              t.date.day,
+            );
+            final jourPremierComptage = DateTime(
+              toutPremierComptage.year,
+              toutPremierComptage.month,
+              toutPremierComptage.day,
+            );
+            // Comparaison au jour près : le premier comptage porte une
+            // heure, une recette du même jour ne doit pas être exclue.
+            return jourRecette.isBefore(jourPremierComptage);
+          }).length;
+
     var actualTakings = 0.0;
     final notedDays = <DateTime>{};
     if (periodStart != null && periodEnd != null) {
@@ -452,6 +484,7 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
       productsNeverCounted: neverCounted,
       daysWithoutTakings: missing,
       periodesDisponibles: periodesDisponibles,
+      recettesAvantLePremierComptage: recettesOrphelines,
     );
   },
 );
