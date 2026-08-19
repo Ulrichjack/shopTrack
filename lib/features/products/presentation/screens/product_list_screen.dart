@@ -25,6 +25,35 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     return products.fold(0, (total, product) => total + (product.buyPrice * product.quantity));
   }
 
+  /// « 15 produits · 274 articles · 1 en rupture ».
+  ///
+  /// La valeur totale seule ne fait rien décider : elle dit combien d'argent
+  /// dort sur l'étagère, jamais sur laquelle. Le nombre d'articles complète le
+  /// tableau — mais c'est le compte des ruptures qui fait décrocher le
+  /// téléphone pour rappeler le fournisseur, et il n'apparaissait nulle part
+  /// sans faire défiler toute la liste.
+  ///
+  /// Les stocks faibles ne sont mentionnés **que** s'il n'y a aucune rupture :
+  /// deux alertes côte à côte se neutralisent, et la rupture est la plus
+  /// urgente des deux.
+  String _resumeDuStock(List<ProductEntity> products) {
+    final articles = products.fold<int>(0, (t, p) => t + p.quantity);
+    final ruptures = products.where((p) => p.quantity <= 0).length;
+    final faibles = products
+        .where((p) => p.quantity > 0 && p.quantity <= p.minQuantity)
+        .length;
+
+    final morceaux = <String>[
+      '${products.length} produit${products.length > 1 ? 's' : ''}',
+      '$articles article${articles > 1 ? 's' : ''}',
+      if (ruptures > 0)
+        '$ruptures en rupture'
+      else if (faibles > 0)
+        '$faibles à racheter bientôt',
+    ];
+    return morceaux.join(' · ');
+  }
+
   /// « 20 sacs » plutôt que « 20 » : le nombre seul ne dit pas dans quoi il
   /// compte, et un carton n'est pas une bouteille.
   static String _unitSuffix(ProductEntity product) {
@@ -84,6 +113,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                 productsAsync.when(
                   data: (products) {
                     final totalValue = _calculateTotalStockValue(products);
+                    final resume = _resumeDuStock(products);
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
@@ -93,13 +123,27 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Expanded(
-                            child: Text(
-                              'Valeur totale du stock',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Valeur totale du stock',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  resume,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 12),
