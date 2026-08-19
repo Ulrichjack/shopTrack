@@ -896,3 +896,73 @@ compte réglerait la friction.
   devait retourner activer son module. `shopSettingsProvider` se construisait
   avant que `cached_shop_id` soit écrit et gardait les valeurs par défaut ;
   il n'était invalidé qu'à la déconnexion, jamais à la connexion.
+
+---
+
+## Reste après v1.0.0 — relevé du 19/08/2026
+
+Six chantiers issus de la campagne de tests manuels des 18-19/08. Aucun n'est
+bloquant : la v1.0.0 est livrable sans eux. Les défauts trouvés pendant cette
+campagne et **déjà corrigés** sont décrits dans `docs/PIEGES_CONNUS.md` (n° 12
+à 19) ; ce qui suit est ce qui n'a pas été fait.
+
+### Le plus risqué à laisser — unicité du nom de produit
+
+Rien n'empêche de créer « pain » puis « Pain » dans la **même** boutique :
+aucune vérification à la création ni à la modification. Le stock se scinde en
+deux fiches du même article, et à la réception d'un transfert la recherche par
+nom (insensible à la casse depuis le 19/08) crédite la **première trouvée** —
+donc l'une des deux au hasard.
+
+Correctif : refuser un nom déjà pris dans la boutique, même normalisation que
+la réception de transfert (`trim().toLowerCase()`). Prévoir le sort des
+doublons déjà en base — une fusion assistée plutôt qu'un refus brutal.
+
+### Le plus utile au commerçant — bilan par article
+
+Le bilan ne donne que la valeur totale du stock : combien d'argent dort sur
+l'étagère, jamais sur laquelle. Manquent la quantité vendue par article sur la
+période, le stock restant, la marge dégagée, et surtout les articles à **zéro
+vente**.
+
+Démontré sur la journée test du 18/08 : la powerbank a fait 24 000 F de marge
+sur 61 400 (39 %) avec 6 articles vendus sur 35, pendant que l'adaptateur OTG
+n'en vendait aucun avec 10 000 F immobilisés. Les deux faits sont invisibles
+aujourd'hui.
+
+### Cycles — deux décisions métier, pas des correctifs
+
+**Stock restant à la fermeture d'un cycle.** Aujourd'hui les invendus restent
+dans le stock du produit mais deviennent invendables (l'écran de vente exige un
+cycle ouvert), et le cycle suivant les revend à **son** coût unitaire. Décision
+prise le 19/08 : reporter le reste dans le nouvel arrivage avec un coût moyen
+pondéré — 500 œufs à 80 F plus 360 à 50 F donnent 860 à 67,44 F. Non
+implémenté : ajoute un vrai concept à expliquer au commerçant, et le client
+n'a pas encore exprimé le besoin.
+
+**Corriger un arrivage saisi de travers** (28 800 au lieu de 288 000). Décision
+prise le 19/08 : correction libre tant qu'aucune vente n'est rattachée au
+cycle, refus ensuite — modifier le coût changerait rétroactivement le bénéfice
+de ventes déjà consultées. Une première implémentation a été écrite puis
+**retirée** le 19/08 : sans écran pour l'appeler et sans gestion de
+`UPDATE_SUPPLY_CYCLE` dans `sync_service`, elle aurait échoué indéfiniment en
+file d'attente. À reprendre en entier, les trois morceaux ensemble.
+
+### Inventaire — insérer un comptage antérieur
+
+Impossible de dater un comptage **avant** un comptage déjà enregistré pour le
+même produit : chaque ligne `inventory_counts` porte `previous_counted_at` et
+`previous_quantity` en dur, donc insérer au milieu demanderait de recalculer
+ces deux champs sur toutes les lignes suivantes. Depuis le 19/08 l'app refuse
+explicitement au lieu de décaler la date en silence.
+
+Cas d'usage réel : un commerçant qui adopte l'app en milieu de mois et veut
+saisir son inventaire d'ouverture rétroactivement. Contournement actuel : poser
+le premier comptage à la bonne date dès le départ.
+
+### Transferts — notification de réception
+
+Idée du patron le 19/08, qu'il a lui-même jugée trop lourde pour l'instant :
+prévenir la boutique expéditrice quand l'autre confirme une réception. Lié au
+rafraîchissement — un tirer-pour-actualiser existe désormais sur l'écran des
+transferts, mais rien ne se met à jour tout seul si personne n'y touche.
