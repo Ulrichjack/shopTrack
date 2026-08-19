@@ -71,9 +71,20 @@ class InventoryCountActions {
 
   final Ref ref;
 
+  /// [dateDuComptage] : le jour où le stock a RÉELLEMENT été compté.
+  ///
+  /// Un commerçant compte sa boutique le samedi soir sur un bout de papier et
+  /// saisit le lundi. Sans ce paramètre, le comptage portait la date de la
+  /// saisie : la période était décalée de deux jours, et les recettes de ces
+  /// deux jours basculaient du mauvais côté de la frontière. Les écrans des
+  /// pertes et des recettes laissaient déjà choisir leur date — le comptage
+  /// était le seul à l'imposer.
+  ///
+  /// Nul = aujourd'hui, comportement d'avant.
   Future<LocalInventoryCount> saveCount({
     required String productId,
     required int countedQuantity,
+    DateTime? dateDuComptage,
   }) async {
     if (countedQuantity < 0) {
       throw ArgumentError('La quantité comptée ne peut pas être négative.');
@@ -108,15 +119,50 @@ class InventoryCountActions {
               .getSingleOrNull();
 
       final clock = DateTime.now();
+      // Une date choisie garde l'heure courante : deux comptages du même jour
+      // doivent rester ordonnables entre eux, et `previousCountedAt` s'appuie
+      // sur cet ordre.
+      final base = dateDuComptage == null
+          ? clock
+          : DateTime(
+              dateDuComptage.year,
+              dateDuComptage.month,
+              dateDuComptage.day,
+              clock.hour,
+              clock.minute,
+              clock.second,
+            );
       var now = DateTime(
-        clock.year,
-        clock.month,
-        clock.day,
-        clock.hour,
-        clock.minute,
-        clock.second,
+        base.year,
+        base.month,
+        base.day,
+        base.hour,
+        base.minute,
+        base.second,
       );
       if (previous != null && !now.isAfter(previous.countedAt)) {
+        // Une date CHOISIE n'est jamais déplacée en douce.
+        //
+        // Ce décalage d'une seconde existe pour ordonner deux comptages
+        // tombant dans la même seconde d'horloge. Appliqué à une date saisie
+        // à la main, il la remplaçait sans rien dire : un comptage daté du
+        // 12 août ressortait au 18 août, une seconde après le précédent, et
+        // le commerçant voyait trois périodes identiques sans comprendre.
+        //
+        // Insérer un comptage AVANT un autre demanderait de recalculer la
+        // chaîne `previousCountedAt` / `previousQuantity` de toutes les
+        // lignes suivantes. Tant que ce n'est pas fait, on refuse clairement
+        // plutôt que d'enregistrer une date fausse.
+        if (dateDuComptage != null) {
+          final d = previous.countedAt;
+          final jour =
+              '${d.day.toString().padLeft(2, '0')}/'
+              '${d.month.toString().padLeft(2, '0')}/${d.year}';
+          throw Exception(
+            'Ce produit a déjà été compté le $jour. '
+            'Un nouveau comptage doit être postérieur à celui-là.',
+          );
+        }
         now = previous.countedAt.add(const Duration(seconds: 1));
       }
       savedCount = LocalInventoryCount(

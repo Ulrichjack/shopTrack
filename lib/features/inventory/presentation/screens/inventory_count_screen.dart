@@ -22,6 +22,14 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
   final _recountingProductIds = <String>{};
   String _query = '';
 
+  /// Le jour où le stock a réellement été compté, pour TOUTE la session.
+  ///
+  /// Une boutique se compte en une fois, sur un bout de papier, et se saisit
+  /// plus tard : la date appartient donc au tour de comptage, pas à chaque
+  /// produit. Nul tant qu'on n'y a pas touché — le comptage vaut alors pour
+  /// aujourd'hui, comme avant.
+  DateTime? _dateDuComptage;
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -29,6 +37,19 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _choisirLaDate() async {
+    final maintenant = DateTime.now();
+    final choisie = await showDatePicker(
+      context: context,
+      initialDate: _dateDuComptage ?? maintenant,
+      // Un an en arrière comme les pertes et les recettes ; jamais dans le
+      // futur : on ne compte pas un stock qu'on n'a pas encore vu.
+      firstDate: DateTime(maintenant.year - 1),
+      lastDate: DateTime(maintenant.year, maintenant.month, maintenant.day),
+    );
+    if (choisie != null) setState(() => _dateDuComptage = choisie);
   }
 
   TextEditingController _controllerFor(String productId) {
@@ -55,7 +76,11 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
     try {
       await ref
           .read(inventoryCountActionsProvider)
-          .saveCount(productId: line.product.id, countedQuantity: quantity);
+          .saveCount(
+            productId: line.product.id,
+            countedQuantity: quantity,
+            dateDuComptage: _dateDuComptage,
+          );
       if (!mounted) return;
 
       controller.clear();
@@ -114,6 +139,11 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                 child: Column(
                   children: [
+                    _BandeauDateComptage(
+                      date: _dateDuComptage,
+                      onChanger: _choisirLaDate,
+                    ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: _searchController,
                       onChanged: (value) {
@@ -568,4 +598,69 @@ class _LoadError extends StatelessWidget {
 String _formatDifference(int difference) {
   if (difference > 0) return '+$difference';
   return '$difference';
+}
+
+/// Rappelle à quelle date ce comptage sera enregistré, et laisse la changer.
+///
+/// Discret quand c'est aujourd'hui — le cas courant n'a pas à s'expliquer —
+/// et franchement visible dès qu'on compte pour un jour passé, parce que
+/// c'est là qu'une erreur coûte cher : une date fausse déplace la frontière
+/// de la période, et les recettes basculent du mauvais côté.
+class _BandeauDateComptage extends StatelessWidget {
+  const _BandeauDateComptage({required this.date, required this.onChanger});
+
+  final DateTime? date;
+  final VoidCallback onChanger;
+
+  @override
+  Widget build(BuildContext context) {
+    final estAujourdhui = date == null;
+    final libelle = estAujourdhui
+        ? "Comptage d'aujourd'hui"
+        : 'Comptage du ${DateFormat('dd/MM/yyyy').format(date!)}';
+
+    return InkWell(
+      onTap: onChanger,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: estAujourdhui ? AppColors.primaryLight : AppColors.warning,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.edit_calendar_outlined,
+              size: 18,
+              color: estAujourdhui
+                  ? AppColors.primaryDark
+                  : AppColors.warningDark,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                libelle,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: estAujourdhui
+                      ? AppColors.primaryDark
+                      : AppColors.warningDark,
+                ),
+              ),
+            ),
+            Text(
+              'changer',
+              style: TextStyle(
+                fontSize: 12,
+                color: estAujourdhui
+                    ? AppColors.primaryDark
+                    : AppColors.warningDark,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
