@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:drift/drift.dart' as drift;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -340,6 +341,24 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
 
   // --- ACTIONS DU DASHBOARD ---
 
+  /// Envoie ce qui est en file **sans** laisser une panne de réseau annuler
+  /// l'écriture locale qui vient de réussir.
+  ///
+  /// Local-first : la base du téléphone fait foi. Laisser l'envoi remonter son
+  /// erreur jusqu'à l'appelant faisait basculer l'écran en `AsyncError` alors
+  /// que la saisie était bel et bien enregistrée. Le commerçant croyait que
+  /// rien n'avait pris et recommençait — quatre fonds de caisse enregistrés
+  /// pour une seule journée, constatés en test hors ligne le 18/08/2026. Sur
+  /// la clôture, le même défaut aurait produit deux clôtures pour une journée,
+  /// dont la seconde refusée par le serveur.
+  Future<void> _envoyerSansBloquer() async {
+    try {
+      await ref.read(syncServiceProvider).processQueue();
+    } catch (erreur) {
+      debugPrint('[SYNC] envoi différé : $erreur');
+    }
+  }
+
   Future<void> saveMorningBalance(double amount) async {
     state = const AsyncValue.loading();
     try {
@@ -374,9 +393,11 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         'created_at': now.toIso8601String(),
       };
       await db.addToQueue('ADD_CASH_MOVEMENT', jsonEncode(payload));
-      await ref.read(syncServiceProvider).processQueue();
 
+      // L'affichage se rafraîchit AVANT l'envoi : le solde est déjà en base
+      // locale, il doit apparaître tout de suite, réseau ou pas.
       state = AsyncValue.data(await _fetchDashboardData());
+      await _envoyerSansBloquer();
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
     }
@@ -443,9 +464,8 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         'note': mergedNote,
       }),
     );
-    await ref.read(syncServiceProvider).processQueue();
-
     state = AsyncValue.data(await _fetchDashboardData());
+    await _envoyerSansBloquer();
   }
 
   Future<void> closeDay(
@@ -542,14 +562,18 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         'note': finalNote,
       };
       await db.addToQueue('ADD_CLOSING', jsonEncode(payload));
-      await ref.read(syncServiceProvider).processQueue();
+
+      // La clôture est enregistrée en local : elle est faite. L'envoi et la
+      // sauvegarde viennent après et ne peuvent plus la faire paraître ratée
+      // — un commerçant qui reclôture hors ligne créerait un doublon que le
+      // serveur refuserait ensuite, et sa journée resterait bloquée.
+      state = AsyncValue.data(await _fetchDashboardData());
+      await _envoyerSansBloquer();
       try {
         await ref.read(backupServiceProvider).createBackup();
       } catch (_) {
         // La clôture reste valide même si le stockage du téléphone est plein.
       }
-
-      state = AsyncValue.data(await _fetchDashboardData());
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
     }
