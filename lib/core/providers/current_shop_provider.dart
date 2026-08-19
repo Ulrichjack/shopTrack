@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,33 +25,67 @@ final currentShopIdProvider =
     );
 
 class CurrentShopNotifier extends AsyncNotifier<String?> {
+  /// Faux dès que le provider est jeté : la vérification de fond ne doit plus
+  /// toucher `state` après, Riverpod lève sinon.
+  bool _vivant = true;
+
   @override
   Future<String?> build() async {
+    _vivant = true;
+    ref.onDispose(() => _vivant = false);
+
     final prefs = await SharedPreferences.getInstance();
     final id = prefs.getString(cachedShopIdKey);
-    final boutiques = await ref.read(userShopsProvider.future);
 
-    // Hors ligne : on garde ce qu'on avait, faute de pouvoir vérifier.
-    if (boutiques.isEmpty) {
-      return (id == null || id.isEmpty) ? null : id;
-    }
-
-    // La boutique mémorisée appartient-elle vraiment à ce compte ?
+    // Une boutique déjà mémorisée s'affiche TOUT DE SUITE.
     //
-    // Un vendeur qui se connecte sur un téléphone déjà utilisé par son patron
-    // héritait de la boutique active de celui-ci. Elle n'était pas dans SA
-    // liste, donc son rôle restait introuvable — et l'app, faute de savoir,
-    // lui ouvrait tout. Vider les préférences ne suffisait pas : ce nettoyage
-    // ne se déclenche qu'au changement de compte, et le même vendeur qui se
-    // reconnecte n'y passe jamais.
-    if (id != null && boutiques.any((boutique) => boutique.id == id)) {
+    // Avant, cette méthode attendait la liste des boutiques du serveur avant
+    // de rendre quoi que ce soit — et tout l'accueil attend cette valeur.
+    // Chaque démarrage payait donc un aller-retour réseau devant un rond qui
+    // tourne, plusieurs secondes sur une connexion ordinaire, et l'éternité
+    // hors couverture le temps que la requête abandonne.
+    //
+    // Le sauter ne montre pas la boutique d'autrui : au changement de compte,
+    // la connexion efface `cached_shop_id` (voir `_nettoyerSiAutreCompte`).
+    // Ce qui reste ici a donc été écrit pour le compte connecté. Le seul cas
+    // restant — un vendeur retiré de la boutique depuis sa dernière session —
+    // est rattrapé par la vérification de fond, en une seconde et sans
+    // bloquer l'affichage.
+    if (id != null && id.isNotEmpty) {
+      unawaited(_verifierEnFond(id, prefs));
       return id;
     }
 
-    // Sinon on ouvre sa boutique par défaut. Le tableau de bord s'en chargeait
-    // autrefois, mais le routeur attend désormais de connaître la boutique
-    // avant de construire quoi que ce soit : il ne se construisait donc jamais
-    // et l'app tournait en rond à la connexion.
+    // Aucune boutique mémorisée : première connexion sur ce téléphone. Là, il
+    // n'y a rien à afficher tant que le serveur n'a pas répondu.
+    return _choisirParDefaut(prefs);
+  }
+
+  /// La boutique mémorisée appartient-elle vraiment à ce compte ?
+  ///
+  /// Un vendeur qui se connecte sur un téléphone déjà utilisé par son patron
+  /// héritait de la boutique active de celui-ci. Elle n'était pas dans SA
+  /// liste, donc son rôle restait introuvable — et l'app, faute de savoir,
+  /// lui ouvrait tout.
+  Future<void> _verifierEnFond(String id, SharedPreferences prefs) async {
+    final boutiques = await ref.read(userShopsProvider.future);
+
+    // Hors ligne : on garde ce qu'on avait, faute de pouvoir vérifier.
+    if (boutiques.isEmpty) return;
+    if (boutiques.any((boutique) => boutique.id == id)) return;
+
+    final remplacante = await _choisirParDefaut(prefs);
+    if (!_vivant || remplacante == null) return;
+    state = AsyncValue.data(remplacante);
+  }
+
+  /// La boutique la plus ancienne du compte, mémorisée pour la prochaine fois.
+  ///
+  /// Le tableau de bord s'en chargeait autrefois, mais le routeur attend
+  /// désormais de connaître la boutique avant de construire quoi que ce soit :
+  /// il ne se construisait donc jamais et l'app tournait en rond.
+  Future<String?> _choisirParDefaut(SharedPreferences prefs) async {
+    final boutiques = await ref.read(userShopsProvider.future);
     final defaut = boutiqueParDefaut(boutiques);
     if (defaut == null) return null;
 

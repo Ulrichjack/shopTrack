@@ -68,15 +68,21 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
     // qui ramène le mode réel de la boutique.
     unawaited(_rafraichirDepuisSupabase(db, shopId));
 
-    return local;
+    // Aucune ligne locale = on ne sait pas encore, pas « mode simple ».
+    return local ?? const ShopSettings();
   }
 
-  Future<ShopSettings> _lireLocal(AppDatabase db, String shopId) async {
+  /// Les réglages en cache, ou `null` si cette boutique n'en a aucun ici.
+  ///
+  /// Le `null` compte : il distingue « cette boutique tourne en mode simple »
+  /// de « je n'ai encore rien lu », que l'accueil ne doit surtout pas
+  /// confondre.
+  Future<ShopSettings?> _lireLocal(AppDatabase db, String shopId) async {
     final local = await (db.select(
       db.localShopSettings,
     )..where((t) => t.shopId.equals(shopId))).getSingleOrNull();
 
-    if (local == null) return const ShopSettings();
+    if (local == null) return null;
 
     return ShopSettings(
       unitMode: local.unitMode,
@@ -88,9 +94,24 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
 
   Future<void> _rafraichirDepuisSupabase(AppDatabase db, String shopId) async {
     await _syncFromSupabase(db, shopId);
-    final frais = await _lireLocal(db, shopId);
+
+    // Après l'aller-retour, on sait — même quand le serveur n'a rien : une
+    // boutique sans ligne `shop_settings` tourne avec les réglages par défaut,
+    // et c'est une réponse, pas une absence de réponse.
+    //
+    // Sans ce `connu: true`, TOUTE boutique fraîchement créée laissait
+    // l'accueil sur un rond qui tourne indéfiniment : l'inscription ne crée
+    // aucune ligne de réglages, donc « je ne sais pas » ne devenait jamais
+    // « je sais ». Hors ligne aussi il faut trancher : rester dans le doute
+    // n'affiche rien du tout, alors que le mode simple est au moins un écran.
+    final frais = await _lireLocal(db, shopId) ?? const ShopSettings(connu: true);
+
     final actuel = state.valueOrNull;
     if (actuel == null ||
+        // `connu` fait partie de la comparaison : passer de « je ne sais pas »
+        // à « je sais », à valeurs identiques, doit réafficher l'accueil.
+        // Omis, il gelait l'écran neutre même une fois la réponse arrivée.
+        frais.connu != actuel.connu ||
         frais.unitMode != actuel.unitMode ||
         frais.saleCaptureMode != actuel.saleCaptureMode ||
         frais.multiPointEnabled != actuel.multiPointEnabled) {
