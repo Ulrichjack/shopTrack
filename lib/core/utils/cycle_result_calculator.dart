@@ -23,7 +23,9 @@ class CycleResultTotals {
   const CycleResultTotals({
     required this.unitCost,
     required this.revenue,
+    required this.soldQuantity,
     required this.soldStockCost,
+    required this.lostQuantity,
     required this.lossValue,
     required this.remainingStock,
     required this.netProfit,
@@ -31,7 +33,22 @@ class CycleResultTotals {
 
   final double unitCost;
   final double revenue;
+
+  /// Combien d'unités de base ont été vendues.
+  ///
+  /// Calculé de longue date, mais gardé en variable locale : le rapport ne
+  /// pouvait donc afficher que de l'argent. Un vendeur d'œufs veut savoir
+  /// « j'ai vendu 3 050 œufs », pas seulement « j'ai fait 280 000 F » — et il
+  /// devait le déduire lui-même du reçu moins le restant moins les pertes.
+  final int soldQuantity;
+
   final double soldStockCost;
+
+  /// Combien d'unités de base ont été perdues. Même histoire : seule la
+  /// **valeur** des pertes était visible, jamais leur nombre. « 4 000 F » ne
+  /// dit pas si ce sont 50 œufs cassés ou un carton entier volé.
+  final int lostQuantity;
+
   final double lossValue;
   final int remainingStock;
   final double netProfit;
@@ -100,7 +117,9 @@ class CycleResultCalculator {
     return CycleResultTotals(
       unitCost: unitCost,
       revenue: revenue,
+      soldQuantity: soldQuantity,
       soldStockCost: soldStockCost,
+      lostQuantity: lostQuantity,
       lossValue: lossValue,
       remainingStock: quantityReceived - soldQuantity - lostQuantity,
       netProfit: revenue - soldStockCost - lossValue,

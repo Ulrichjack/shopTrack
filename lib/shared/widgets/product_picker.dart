@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/sync/sync_service.dart';
-import '../../../products/domain/entities/product_entity.dart';
-import '../../../products/presentation/providers/product_provider.dart';
+import '../../core/constants/app_colors.dart';
+import '../../core/sync/sync_service.dart';
+import '../../features/products/domain/entities/product_entity.dart';
+import '../../features/products/presentation/providers/product_provider.dart';
 
 /// Nombre de ventes par produit, pour remonter en tête ceux qui servent le
 /// plus. Un vendeur d'œufs ne doit pas faire défiler 20 articles pour

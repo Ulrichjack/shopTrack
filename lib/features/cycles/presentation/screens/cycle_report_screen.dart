@@ -157,6 +157,15 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
                                 CurrencyFormatter.format(totals.unitCost),
                               ),
                               const Divider(height: 32),
+                              // La quantité AVANT l'argent : « j'ai vendu
+                              // 3 050 œufs » est la première chose qu'un
+                              // vendeur veut lire. Elle manquait, et il fallait
+                              // la déduire du reçu moins le restant moins les
+                              // pertes.
+                              _row(
+                                'Quantité vendue',
+                                '${totals.soldQuantity}',
+                              ),
                               _row(
                                 "Chiffre d'affaires",
                                 CurrencyFormatter.format(totals.revenue),
@@ -165,9 +174,13 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
                                 'Coût du stock vendu',
                                 CurrencyFormatter.format(totals.soldStockCost),
                               ),
+                              // Le nombre ET la valeur : « 4 000 F » seul ne
+                              // disait pas si c'étaient 50 œufs cassés ou un
+                              // carton entier disparu.
                               _row(
-                                'Valeur des pertes',
-                                CurrencyFormatter.format(totals.lossValue),
+                                'Pertes',
+                                '${totals.lostQuantity} · '
+                                '${CurrencyFormatter.format(totals.lossValue)}',
                               ),
                               _row(
                                 'Stock restant',

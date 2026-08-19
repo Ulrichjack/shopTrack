@@ -48,6 +48,31 @@ class CyclesNotifier extends AsyncNotifier<List<LocalSupplyCycle>> {
     final db = ref.read(localDbProvider);
     final shopId = await requireShopId(ref);
 
+    // Un seul cycle ouvert à la fois par produit.
+    //
+    // Rien ne l'empêchait, et deux cycles ouverts rendent les DEUX rapports
+    // faux. `openCycleForProductProvider` retient le plus récent : toutes les
+    // ventes suivantes s'y rattachent en silence. Le premier cycle garde alors
+    // pour l'éternité un stock restant que le commerçant a pourtant vendu,
+    // pendant que le second peut descendre en stock négatif — l'écran de vente
+    // borne la quantité au stock du PRODUIT, pas à ce que ce cycle a reçu.
+    //
+    // Vu le 18/08/2026 : un cycle de 3 600 œufs encore ouvert, un second de
+    // 360 créé par-dessus, et 500 œufs devenus invendables sur le papier.
+    // `get()` et non `getSingleOrNull()` : celui-ci lèverait une erreur brute
+    // sur les bases où le doublon existe déjà, au lieu du message ci-dessous.
+    final dejaOuverts = await (db.select(db.localSupplyCycles)..where(
+          (t) =>
+              t.productId.equals(productId) & t.status.equals('open'),
+        ))
+        .get();
+    if (dejaOuverts.isNotEmpty) {
+      throw Exception(
+        'Un arrivage est déjà en cours pour ce produit. '
+        'Termine-le avant d\'en enregistrer un nouveau.',
+      );
+    }
+
     final id = const Uuid().v4();
     final openedAt = DateTime.now();
 

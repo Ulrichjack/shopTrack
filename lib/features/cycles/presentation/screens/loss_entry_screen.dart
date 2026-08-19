@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/cycle_loss_provider.dart';
 import '../providers/cycle_provider.dart';
-import '../widgets/product_picker.dart';
+import '../../../../shared/widgets/product_picker.dart';
 
 const _lossReasons = {
   'casse': 'Casse',
@@ -86,8 +85,7 @@ class _LossEntryScreenState extends ConsumerState<LossEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final productsAsync = ref.watch(productProvider);
-
+    // Voir `create_cycle_screen` : le sélecteur observe déjà les produits.
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Déclarer une perte')),

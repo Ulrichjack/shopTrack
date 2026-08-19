@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/product_unit_provider.dart';
+import '../../../../shared/widgets/product_picker.dart';
 
 class ManageUnitsScreen extends ConsumerStatefulWidget {
   const ManageUnitsScreen({super.key});
@@ -148,24 +149,15 @@ class _ManageUnitsScreenState extends ConsumerState<ManageUnitsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              productsAsync.when(
-                data: (products) => DropdownButtonFormField<String>(
-                  initialValue: _selectedProductId,
-                  decoration: const InputDecoration(
-                    labelText: 'Produit',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: products
-                      .map(
-                        (p) =>
-                            DropdownMenuItem(value: p.id, child: Text(p.name)),
-                      )
-                      .toList(),
-                  onChanged: (value) =>
-                      setState(() => _selectedProductId = value),
-                ),
-                loading: () => const CircularProgressIndicator(),
-                error: (e, _) => Text('Erreur : $e'),
+              // Le même sélecteur que la vente, l'arrivage et la déclaration de
+              // perte. Cet écran-ci était resté sur une liste déroulante
+              // native : elle n'affiche ni le stock ni la recherche, et sur un
+              // petit écran il faut faire défiler tout le catalogue pour
+              // retrouver le produit qu'on manipule tous les jours.
+              ProductPicker(
+                selectedProductId: _selectedProductId,
+                onChanged: (value) =>
+                    setState(() => _selectedProductId = value),
               ),
               const SizedBox(height: 20),
               if (_selectedProductId != null) ...[

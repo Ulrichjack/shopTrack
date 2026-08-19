@@ -186,5 +186,41 @@ void main() {
       expect(totals.remainingStock, 40);
       expect(totals.netProfit, 150);
     });
+
+    test('rapporte les quantités vendues et perdues, pas seulement l’argent', () {
+      // Ces deux nombres étaient calculés puis jetés : le rapport ne pouvait
+      // afficher que des montants. Un vendeur d'œufs lit d'abord « 3 050
+      // vendus, 50 cassés », et devait jusqu'ici le déduire lui-même du reçu
+      // moins le restant moins les pertes.
+      final totals = CycleResultCalculator.calculate(
+        quantityReceived: 3600,
+        purchaseCost: 288000,
+        sales: const [
+          CycleSaleValue(quantityInBase: 1800, unitSellPrice: 90),
+          CycleSaleValue(quantityInBase: 600, unitSellPrice: 95),
+          CycleSaleValue(quantityInBase: 450, unitSellPrice: 100),
+          CycleSaleValue(quantityInBase: 200, unitSellPrice: 80),
+        ],
+        losses: const [CycleLossValue(quantity: 50)],
+      );
+
+      expect(totals.soldQuantity, 3050);
+      expect(totals.lostQuantity, 50);
+
+      // Les trois nombres doivent rester d'accord entre eux : ce qui reste,
+      // c'est ce qu'on a reçu moins ce qu'on a vendu et perdu. Un écart ici
+      // voudrait dire qu'une des trois lignes du rapport ment.
+      expect(
+        totals.remainingStock,
+        3600 - totals.soldQuantity - totals.lostQuantity,
+      );
+
+      // Journée réellement jouée sur téléphone le 18/08/2026 : la dernière
+      // ligne, vendue à 80 F soit le coût exact, dégage un profit nul — c'est
+      // ce qui prouve que le coût vient de l'arrivage (288 000 / 3 600) et non
+      // du prix d'achat inscrit sur le produit.
+      expect(totals.unitCost, 80);
+      expect(totals.netProfit, 32000);
+    });
   });
 }

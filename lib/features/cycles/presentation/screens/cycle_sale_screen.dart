@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,7 +14,7 @@ import '../../../sales/domain/entities/sale_item_entity.dart';
 import '../../../sales/presentation/providers/sale_provider.dart';
 import '../providers/cycle_provider.dart';
 import '../providers/product_unit_provider.dart';
-import '../widgets/product_picker.dart';
+import '../../../../shared/widgets/product_picker.dart';
 
 class CycleSaleScreen extends ConsumerStatefulWidget {
   const CycleSaleScreen({super.key});
@@ -199,24 +200,59 @@ class _CycleSaleScreenState extends ConsumerState<CycleSaleScreen> {
             color: quantity > 1 ? AppColors.primary : Colors.grey.shade400,
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Column(
           children: [
-            Text(
-              '$quantity',
-              style: const TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
+            // Saisissable, et pas seulement incrémentable : vendre 200 œufs au
+            // détail demandait 199 appuis sur le « + ». Les deux boutons
+            // restent pour les petites quantités, où ils vont plus vite qu'un
+            // clavier qu'il faut ouvrir puis refermer.
+            SizedBox(
+              width: 110,
+              child: TextField(
+                controller: _quantityController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                ),
+                // Le stock disponible reste la limite, quel que soit le
+                // chemin : le « + » s'arrête déjà à `maximum`, la saisie
+                // libre doit s'y arrêter aussi.
+                onChanged: (texte) {
+                  final saisie = int.tryParse(texte);
+                  if (saisie != null && saisie > maximum) {
+                    setQuantity(maximum);
+                  }
+                },
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: AppColors.primary,
+                      width: 2,
+                    ),
+                  ),
+                ),
               ),
             ),
             if (unite != null)
-              Text(
-                unite,
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  unite,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
               ),
           ],
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         IconButton(
           onPressed: quantity < maximum
               ? () => setQuantity(quantity + 1)
