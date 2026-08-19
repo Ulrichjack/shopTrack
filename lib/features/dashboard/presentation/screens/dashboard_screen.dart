@@ -32,6 +32,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _checkAlerts() {
+    // Rappelé après un `await` (clôture en retard validée) : le commerçant a
+    // pu changer de boutique pendant l'attente, ce qui détruit cet écran.
+    // `ref.read` sur un widget détruit lève « Cannot use "ref" after the
+    // widget was disposed » — vu en test le 19/08/2026 en changeant de
+    // boutique juste après avoir validé une clôture en retard.
+    if (!mounted) return;
+
     // 👇 2. SÉCURITÉ : Si une boîte est déjà ouverte, on ne fait rien
     if (_isDialogOpen) return;
 
