@@ -16,7 +16,6 @@ class ClosingScreen extends ConsumerStatefulWidget {
 class _ClosingScreenState extends ConsumerState<ClosingScreen> {
   int _currentStep = 1; // 1: Résumé, 2: Saisie physique, 3: Résultat
   final _cashController = TextEditingController();
-  final _noteController = TextEditingController();
   double? _physicalCash;
   double? _cashGap;
   bool _isSaving = false;
@@ -24,7 +23,6 @@ class _ClosingScreenState extends ConsumerState<ClosingScreen> {
   @override
   void dispose() {
     _cashController.dispose();
-    _noteController.dispose();
     super.dispose();
   }
 
@@ -238,16 +236,6 @@ class _ClosingScreenState extends ConsumerState<ClosingScreen> {
                   style: const TextStyle(color: Colors.grey, fontSize: 16),
                 ),
                 const SizedBox(height: 20),
-                TextField(
-                  controller: _noteController,
-                  minLines: 2,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Note de clôture (facultatif)',
-                    hintText: 'Explication de l’écart, incident, monnaie…',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: _isSaving
@@ -257,12 +245,13 @@ class _ClosingScreenState extends ConsumerState<ClosingScreen> {
                           setState(() => _isSaving = true);
                           await ref
                               .read(dashboardProvider.notifier)
-                              .closeDay(
-                                _physicalCash!,
-                                _noteController.text.trim().isEmpty
-                                    ? null
-                                    : _noteController.text.trim(),
-                              );
+                              // Plus de note saisie : personne ne tape une
+                              // explication au clavier en fermant sa caisse.
+                              // `closeDay` conserve la note existante — c'est
+                              // elle qui porte la trace des recomptages, la
+                              // seule chose qui empêche de faire disparaître
+                              // un manquant en rouvrant la journée.
+                              .closeDay(_physicalCash!, null);
                           if (context.mounted) context.go('/home');
                         },
                   style: ElevatedButton.styleFrom(

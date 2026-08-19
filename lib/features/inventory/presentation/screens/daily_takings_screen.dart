@@ -262,24 +262,49 @@ class _TakingFormCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 3),
+                        // Un vrai bouton, pas une date soulignée en gris :
+                        // sous cette forme discrète, personne ne devinait
+                        // qu'on pouvait changer de jour — un commerçant qui
+                        // rattrape trois jours de recettes croyait devoir tout
+                        // saisir à la date du jour.
                         InkWell(
                           onTap: onChangeDate,
-                          child: Row(
-                            children: [
-                              Text(
-                                DateFormat('dd/MM/yyyy').format(date),
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  decoration: TextDecoration.underline,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryLight,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.edit_calendar_outlined,
+                                  size: 18,
+                                  color: AppColors.primaryDark,
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.edit_calendar_outlined,
-                                size: 16,
-                                color: AppColors.textSecondary,
-                              ),
-                            ],
+                                const SizedBox(width: 6),
+                                Text(
+                                  DateFormat('dd/MM/yyyy').format(date),
+                                  style: const TextStyle(
+                                    color: AppColors.primaryDark,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'changer',
+                                  style: TextStyle(
+                                    color: AppColors.primaryDark,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
