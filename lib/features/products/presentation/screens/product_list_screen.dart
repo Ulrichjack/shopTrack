@@ -112,6 +112,12 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                 // 👇 AFFICHAGE DE LA VALEUR DU STOCK CORRIGÉ 👇
                 productsAsync.when(
                   data: (products) {
+                    // La valeur totale est calculée au prix d'ACHAT : elle le
+                    // révèle dès qu'on divise par la quantité. Un vendeur voit
+                    // donc le résumé (produits, articles, ruptures) mais pas
+                    // le montant.
+                    final estPatron =
+                        ref.watch(appModeProvider).value ?? false;
                     final totalValue = _calculateTotalStockValue(products);
                     final resume = _resumeDuStock(products);
                     return Container(
@@ -128,9 +134,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
-                                  'Valeur totale du stock',
-                                  style: TextStyle(
+                                Text(
+                                  estPatron
+                                      ? 'Valeur totale du stock'
+                                      : 'Mon stock',
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 14,
                                   ),
@@ -147,6 +155,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
+                          if (estPatron)
                           Flexible(
                             child: FittedBox(
                               fit: BoxFit.scaleDown,

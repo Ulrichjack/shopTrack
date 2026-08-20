@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/product_entity.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/providers/shop_settings_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/product_history_provider.dart';
@@ -464,6 +465,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final bool isOutOfStock = currentProduct.quantity == 0;
 
     final historyAsync = ref.watch(productHistoryProvider(currentProduct.id));
+    final estPatron = ref.watch(appModeProvider).value ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -584,26 +586,39 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             ),
             const SizedBox(height: 24),
 
+            // Le vendeur ne voit que le prix de vente.
+            //
+            // Le bénéfice disparaît AUSSI, et ce n'est pas un excès de zèle :
+            // vente moins bénéfice donne le prix d'achat. Masquer la première
+            // case en laissant la troisième ne cacherait rien du tout.
+            //
+            // C'est un rideau, pas une serrure : le prix reste dans la base
+            // locale du téléphone. Le retirer vraiment demanderait de ne pas
+            // l'envoyer au vendeur — côté serveur, pas ici.
             Row(
               children: [
-                _buildPriceBox(
-                  'Achat',
-                  currentProduct.buyPrice,
-                  AppColors.textPrimary,
-                ),
-                const SizedBox(width: 12),
+                if (estPatron) ...[
+                  _buildPriceBox(
+                    'Achat',
+                    currentProduct.buyPrice,
+                    AppColors.textPrimary,
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 _buildPriceBox(
                   'Vente',
                   currentProduct.sellPrice,
                   AppColors.textPrimary,
                 ),
-                const SizedBox(width: 12),
-                _buildPriceBox(
-                  'Bénéfice',
-                  profit,
-                  AppColors.primary,
-                  isProfit: true,
-                ),
+                if (estPatron) ...[
+                  const SizedBox(width: 12),
+                  _buildPriceBox(
+                    'Bénéfice',
+                    profit,
+                    AppColors.primary,
+                    isProfit: true,
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 24),
@@ -822,15 +837,31 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         ),
       ),
 
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddStockBottomSheet(context, currentProduct),
-        backgroundColor: AppColors.primaryDark,
-        icon: const Icon(Icons.add_box, color: Colors.white),
-        label: const Text(
-          'Ajouter Stock',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
+      // Réservé au patron, pour deux raisons.
+      //
+      // La première est visible : le formulaire pré-remplit le prix d'achat,
+      // donc ce bouton rouvrirait tout le rideau qu'on vient de poser sur la
+      // fiche.
+      //
+      // La seconde est plus fondamentale : ajouter du stock, c'est déclarer un
+      // approvisionnement — dire « j'ai acheté ceci, à ce prix ». C'est un
+      // acte du patron. Le vendeur, lui, reçoit un TRANSFERT, et le transfert
+      // crédite déjà son stock tout seul.
+      floatingActionButton: estPatron
+          ? FloatingActionButton.extended(
+              onPressed: () =>
+                  _showAddStockBottomSheet(context, currentProduct),
+              backgroundColor: AppColors.primaryDark,
+              icon: const Icon(Icons.add_box, color: Colors.white),
+              label: const Text(
+                'Ajouter Stock',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            )
+          : null,
     );
   }
 }

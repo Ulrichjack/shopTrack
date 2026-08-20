@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/entities/product_entity.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/providers/shop_settings_provider.dart';
 import '../providers/product_provider.dart';
 
@@ -112,6 +113,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         isPeriodic || settings?.unitMode == 'hierarchical';
     // Voir `add_product_screen` : le scan ne sert qu'à la vente au fil de l'eau.
     final venteAuScan = !stockGereParModule;
+    final estPatron = ref.watch(appModeProvider).value ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -131,23 +133,31 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   validator: (value) => value == null || value.trim().isEmpty ? 'Obligatoire' : null,
                 ),
 
+                // Masqué au vendeur, comme à la création et sur la fiche.
+                // Le contrôleur garde la valeur d'origine du produit : ne pas
+                // voir le champ ne l'efface pas à l'enregistrement.
                 Row(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildFieldLabel("Prix achat (F)"),
-                          TextFormField(
-                            controller: _buyPriceController,
-                            keyboardType: TextInputType.number,
-                            decoration: _buildInputDecoration('Ex: 25000'),
-                            validator: (value) => value == null || value.isEmpty ? 'Obligatoire' : null,
-                          ),
-                        ],
+                    if (estPatron) ...[
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFieldLabel("Prix achat (F)"),
+                            TextFormField(
+                              controller: _buyPriceController,
+                              keyboardType: TextInputType.number,
+                              decoration: _buildInputDecoration('Ex: 25000'),
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Obligatoire'
+                                  : null,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
+                      const SizedBox(width: 16),
+                    ],
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,7 +318,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                         await ref.read(productProvider.notifier).updateProduct(
                           id: widget.product.id,
                           name: _nameController.text.trim(),
-                          buyPrice: double.parse(_buyPriceController.text),
+                          buyPrice:
+                              double.tryParse(_buyPriceController.text) ?? 0,
                           sellPrice: double.parse(_sellPriceController.text),
                           // Le stock reste celui géré par le module : on ne
                           // le réécrit pas depuis cet écran.

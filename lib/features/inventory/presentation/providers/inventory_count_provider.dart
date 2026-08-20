@@ -16,11 +16,22 @@ class InventoryCountLine {
     required this.product,
     required this.isCounted,
     this.count,
+    this.dernierComptage,
   });
 
   final LocalProduct product;
   final bool isCounted;
   final LocalInventoryCount? count;
+
+  /// Quand ce produit a été compté pour la dernière fois — nul s'il ne l'a
+  /// jamais été.
+  ///
+  /// Chaque produit a sa PROPRE période : compter le riz aujourd'hui et le
+  /// sucre la semaine prochaine donne deux intervalles différents, et c'est
+  /// voulu. Sans cette date sous chaque nom, le commerçant ne pouvait pas voir
+  /// que son riz n'avait pas été compté depuis trois semaines pendant que son
+  /// pain l'était hier.
+  final DateTime? dernierComptage;
 
   /// Disponible uniquement après validation : la quantité théorique ne doit
   /// jamais apparaître pendant la saisie à l'aveugle.
@@ -292,6 +303,7 @@ Future<InventoryCountOverview> loadInventoryCountOverview(
         product: product,
         isCounted: isCounted,
         count: isCounted ? last : null,
+        dernierComptage: previous,
       ),
     );
   }
@@ -304,3 +316,70 @@ Future<InventoryCountOverview> loadInventoryCountOverview(
     periodStartedAt: periodStartedAt,
   );
 }
+
+/// Un tour de comptage : le jour où le commerçant a fait le tour de sa
+/// boutique, et ce qu'il a compté ce jour-là.
+///
+/// Regroupé par JOUR et non par seconde : compter quinze produits prend un
+/// quart d'heure, mais reste un seul geste dans la tête du commerçant.
+class TourDeComptage {
+  const TourDeComptage({
+    required this.date,
+    required this.produitsComptes,
+    this.joursDepuisPrecedent,
+  });
+
+  final DateTime date;
+  final int produitsComptes;
+
+  /// Écart avec le tour précédent. Nul pour le tout premier — il n'y a rien
+  /// avant lui.
+  final int? joursDepuisPrecedent;
+}
+
+/// L'historique des tours de comptage de la boutique active, du plus récent
+/// au plus ancien.
+///
+/// Sans lui, le commerçant ne pouvait pas savoir quand il avait compté la
+/// dernière fois ni à quel rythme il compte. Voir « 12/08 · 20/08 · 03/09 »
+/// lui apprend d'un coup d'œil qu'il compte toutes les trois semaines — et
+/// qu'il a laissé filer un mois cette fois-ci.
+final historiqueComptagesProvider = FutureProvider<List<TourDeComptage>>((
+  ref,
+) async {
+  final shopId = await watchShopId(ref);
+  final db = ref.watch(localDbProvider);
+
+  final comptages =
+      await (db.select(db.localInventoryCounts)
+            ..where((row) => row.shopId.equals(shopId)))
+          .get();
+
+  final parJour = <DateTime, int>{};
+  for (final comptage in comptages) {
+    final jour = DateTime(
+      comptage.countedAt.year,
+      comptage.countedAt.month,
+      comptage.countedAt.day,
+    );
+    parJour[jour] = (parJour[jour] ?? 0) + 1;
+  }
+
+  final jours = parJour.keys.toList()..sort();
+  final tours = <TourDeComptage>[];
+  for (var i = 0; i < jours.length; i++) {
+    tours.add(
+      TourDeComptage(
+        date: jours[i],
+        produitsComptes: parJour[jours[i]]!,
+        joursDepuisPrecedent: i == 0
+            ? null
+            : jours[i].difference(jours[i - 1]).inDays,
+      ),
+    );
+  }
+
+  // Du plus récent au plus ancien : c'est le dernier comptage qu'on vient
+  // vérifier, pas le premier.
+  return tours.reversed.toList();
+});

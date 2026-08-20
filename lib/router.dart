@@ -63,6 +63,11 @@ const bossOnlyRoutes = {
   '/activity-log',
   '/shop-settings',
   '/inventory-report',
+  // Compter, c'est constater ce qui manque — donc pouvoir effacer la trace de
+  // ce qu'on a pris. Un vendeur qui recompte jusqu'à tomber juste fait
+  // disparaître un manquant sans que personne le sache. Demandé par le client
+  // le 19/08/2026, et cohérent avec `/inventory-report` déjà réservé.
+  '/inventory-count',
 };
 
 /// L'écran où le vendeur remplace le mot de passe provisoire de son patron.

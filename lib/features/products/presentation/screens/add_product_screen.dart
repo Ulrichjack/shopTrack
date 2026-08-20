@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/providers/shop_settings_provider.dart';
 import '../providers/product_provider.dart';
 
@@ -135,6 +136,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     // disparaissent pour la même cause — le jour où l'une des deux règles
     // change, on saurait laquelle toucher.
     final venteAuScan = !stockGereParModule;
+    final estPatron = ref.watch(appModeProvider).value ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.background, // Fond gris très clair
@@ -162,23 +164,64 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   value == null || value.trim().isEmpty ? 'Le nom est obligatoire' : null,
                 ),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                // Le vendeur ne saisit pas le prix d'achat : il ne le connaît
+                // pas, et il ne doit pas le connaître. Le produit part alors
+                // avec un prix d'achat à zéro, ce qui gonflerait le bénéfice
+                // affiché — on le dit au vendeur plutôt que de le laisser
+                // croire que sa fiche est complète.
+                if (!estPatron)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
                         children: [
-                          _buildFieldLabel("Prix achat (F)"),
-                          TextFormField(
-                            controller: _buyPriceController,
-                            keyboardType: TextInputType.number,
-                            decoration: _buildInputDecoration('Ex: 25000'),
-                            validator: (value) => value == null || value.isEmpty ? 'Obligatoire' : null,
+                          const Icon(
+                            Icons.info_outline,
+                            size: 18,
+                            color: AppColors.warningDark,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Le prix d\'achat sera complété par le patron : '
+                              'le bénéfice de cet article restera faux jusque-là.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.warningDark,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 16),
+                  ),
+                Row(
+                  children: [
+                    if (estPatron) ...[
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFieldLabel("Prix achat (F)"),
+                            TextFormField(
+                              controller: _buyPriceController,
+                              keyboardType: TextInputType.number,
+                              decoration: _buildInputDecoration('Ex: 25000'),
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Obligatoire'
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                    ],
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,7 +412,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
                         await ref.read(productProvider.notifier).addProduct(
                           name: _nameController.text.trim(),
-                          buyPrice: double.parse(_buyPriceController.text),
+                          // Vide chez un vendeur, qui ne voit pas le champ.
+                          // `parse` lèverait ; `tryParse ?? 0` laisse le
+                          // patron compléter plus tard.
+                          buyPrice:
+                              double.tryParse(_buyPriceController.text) ?? 0,
                           sellPrice: double.parse(_sellPriceController.text),
                           quantity: stockGereParModule
                               ? 0

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -185,6 +186,10 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
                         isComplete: overview.isRoundComplete,
                         isFirstRound: overview.isFirstRound,
                         periodStartedAt: overview.periodStartedAt,
+                        dateDuComptage: _dateDuComptage,
+                        // On quitte le comptage pour le rapport : y revenir
+                        // n'aurait aucun sens, le tour est fermé.
+                        onVoirRapport: () => context.go('/inventory-report'),
                       ),
                     ),
                   ],
@@ -273,6 +278,8 @@ class _ProgressCard extends StatelessWidget {
     required this.isComplete,
     this.isFirstRound = true,
     this.periodStartedAt,
+    this.dateDuComptage,
+    this.onVoirRapport,
   }) : isLoading = false;
 
   const _ProgressCard.loading()
@@ -281,6 +288,8 @@ class _ProgressCard extends StatelessWidget {
       isComplete = false,
       isFirstRound = true,
       periodStartedAt = null,
+      dateDuComptage = null,
+      onVoirRapport = null,
       isLoading = true;
 
   final int counted;
@@ -294,6 +303,18 @@ class _ProgressCard extends StatelessWidget {
   /// comptable, et un mauvais choix casserait sa période sans qu'il le voie.
   final bool isFirstRound;
   final DateTime? periodStartedAt;
+
+  /// La date choisie pour ce tour, ou nul pour aujourd'hui. Affichée comme
+  /// borne de fin : savoir d'où part la période sans savoir où elle s'arrête
+  /// ne permet pas de se repérer.
+  final DateTime? dateDuComptage;
+  final VoidCallback? onVoirRapport;
+
+  /// Durée de la période, en jours pleins.
+  static int _joursEntre(DateTime debut, DateTime fin) =>
+      DateTime(fin.year, fin.month, fin.day)
+          .difference(DateTime(debut.year, debut.month, debut.day))
+          .inDays;
 
   @override
   Widget build(BuildContext context) {
@@ -341,15 +362,53 @@ class _ProgressCard extends StatelessWidget {
             backgroundColor: Colors.white.withValues(alpha: 0.75),
             color: isComplete ? AppColors.successDark : AppColors.primary,
           ),
+          // Tour terminé : un récapitulatif de ce qui vient d'être fermé.
+          //
+          // Avant, la barre se remplissait et il ne se passait rien — il
+          // fallait deviner qu'on devait aller dans l'onglet Rapport. Le
+          // commerçant restait sur un écran qui ne lui disait ni ce qu'il
+          // venait de mesurer, ni où en voir le résultat.
+          if (!isLoading && isComplete) ...[
+            const SizedBox(height: 10),
+            Text(
+              periodStartedAt == null
+                  ? 'Point de départ posé le '
+                        '${DateFormat('dd/MM/yyyy').format(dateDuComptage ?? DateTime.now())}. '
+                        'Le résultat viendra au prochain comptage.'
+                  : 'Période fermée : du '
+                        '${DateFormat('dd/MM/yyyy').format(periodStartedAt!)} au '
+                        '${DateFormat('dd/MM/yyyy').format(dateDuComptage ?? DateTime.now())}'
+                        ' — ${_joursEntre(periodStartedAt!, dateDuComptage ?? DateTime.now())} jour(s).',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.successDark,
+              ),
+            ),
+            if (periodStartedAt != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: onVoirRapport,
+                  icon: const Icon(Icons.bar_chart),
+                  label: const Text('Voir le résultat'),
+                ),
+              ),
+            ],
+          ],
           if (!isLoading && !isComplete) ...[
             const SizedBox(height: 8),
             Text(
               isFirstRound
-                  ? 'Premier comptage : tu poses ton point de départ.'
+                  ? 'Premier comptage : tu poses ton point de départ, '
+                        'daté du '
+                        '${DateFormat('dd/MM/yyyy').format(dateDuComptage ?? DateTime.now())}.'
                   : periodStartedAt == null
                   ? 'Ce comptage ferme la période en cours.'
-                  : 'Ce comptage ferme la période ouverte le '
-                        '${DateFormat('dd/MM').format(periodStartedAt!)}.',
+                  : 'Période mesurée : du '
+                        '${DateFormat('dd/MM').format(periodStartedAt!)} au '
+                        '${DateFormat('dd/MM').format(dateDuComptage ?? DateTime.now())}.',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
@@ -429,6 +488,29 @@ class _ProductCountCard extends StatelessWidget {
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
               ),
+            // Chaque produit a sa propre période : compter le riz aujourd'hui
+            // et le sucre la semaine prochaine donne deux intervalles
+            // différents. Sans cette date, impossible de voir que le riz n'a
+            // pas été compté depuis trois semaines pendant que le pain l'était
+            // hier — et donc de savoir lequel compter en priorité.
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                line.dernierComptage == null
+                    ? 'Jamais compté'
+                    : 'Compté le '
+                          '${DateFormat('dd/MM/yyyy').format(line.dernierComptage!)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: line.dernierComptage == null
+                      ? AppColors.warningDark
+                      : Colors.grey.shade600,
+                  fontWeight: line.dernierComptage == null
+                      ? FontWeight.w700
+                      : FontWeight.normal,
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
             if (showInput)
               Row(

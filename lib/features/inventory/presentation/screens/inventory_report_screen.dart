@@ -232,7 +232,7 @@ class _Body extends StatelessWidget {
           const SizedBox(height: 16),
 
         const Text(
-          'CE QUI EST SORTI',
+          'CE QUI A ÉTÉ VENDU',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.bold,
@@ -354,7 +354,11 @@ class _ProductLine extends StatelessWidget {
       ),
       subtitle: Text(
         '${CurrencyFormatter.format(product.expectedRevenue)} · '
-        'gain ${CurrencyFormatter.format(product.margin)}',
+        'gain ${CurrencyFormatter.format(product.margin)}'
+        // La casse déclarée n'apparaissait que dans le total de la boutique :
+        // impossible de savoir QUEL article se casse. C'est pourtant ce qui
+        // fait décider d'arrêter d'en vendre, ou de changer de fournisseur.
+        '${product.declaredLosses > 0 ? ' · ${product.declaredLosses} perdu(s)' : ''}',
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -365,7 +369,13 @@ class _ProductLine extends StatelessWidget {
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           Text(
-            'sortis',
+            // « vendus », pas « sortis » : le nombre affiché est
+            // `presumedSales`, c'est-à-dire ce qui est parti MOINS les pertes
+            // déclarées. Tout le modèle du module sépare exprès les deux — une
+            // sortie ne dit pas pourquoi la marchandise est partie, une vente
+            // présumée si. L'étiquette disait l'un, le chiffre montrait
+            // l'autre.
+            'vendus',
             style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
           ),
         ],

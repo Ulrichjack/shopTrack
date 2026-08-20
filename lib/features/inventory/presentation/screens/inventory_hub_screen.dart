@@ -5,8 +5,10 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'declare_loss_screen.dart';
+import 'historique_comptages_sheet.dart';
 import '../providers/takings_provider.dart';
 
 /// Regroupe les opérations du mode inventaire, comme l'onglet Cycles le fait
@@ -31,6 +33,11 @@ class InventoryHubScreen extends ConsumerWidget {
 
     final lastCount = takings.isEmpty ? null : takings.first.date;
 
+    // Le comptage est réservé au patron (`bossOnlyRoutes`). Sans masquer la
+    // tuile, un vendeur qui la touche est renvoyé au profil sans explication —
+    // il croirait à un bug plutôt qu'à une permission.
+    final estPatron = ref.watch(appModeProvider).value ?? false;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -52,16 +59,25 @@ class InventoryHubScreen extends ConsumerWidget {
             highlight: todayTaking == null,
             onTap: () => context.push('/daily-takings'),
           ),
-          const SizedBox(height: 12),
-          _ActionTile(
-            icon: Icons.checklist_outlined,
-            title: 'Compter le stock',
-            subtitle: lastCount == null
-                ? 'Pose ton premier point de repère'
-                : 'Dernière activité le '
-                      '${DateFormat('dd/MM/yyyy').format(lastCount)}',
-            onTap: () => context.push('/inventory-count'),
-          ),
+          if (estPatron) ...[
+            const SizedBox(height: 12),
+            _ActionTile(
+              icon: Icons.checklist_outlined,
+              title: 'Compter le stock',
+              subtitle: lastCount == null
+                  ? 'Pose ton premier point de repère'
+                  : 'Dernière activité le '
+                        '${DateFormat('dd/MM/yyyy').format(lastCount)}',
+              onTap: () => context.push('/inventory-count'),
+            ),
+            const SizedBox(height: 12),
+            _ActionTile(
+              icon: Icons.history,
+              title: 'Mes comptages',
+              subtitle: 'Les repères posés et le rythme',
+              onTap: () => showHistoriqueComptagesSheet(context),
+            ),
+          ],
           // Toujours visible : la masquer dépendait de la liste des boutiques,
           // qui vient du réseau — hors ligne ou le temps du chargement, la
           // tuile disparaissait et personne ne pouvait confirmer une
