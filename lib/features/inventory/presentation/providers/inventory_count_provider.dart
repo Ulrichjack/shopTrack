@@ -246,11 +246,19 @@ Future<InventoryCountOverview> loadInventoryCountOverview(
   AppDatabase db,
   String shopId,
 ) async {
+  // Les archivés sortent d'ici comme du stock et de la vente : compter un
+  // article qu'on ne vend plus fait perdre du temps et fausse la progression.
+  // Son passé reste en base, les périodes closes continuent de le citer.
   final products =
-      await (db.select(db.localProducts)
-            ..where((row) => row.shopId.equals(shopId))
-            ..orderBy([(row) => drift.OrderingTerm.asc(row.name)]))
-          .get();
+      await (db.select(db.localProducts)..where(
+              (row) => row.shopId.equals(shopId) & row.archivedAt.isNull(),
+            ))
+            .get()
+        // Trié en Dart et non en SQL : la collation par défaut de SQLite
+        // compare les codes des caractères, donc majuscules avant minuscules
+        // et accents en dernier. Sur 235 produits saisis à la main, la liste
+        // paraît ne pas être triée du tout.
+        ..sort((a, b) => comparerNomsProduits(a.name, b.name));
 
   if (products.isEmpty) {
     return const InventoryCountOverview(
@@ -350,10 +358,9 @@ final historiqueComptagesProvider = FutureProvider<List<TourDeComptage>>((
   final shopId = await watchShopId(ref);
   final db = ref.watch(localDbProvider);
 
-  final comptages =
-      await (db.select(db.localInventoryCounts)
-            ..where((row) => row.shopId.equals(shopId)))
-          .get();
+  final comptages = await (db.select(
+    db.localInventoryCounts,
+  )..where((row) => row.shopId.equals(shopId))).get();
 
   final parJour = <DateTime, int>{};
   for (final comptage in comptages) {
