@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../sync/revision_donnees.dart';
 import 'user_shops_provider.dart';
 
 /// Clé historique, conservée : elle est déjà écrite sur tous les téléphones
@@ -113,6 +114,11 @@ class CurrentShopNotifier extends AsyncNotifier<String?> {
 /// bloqué sur « aucune boutique » ; et au changement de boutique, il continue
 /// d'afficher l'ancienne.
 Future<String> watchShopId(Ref ref) async {
+  // Se relire quand un téléchargement a réécrit la base locale. C'est le seul
+  // passage commun à toutes les lectures liées à une boutique — produits,
+  // comptages, recettes, pertes, transferts — donc le seul endroit où poser
+  // cette surveillance une fois pour toutes.
+  ref.watch(revisionDonneesLocalesProvider);
   final shopId = await ref.watch(currentShopIdProvider.future);
   if (shopId == null || shopId.isEmpty) {
     throw Exception('Boutique introuvable.');

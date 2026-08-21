@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../../core/sync/revision_donnees.dart';
 import '../../../../core/utils/cycle_result_calculator.dart';
 
 class CycleReport {
@@ -15,6 +16,7 @@ final cycleReportProvider = FutureProvider.family<CycleReport, String>((
   ref,
   cycleId,
 ) async {
+  ref.watch(revisionDonneesLocalesProvider);
   final db = ref.watch(localDbProvider);
 
   final cycle = await (db.select(

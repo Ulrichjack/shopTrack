@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../../core/sync/revision_donnees.dart';
 import '../../../../core/network/connectivity_provider.dart';
 import '../../domain/entities/product_entity.dart';
 import '../../../../core/providers/current_shop_provider.dart';
@@ -37,6 +38,10 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     // sur ce vide : l'écran Stock affichait « 0 produit » pendant que le
     // comptage en listait cinq. Il fallait se déconnecter et se reconnecter
     // pour que le stock réapparaisse.
+    // Et se relire quand la synchro a rempli la base : sans ça un vendeur
+    // qui vient de se connecter garde un stock vide à l'écran pendant que
+    // les produits arrivent derrière.
+    ref.watch(revisionDonneesLocalesProvider);
     final shopId = await ref.watch(currentShopIdProvider.future);
     return _fetchProducts(shopId);
   }
@@ -51,8 +56,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     // boutiques du compte. Sans ce filtre, ouvrir une boutique neuve affichait
     // le stock d'une autre — et un arrivage aurait été enregistré au mauvais
     // endroit sans que rien ne le signale.
-    final shopId =
-        shopIdConnu ?? await ref.read(currentShopIdProvider.future);
+    final shopId = shopIdConnu ?? await ref.read(currentShopIdProvider.future);
     if (shopId == null || shopId.isEmpty) return const [];
 
     // Les produits archivés sortent d'ici : ils ne s'affichent plus au stock,
@@ -523,11 +527,9 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     final db = ref.read(localDbProvider);
 
     await db.transaction(() async {
-      await (db.update(
-        db.localProducts,
-      )..where((row) => row.id.equals(productId))).write(
-        LocalProductsCompanion(archivedAt: drift.Value(moment)),
-      );
+      await (db.update(db.localProducts)
+            ..where((row) => row.id.equals(productId)))
+          .write(LocalProductsCompanion(archivedAt: drift.Value(moment)));
       await db.addToQueue(
         'UPDATE_PRODUCT',
         jsonEncode({
@@ -551,6 +553,15 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     int addedQuantity, {
     double? unitCost,
     double? sellPrice,
+
+    /// Le jour où la marchandise est ARRIVÉE, pas celui de la saisie.
+    ///
+    /// En mode inventaire, le rapport découpe par période : un arrivage
+    /// enregistré après le comptage de clôture tombe dans la période suivante
+    /// et n'explique donc rien du bilan qu'on est en train de lire. Le
+    /// commerçant qui note sa livraison de lundi le mercredi soir verrait ses
+    /// ventes présumées s'effondrer sans comprendre pourquoi.
+    DateTime? recuLe,
   }) async {
     try {
       final db = ref.read(localDbProvider);
@@ -571,7 +582,11 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
               productId: product.id,
               quantity: addedQuantity,
               type: 'recharge',
-              createdAt: DateTime.now(),
+              // La date de RÉCEPTION, pas celle de la saisie : c'est elle que
+              // l'historique du produit affiche, et le serveur la reçoit dans
+              // le message ci-dessous pour que le deuxième téléphone voie la
+              // même chose après téléchargement.
+              createdAt: recuLe ?? DateTime.now(),
             ),
           );
 
@@ -582,6 +597,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
         'shop_id': product.shopId,
         'quantity': addedQuantity,
         'type': 'recharge',
+        if (recuLe != null) 'created_at': recuLe.toUtc().toIso8601String(),
       };
       await db.addToQueue('ADD_STOCK', jsonEncode(payload));
 
@@ -621,7 +637,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
         }
 
         final purchaseId = const Uuid().v4();
-        final purchasedAt = DateTime.now();
+        final purchasedAt = recuLe ?? DateTime.now();
         await db
             .into(db.localStockPurchases)
             .insert(

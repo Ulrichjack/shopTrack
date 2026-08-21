@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/app_database.dart';
 import '../providers/current_shop_provider.dart';
 import 'pull_registry.dart';
+import 'revision_donnees.dart';
 
 final localDbProvider = Provider<AppDatabase>((ref) {
   final database = AppDatabase();
@@ -78,6 +79,14 @@ class SyncService {
   SyncStatus _status = const SyncStatus.initial();
   bool _isSyncing = false;
   bool _isPulling = false;
+
+  /// Empreinte du dernier téléchargement, pour ne réveiller les écrans que
+  /// si le serveur a vraiment renvoyé autre chose. Deux raisons : ne pas
+  /// reconstruire toute l'interface à chaque reprise de l'app quand rien n'a
+  /// bougé, et transformer une boucle éventuelle — un provider qui déclenche
+  /// une synchro ET surveille le compteur — en un seul tour au lieu d'une
+  /// répétition sans fin. Le tableau de bord a fait exactement ça.
+  String? _empreinteDernierPull;
 
   Stream<SyncStatus> get statusStream async* {
     yield _status;
@@ -187,6 +196,15 @@ class SyncService {
           }
         });
       });
+
+      // La base locale a changé : réveiller les écrans qui la lisent. Sans
+      // cette ligne, le téléchargement réussit en silence derrière un écran
+      // resté vide.
+      final empreinte = jsonEncode(resultats);
+      if (empreinte != _empreinteDernierPull) {
+        _empreinteDernierPull = empreinte;
+        ref.read(revisionDonneesLocalesProvider.notifier).state++;
+      }
 
       int compte(String nom) {
         final index = tablesTirees.indexWhere((table) => table.nom == nom);
@@ -305,9 +323,7 @@ class SyncService {
       setAside: tentatives >= maxRefusAvantMiseDeCote,
     );
     if (tentatives >= maxRefusAvantMiseDeCote) {
-      debugPrint(
-        '[SYNC] ${item.action} mise de côté après $tentatives refus',
-      );
+      debugPrint('[SYNC] ${item.action} mise de côté après $tentatives refus');
     }
   }
 
@@ -431,6 +447,9 @@ class SyncService {
             'p_product_id': payload['product_id'],
             'p_quantity_delta': payload['quantity'],
             'p_type': payload['type'],
+            // Absent des anciennes opérations déjà en file : le serveur
+            // retombe alors sur `now()`, comme avant.
+            'p_created_at': payload['created_at'],
           },
         );
       case 'ADD_CLOSING':

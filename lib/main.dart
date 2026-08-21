@@ -17,10 +17,7 @@ void main() async {
   await initializeDateFormatting('fr_FR', null);
 
   // Initialisation de Supabase
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
-  );
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
 
   runApp(const ProviderScope(child: ShopTrackApp()));
 }
@@ -45,26 +42,50 @@ class ShopTrackApp extends ConsumerStatefulWidget {
 /// soir, faute d'avoir jamais retéléchargé depuis.
 class _ShopTrackAppState extends ConsumerState<ShopTrackApp>
     with WidgetsBindingObserver {
+  /// Rafraîchissement de fond pendant que l'app est ouverte.
+  ///
+  /// La synchro n'était déclenchée que par un ÉVÉNEMENT : reprise de l'app,
+  /// retour du réseau, connexion, changement de boutique. Un deuxième
+  /// téléphone posé sur le comptoir, écran allumé sur le stock, ne recevait
+  /// donc jamais rien — le patron ajoutait un produit, le vendeur ne le voyait
+  /// pas tant qu'il ne quittait pas l'app.
+  ///
+  /// Deux minutes : assez court pour qu'une boutique à deux téléphones se
+  /// tienne, assez long pour ne pas manger le forfait. Sans coût d'affichage —
+  /// `pullDataFromSupabase` ne réveille les écrans que si le serveur a
+  /// réellement renvoyé autre chose (cf. `_empreinteDernierPull`).
+  static const _intervalleRafraichissement = Duration(minutes: 2);
+  Timer? _minuteur;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _minuteur = Timer.periodic(
+      _intervalleRafraichissement,
+      (_) => _synchroniserSansBloquer(),
+    );
   }
 
   @override
   void dispose() {
+    _minuteur?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _synchroniserSansBloquer() {
+    if (Supabase.instance.client.auth.currentSession == null) return;
+    // Best-effort : hors ligne, `connectivityProvider` rattrapera au vrai
+    // retour du réseau.
+    unawaited(ref.read(syncServiceProvider).synchronize().catchError((_) {}));
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
-    if (Supabase.instance.client.auth.currentSession == null) return;
-    // Best-effort : hors ligne au moment du retour, `connectivityProvider`
-    // rattrapera au vrai retour du réseau. Bloquer l'affichage serait pire
-    // qu'une donnée d'une minute de retard.
-    unawaited(ref.read(syncServiceProvider).synchronize().catchError((_) {}));
+    // Bloquer l'affichage serait pire qu'une donnée d'une minute de retard.
+    _synchroniserSansBloquer();
   }
 
   @override
