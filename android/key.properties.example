@@ -1,0 +1,4 @@
+storePasswordFile=release-signing.pass
+keyPasswordFile=release-signing.pass
+keyAlias=shoptrack
+storeFile=../shoptrack-release.jks

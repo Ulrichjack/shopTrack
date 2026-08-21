@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+.env
+# Supabase config
+lib/supabase_config.dart.env
+lib/supabase_config.dart
+# Clés Android de production
+android/key.properties
+*.jks
+*.keystore
+*.pass
+supabase/.temp/
