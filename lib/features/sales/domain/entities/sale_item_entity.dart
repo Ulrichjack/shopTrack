@@ -1,6 +1,4 @@
-
 class SaleItemEntity {
-
   final String id;
   final String saleId;
   final String productId;
@@ -24,6 +22,5 @@ class SaleItemEntity {
     required this.profit,
     this.cycleId,
     this.unitId,
-});
-
+  });
 }

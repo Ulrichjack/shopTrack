@@ -1,9 +1,6 @@
-
-
 import 'package:shoptrack/features/sales/domain/entities/sale_item_entity.dart';
 
 class SaleEntity {
-
   final String id;
   final String shopId;
   final String userId;
@@ -19,8 +16,6 @@ class SaleEntity {
     required this.totalAmount,
     required this.totalProfit,
     required this.createdAt,
-    required this.items
-});
-
-
+    required this.items,
+  });
 }

@@ -7,14 +7,21 @@ class ClosingRemoteDataSource {
   ClosingRemoteDataSource(this.supabase);
 
   Future<void> saveClosing(DailyClosingModel closing) async {
-    await supabase.from('daily_closings').upsert(
-      closing.toJson(),
-      onConflict: 'shop_id,closing_date', // Résout le conflit automatiquement !
-    );
+    await supabase
+        .from('daily_closings')
+        .upsert(
+          closing.toJson(),
+          onConflict:
+              'shop_id,closing_date', // Résout le conflit automatiquement !
+        );
   }
 
-  Future<DailyClosingModel?> getClosingForDate(String shopId, DateTime date) async {
-    final dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  Future<DailyClosingModel?> getClosingForDate(
+    String shopId,
+    DateTime date,
+  ) async {
+    final dateString =
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
     final response = await supabase
         .from('daily_closings')
@@ -27,10 +34,21 @@ class ClosingRemoteDataSource {
     return DailyClosingModel.fromJson(response);
   }
 
-  Future<List<DailyClosingModel>> getClosingsForMonth(String shopId, int year, int month) async {
+  Future<List<DailyClosingModel>> getClosingsForMonth(
+    String shopId,
+    int year,
+    int month,
+  ) async {
     // On crée la date de début (1er du mois) et de fin (dernier jour du mois)
-    final startDate = DateTime(year, month, 1).toIso8601String();
-    final endDate = DateTime(year, month + 1, 0, 23, 59, 59).toIso8601String();
+    final startDate = DateTime(year, month, 1).toUtc().toIso8601String();
+    final endDate = DateTime(
+      year,
+      month + 1,
+      0,
+      23,
+      59,
+      59,
+    ).toUtc().toIso8601String();
 
     final response = await supabase
         .from('daily_closings')
@@ -42,7 +60,4 @@ class ClosingRemoteDataSource {
 
     return response.map((json) => DailyClosingModel.fromJson(json)).toList();
   }
-
-
-
 }

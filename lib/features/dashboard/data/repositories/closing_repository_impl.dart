@@ -30,13 +30,19 @@ class ClosingRepositoryImpl implements ClosingRepository {
   }
 
   @override
-  Future<DailyClosingEntity?> getClosingForDate(String shopId, DateTime date) async {
+  Future<DailyClosingEntity?> getClosingForDate(
+    String shopId,
+    DateTime date,
+  ) async {
     return remoteDataSource.getClosingForDate(shopId, date);
   }
 
   @override
-  Future<List<DailyClosingEntity>> getClosingsForMonth(String shopId, int year, int month) async {
+  Future<List<DailyClosingEntity>> getClosingsForMonth(
+    String shopId,
+    int year,
+    int month,
+  ) async {
     return remoteDataSource.getClosingsForMonth(shopId, year, month);
   }
-
 }

@@ -24,7 +24,10 @@ class CashRepositoryImpl implements CashRepository {
   }
 
   @override
-  Future<List<CashMovementEntity>> getTodayMovements(String shopId, DateTime date) async {
+  Future<List<CashMovementEntity>> getTodayMovements(
+    String shopId,
+    DateTime date,
+  ) async {
     return remoteDataSource.getTodayMovements(shopId, date);
   }
 }

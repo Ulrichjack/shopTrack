@@ -69,7 +69,7 @@ class CycleLossActions {
         'quantity': quantity,
         'reason': reason,
         'note': note,
-        'created_at': now.toIso8601String(),
+        'created_at': now.toUtc().toIso8601String(),
       }),
     );
 

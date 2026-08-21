@@ -1,10 +1,7 @@
-
-
 import 'package:shoptrack/features/sales/data/models/sale_item_model.dart';
 import 'package:shoptrack/features/sales/domain/entities/sale_entity.dart';
 
 class SaleModel extends SaleEntity {
-
   SaleModel({
     required super.id,
     required super.shopId,
@@ -12,7 +9,7 @@ class SaleModel extends SaleEntity {
     required super.totalAmount,
     required super.totalProfit,
     required super.createdAt,
-    required super.items
+    required super.items,
   });
 
   factory SaleModel.fromJson(Map<String, dynamic> json) {
@@ -20,7 +17,12 @@ class SaleModel extends SaleEntity {
     List<SaleItemModel> parsedItems = [];
     if (json['sale_items'] != null) {
       final List<dynamic> itemsList = json['sale_items'] as List<dynamic>;
-      parsedItems = itemsList.map((itemJson) => SaleItemModel.fromJson(itemJson as Map<String, dynamic>)).toList();
+      parsedItems = itemsList
+          .map(
+            (itemJson) =>
+                SaleItemModel.fromJson(itemJson as Map<String, dynamic>),
+          )
+          .toList();
     }
 
     return SaleModel(
@@ -35,7 +37,7 @@ class SaleModel extends SaleEntity {
     );
   }
 
-  Map<String, dynamic> toJson(){
+  Map<String, dynamic> toJson() {
     return {
       'shop_id': shopId,
       'user_id': userId,
@@ -43,5 +45,4 @@ class SaleModel extends SaleEntity {
       'total_profit': totalProfit,
     };
   }
-
 }

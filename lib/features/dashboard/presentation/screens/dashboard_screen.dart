@@ -120,6 +120,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void _showQuickClosingDialog(DateTime dateToClose) {
     final controller = TextEditingController();
 
+    // Même raison que pour le fonds de caisse : la boîte survit à l'écran.
+    final conteneur = ProviderScope.containerOf(context, listen: false);
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -150,8 +153,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 final amount = double.tryParse(controller.text);
                 if (amount != null) {
                   Navigator.pop(context);
-                  setState(() => _isDialogOpen = false); // Libère le verrou
-                  await ref
+                  if (mounted) setState(() => _isDialogOpen = false);
+                  await conteneur
                       .read(dashboardProvider.notifier)
                       .closeDay(
                         amount,
@@ -184,6 +187,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final controller = TextEditingController(
       text: isEdit ? currentBalance.toInt().toString() : '',
     );
+
+    // Le conteneur, capturé AVANT d'ouvrir la boîte.
+    //
+    // Une boîte de dialogue est une route : elle survit à l'écran qui l'a
+    // ouverte. Si la boutique change pendant qu'elle est affichée, cet écran
+    // est détruit — et `ref.read` lève « Cannot use "ref" after the widget was
+    // disposed » au moment d'enregistrer. Le commerçant tape son fonds de
+    // caisse, appuie sur Enregistrer, et rien ne part : l'exception tombe
+    // avant l'écriture, sans le moindre message. Vu en vrai le 21/08/2026.
+    final conteneur = ProviderScope.containerOf(context, listen: false);
 
     showDialog(
       context: context,
@@ -236,16 +249,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               if (amount == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Saisis le montant qu\'il y a dans la caisse.'),
+                    content: Text(
+                      'Saisis le montant qu\'il y a dans la caisse.',
+                    ),
                     backgroundColor: AppColors.error,
                   ),
                 );
                 return;
               }
 
-              ref.read(dashboardProvider.notifier).saveMorningBalance(amount);
+              conteneur
+                  .read(dashboardProvider.notifier)
+                  .saveMorningBalance(amount);
               Navigator.pop(context);
-              setState(() => _isDialogOpen = false); // Libère le verrou
+              // `mounted` : le verrou n'existe plus si l'écran a disparu.
+              if (mounted) setState(() => _isDialogOpen = false);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text(
@@ -259,6 +277,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _confirmReopenDay() async {
+    // Capturé avant l'attente : au retour de la boîte, cet écran peut ne plus
+    // exister.
+    final conteneur = ProviderScope.containerOf(context, listen: false);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -284,7 +305,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (confirm != true) return;
 
     try {
-      await ref.read(dashboardProvider.notifier).reopenDay(DateTime.now());
+      await conteneur
+          .read(dashboardProvider.notifier)
+          .reopenDay(DateTime.now());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

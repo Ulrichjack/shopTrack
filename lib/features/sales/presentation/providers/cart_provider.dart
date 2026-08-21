@@ -6,7 +6,6 @@ import '../../../products/domain/entities/product_entity.dart';
 
 // Le Notifier qui gère la liste des articles dans le panier
 class CartNotifier extends Notifier<List<SaleItemEntity>> {
-
   @override
   List<SaleItemEntity> build() {
     return []; // Au début, le panier est vide
@@ -15,7 +14,9 @@ class CartNotifier extends Notifier<List<SaleItemEntity>> {
   // 1. Ajouter un produit au panier
   void addProduct(ProductEntity product) {
     // On vérifie si le produit est déjà dans le panier
-    final existingIndex = state.indexWhere((item) => item.productId == product.id);
+    final existingIndex = state.indexWhere(
+      (item) => item.productId == product.id,
+    );
 
     if (existingIndex >= 0) {
       // S'il y est déjà, on augmente juste la quantité de +1
@@ -108,7 +109,10 @@ final cartProvider = NotifierProvider<CartNotifier, List<SaleItemEntity>>(() {
 // Calcule le Total à payer
 final cartTotalProvider = Provider<double>((ref) {
   final cart = ref.watch(cartProvider);
-  return cart.fold(0, (total, item) => total + (item.sellPrice * item.quantity));
+  return cart.fold(
+    0,
+    (total, item) => total + (item.sellPrice * item.quantity),
+  );
 });
 
 // Calcule le Bénéfice total de la vente

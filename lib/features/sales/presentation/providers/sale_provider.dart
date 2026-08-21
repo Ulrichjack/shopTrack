@@ -129,7 +129,7 @@ class SaleNotifier extends AsyncNotifier<void> {
             'user_id': userId,
             'total_amount': totalAmount,
             'total_profit': totalProfit,
-            'created_at': now.toIso8601String(),
+            'created_at': now.toUtc().toIso8601String(),
           },
           'items': itemPayloads,
         };

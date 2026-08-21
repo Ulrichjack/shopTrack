@@ -55,16 +55,29 @@ class SaleRemoteDataSource {
   // 2. Récupérer les ventes d'une journée précise
   Future<List<SaleModel>> getDailySales(String shopId, DateTime date) async {
     // On crée les limites de la journée (De 00:00:00 à 23:59:59)
-    final startOfDay = DateTime(date.year, date.month, date.day).toIso8601String();
-    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59).toIso8601String();
+    final startOfDay = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).toUtc().toIso8601String();
+    final endOfDay = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      23,
+      59,
+      59,
+    ).toUtc().toIso8601String();
 
     // On demande à Supabase les ventes ET les articles liés (Jointure)
     final response = await supabase
         .from('sales')
-        .select('*, sale_items(*)') // La magie de Supabase pour faire une jointure !
+        .select(
+          '*, sale_items(*)',
+        ) // La magie de Supabase pour faire une jointure !
         .eq('shop_id', shopId)
         .gte('created_at', startOfDay) // Plus grand ou égal à 00:00
-        .lte('created_at', endOfDay)   // Plus petit ou égal à 23:59
+        .lte('created_at', endOfDay) // Plus petit ou égal à 23:59
         .order('created_at', ascending: false);
 
     return response.map((json) => SaleModel.fromJson(json)).toList();

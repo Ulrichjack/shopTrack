@@ -10,10 +10,24 @@ class CashRemoteDataSource {
     await supabase.from('cash_movements').insert(movement.toJson());
   }
 
-  Future<List<CashMovementModel>> getTodayMovements(String shopId, DateTime date) async {
+  Future<List<CashMovementModel>> getTodayMovements(
+    String shopId,
+    DateTime date,
+  ) async {
     // On prend du début à la fin de la journée
-    final startOfDay = DateTime(date.year, date.month, date.day).toIso8601String();
-    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59).toIso8601String();
+    final startOfDay = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).toUtc().toIso8601String();
+    final endOfDay = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      23,
+      59,
+      59,
+    ).toUtc().toIso8601String();
 
     final response = await supabase
         .from('cash_movements')

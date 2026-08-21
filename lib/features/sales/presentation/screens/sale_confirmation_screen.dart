@@ -19,9 +19,7 @@ class SaleConfirmationScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Confirmation'),
-      ),
+      appBar: AppBar(title: const Text('Confirmation')),
       body: Column(
         children: [
           Expanded(
@@ -32,11 +30,17 @@ class SaleConfirmationScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final item = cartItems[index];
                 return ListTile(
-                  title: Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${item.quantity} x ${CurrencyFormatter.format(item.sellPrice)}'),
+                  title: Text(
+                    item.productName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    '${item.quantity} x ${CurrencyFormatter.format(item.sellPrice)}',
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => ref.read(cartProvider.notifier).removeItem(index),
+                    onPressed: () =>
+                        ref.read(cartProvider.notifier).removeItem(index),
                   ),
                 );
               },
@@ -49,7 +53,13 @@ class SaleConfirmationScreen extends ConsumerWidget {
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: Offset(0, -5),
+                ),
+              ],
             ),
             child: SafeArea(
               child: Column(
@@ -58,16 +68,39 @@ class SaleConfirmationScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Bénéfice estimé', style: TextStyle(color: Colors.grey, fontSize: 16)),
-                      Text(CurrencyFormatter.format(cartProfit), style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+                      const Text(
+                        'Bénéfice estimé',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
+                      Text(
+                        CurrencyFormatter.format(cartProfit),
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Total à encaisser', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      Text(CurrencyFormatter.format(cartTotal), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      const Text(
+                        'Total à encaisser',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        CurrencyFormatter.format(cartTotal),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -77,29 +110,51 @@ class SaleConfirmationScreen extends ConsumerWidget {
                       onPressed: isSaving || cartItems.isEmpty
                           ? null
                           : () async {
-                        try {
-                          await ref.read(saleProvider.notifier).createSale(cartItems, cartTotal, cartProfit);
-                          ref.invalidate(productProvider);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Vente enregistrée avec succès !'), backgroundColor: AppColors.primary),
-                            );
-                            context.go('/home'); // Retour à l'accueil
-                          }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
-                          );
-                        }
-                      },
+                              try {
+                                await ref
+                                    .read(saleProvider.notifier)
+                                    .createSale(
+                                      cartItems,
+                                      cartTotal,
+                                      cartProfit,
+                                    );
+                                ref.invalidate(productProvider);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Vente enregistrée avec succès !',
+                                      ),
+                                      backgroundColor: AppColors.primary,
+                                    ),
+                                  );
+                                  context.go('/home'); // Retour à l'accueil
+                                }
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Erreur: $e'),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: isSaving
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Confirmer la vente', style: TextStyle(fontSize: 18, color: Colors.white)),
+                          : const Text(
+                              'Confirmer la vente',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
                 ],

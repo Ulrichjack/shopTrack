@@ -13,16 +13,20 @@ class SaleRepositoryImpl implements SaleRepository {
   @override
   Future<void> createSale(SaleEntity sale) async {
     // On transforme la liste d'Entités en liste de Models
-    final itemsModel = sale.items.map((item) => SaleItemModel(
-      id: item.id,
-      saleId: item.saleId,
-      productId: item.productId,
-      productName: item.productName,
-      quantity: item.quantity,
-      sellPrice: item.sellPrice,
-      buyPrice: item.buyPrice,
-      profit: item.profit,
-    )).toList();
+    final itemsModel = sale.items
+        .map(
+          (item) => SaleItemModel(
+            id: item.id,
+            saleId: item.saleId,
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity,
+            sellPrice: item.sellPrice,
+            buyPrice: item.buyPrice,
+            profit: item.profit,
+          ),
+        )
+        .toList();
 
     final saleModel = SaleModel(
       id: sale.id,
