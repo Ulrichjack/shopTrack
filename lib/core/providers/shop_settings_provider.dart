@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart' as drift;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -104,7 +105,8 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
     // aucune ligne de réglages, donc « je ne sais pas » ne devenait jamais
     // « je sais ». Hors ligne aussi il faut trancher : rester dans le doute
     // n'affiche rien du tout, alors que le mode simple est au moins un écran.
-    final frais = await _lireLocal(db, shopId) ?? const ShopSettings(connu: true);
+    final frais =
+        await _lireLocal(db, shopId) ?? const ShopSettings(connu: true);
 
     final actuel = state.valueOrNull;
     if (actuel == null ||
@@ -127,6 +129,7 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
     final shopId = await requireShopId(ref);
 
     final mode = hierarchical ? 'hierarchical' : 'simple';
+    debugPrint('[REGLAGES] boutique $shopId — unit_mode := $mode');
 
     await db
         .into(db.localShopSettings)
@@ -137,9 +140,23 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
           ),
         );
 
+    // Les TROIS réglages, pas seulement celui qui change.
+    //
+    // L'envoi est un `upsert` : quand la ligne n'existe pas encore côté
+    // serveur, les colonnes absentes du message prennent leur valeur par
+    // défaut. Une boutique passée en inventaire mais dont la ligne n'était pas
+    // encore montée repassait donc en mode simple dès qu'on touchait au mode
+    // unités — et le téléchargement suivant ramenait ce mode simple sur le
+    // téléphone. Silencieux, et destructeur.
+    final actuel = state.valueOrNull ?? const ShopSettings();
     await db.addToQueue(
       'SET_SHOP_SETTINGS',
-      jsonEncode({'shop_id': shopId, 'unit_mode': mode}),
+      jsonEncode({
+        'shop_id': shopId,
+        'unit_mode': mode,
+        'sale_capture_mode': actuel.saleCaptureMode,
+        'multi_point_enabled': actuel.multiPointEnabled,
+      }),
     );
     await ref.read(syncServiceProvider).processQueue();
 
@@ -158,6 +175,7 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
     final shopId = await requireShopId(ref);
 
     final mode = periodic ? 'periodic' : 'realtime';
+    debugPrint('[REGLAGES] boutique $shopId — sale_capture_mode := $mode');
 
     await db
         .into(db.localShopSettings)
@@ -168,9 +186,16 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
           ),
         );
 
+    // Les trois réglages ensemble — même raison que dans `setUnitMode`.
+    final actuel = state.valueOrNull ?? const ShopSettings();
     await db.addToQueue(
       'SET_SHOP_SETTINGS',
-      jsonEncode({'shop_id': shopId, 'sale_capture_mode': mode}),
+      jsonEncode({
+        'shop_id': shopId,
+        'unit_mode': actuel.unitMode,
+        'sale_capture_mode': mode,
+        'multi_point_enabled': actuel.multiPointEnabled,
+      }),
     );
     await ref.read(syncServiceProvider).processQueue();
 

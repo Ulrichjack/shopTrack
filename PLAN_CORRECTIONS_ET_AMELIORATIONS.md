@@ -966,3 +966,78 @@ Idée du patron le 19/08, qu'il a lui-même jugée trop lourde pour l'instant :
 prévenir la boutique expéditrice quand l'autre confirme une réception. Lié au
 rafraîchissement — un tirer-pour-actualiser existe désormais sur l'écran des
 transferts, mais rien ne se met à jour tout seul si personne n'y touche.
+
+### Renommer une boutique — retiré le 21/08, cause connue
+
+Écrit puis **retiré le jour même** : le bouton ne faisait rien, sans la moindre
+erreur. Cause trouvée après coup — la table `shops` n'a **aucune politique RLS
+pour `UPDATE`**. Elle n'a que `allow_insert_shops`, `allow_select_shops` et
+`shoptrack_shops_member_read`. PostgREST répond alors « succès » avec zéro
+ligne modifiée : ni exception à attraper, ni message à afficher.
+
+**Ce qu'il faut pour le refaire** — une migration ajoutant la politique
+manquante, restreinte au propriétaire :
+
+```sql
+create policy "shoptrack_shops_owner_update" on shops
+  for update using (auth.uid() = owner_id)
+  with check (auth.uid() = owner_id);
+```
+
+Sans elle, aucun code client ne peut fonctionner. Le reste était prêt : la
+méthode `renommer()` (mise à jour distante, rafraîchissement de
+`cached_shop_name`, invalidation de `userShopsProvider`) et sa boîte de
+dialogue dans l'écran des réglages. Voir l'historique Git du 21/08/2026.
+
+**Ce qui a été gardé** : la carte en haut des réglages qui affiche le nom de la
+boutique configurée. Elle ne renomme rien, mais elle a corrigé un vrai bug —
+on croyait configurer la boutique qu'on venait de créer et on modifiait la
+précédente.
+
+**Leçon plus large que ce bouton** : une écriture Supabase refusée par RLS ne
+lève **pas** d'erreur côté client. Toute nouvelle écriture sur une table doit
+donc s'accompagner d'une vérification que la politique correspondante existe —
+sinon le geste échoue en silence, et le diagnostic coûte une heure.
+
+### Nouvelle vente — saisir la quantité au clavier
+
+Demandé le 21/08. Entre le « − » et le « + » de `new_sale_screen.dart`
+(lignes 169 et 189), le nombre n'est qu'un `Text` : la seule façon d'arriver à
+douze est de toucher douze fois.
+
+Ça passe pour deux ou trois articles, pas pour un grossiste qui vend au carton,
+ni pour la boutique d'accessoires qui écoule quarante verres trempés. Le geste
+attendu est d'appuyer sur le nombre et de le taper.
+
+**Ce qu'il faudra soigner** : la borne haute reste le stock disponible — un
+champ libre permet de taper 200 là où les boutons s'arrêtaient à 20, et une
+vente supérieure au stock passerait en négatif. Même famille de piège que le
+plafond des pertes en inventaire (cf. `docs/PIEGES_CONNUS.md`).
+
+### Inventaire — un produit compté seul sort du rang, en silence
+
+Trouvé le 21/08 en testant les arrivages. L'app accepte d'enregistrer le
+comptage d'**un seul** produit, mais le rapport ne crée une période que lorsque
+tous les produits ont atteint le même nombre de comptages
+(`construirePeriodesRapport` prend le **minimum** sur les produits ayant au
+moins deux comptages).
+
+**Conséquence immédiate** : le comptage isolé ne change rien à l'écran. Le
+commerçant recompte un article, retourne au rapport, et rien n'a bougé — sans
+la moindre explication.
+
+**Conséquence durable, plus grave** : ce produit est désynchronisé. Cas réel —
+Riz compté à 09:37 puis à 09:44 pendant que les sept autres restaient à 09:37.
+Sa période n°2 vaudra ces **sept minutes** ; ses ventes réelles des jours
+suivants tomberont dans une période n°3 qui ne s'affichera que le jour où les
+sept autres auront été comptés trois fois.
+
+**Correctif minimal proposé** : avertir en quittant un comptage incomplet —
+« 7 produits non comptés, la période ne se fermera pas ». Ne change ni le
+modèle ni les données.
+
+**Correctif de fond, à trancher** : soit interdire le comptage partiel (un tour
+se termine ou s'abandonne), soit rendre le rapport tolérant à des périodes
+par produit — ce qui rendrait la section « et l'argent ? » incomparable, les
+recettes portant sur une fenêtre unique alors que les ventes viendraient de
+fenêtres différentes. La première option est la plus honnête.

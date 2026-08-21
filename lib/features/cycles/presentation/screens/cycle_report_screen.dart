@@ -43,10 +43,11 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
                   final selected = cycles
                       .where((c) => c.id == _selectedCycleId)
                       .firstOrNull;
-                  String nameOf(String productId) => products
-                      .where((p) => p.id == productId)
-                      .map((p) => p.name)
-                      .firstOrNull ??
+                  String nameOf(String productId) =>
+                      products
+                          .where((p) => p.id == productId)
+                          .map((p) => p.name)
+                          .firstOrNull ??
                       'Produit inconnu';
 
                   return Material(
@@ -162,10 +163,7 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
                               // vendeur veut lire. Elle manquait, et il fallait
                               // la déduire du reçu moins le restant moins les
                               // pertes.
-                              _row(
-                                'Quantité vendue',
-                                '${totals.soldQuantity}',
-                              ),
+                              _row('Quantité vendue', '${totals.soldQuantity}'),
                               _row(
                                 "Chiffre d'affaires",
                                 CurrencyFormatter.format(totals.revenue),
@@ -180,12 +178,9 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
                               _row(
                                 'Pertes',
                                 '${totals.lostQuantity} · '
-                                '${CurrencyFormatter.format(totals.lossValue)}',
+                                    '${CurrencyFormatter.format(totals.lossValue)}',
                               ),
-                              _row(
-                                'Stock restant',
-                                '${totals.remainingStock}',
-                              ),
+                              _row('Stock restant', '${totals.remainingStock}'),
                               const Divider(height: 32),
                               _row(
                                 'Bénéfice net du cycle',
@@ -352,7 +347,9 @@ class _CycleReportScreenState extends ConsumerState<CycleReportScreen> {
           final visible = query.isEmpty
               ? ordered
               : ordered
-                    .where((c) => nameOf(c.productId).toLowerCase().contains(query))
+                    .where(
+                      (c) => nameOf(c.productId).toLowerCase().contains(query),
+                    )
                     .toList();
 
           return Padding(

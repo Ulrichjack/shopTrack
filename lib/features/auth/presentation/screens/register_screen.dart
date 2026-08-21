@@ -38,16 +38,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Center(
+        // Ancré en haut : centrer fait remonter tout l'écran quand le clavier
+        // se ferme, et le bouton s'échappe sous le doigt. Même piège que
+        // l'écran de connexion.
+        child: Align(
+          alignment: Alignment.topCenter,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
             child: Form(
               key: _formKey,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-
                   const Icon(
                     Icons.storefront, // Une icône de boutique
                     size: 100,
@@ -69,7 +72,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const Text(
                     'Créer ma boutique',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 32),
 
@@ -162,42 +169,50 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     onPressed: isLoading
                         ? null
                         : () async {
-                      // 👇 1. ON VÉRIFIE LE FORMULAIRE ICI 👇
-                      if (_formKey.currentState!.validate()) {
+                            // 👇 1. ON VÉRIFIE LE FORMULAIRE ICI 👇
+                            if (_formKey.currentState!.validate()) {
+                              // 2. Si c'est valide, on lance l'inscription
+                              try {
+                                await ref
+                                    .read(authProvider.notifier)
+                                    .register(
+                                      _phoneController.text,
+                                      _passwordController.text,
+                                      _shopNameController.text,
+                                    );
 
-                        // 2. Si c'est valide, on lance l'inscription
-                        try {
-                          await ref.read(authProvider.notifier).register(
-                            _phoneController.text,
-                            _passwordController.text,
-                            _shopNameController.text,
-                          );
+                                // L'inscription ne faisait RIEN de tout ceci : le
+                                // téléphone gardait la boutique active et les
+                                // données locales du compte précédent. Le nouveau
+                                // patron cherchait son rôle dans une boutique qui
+                                // n'était pas la sienne et arrivait en mode vendeur
+                                // sur sa propre boutique.
+                                await prendreEnMainLaSession(
+                                  ref,
+                                  inscription: true,
+                                );
 
-                          // L'inscription ne faisait RIEN de tout ceci : le
-                          // téléphone gardait la boutique active et les
-                          // données locales du compte précédent. Le nouveau
-                          // patron cherchait son rôle dans une boutique qui
-                          // n'était pas la sienne et arrivait en mode vendeur
-                          // sur sa propre boutique.
-                          await prendreEnMainLaSession(ref, inscription: true);
-
-                          if (context.mounted) {
-                            context.go('/home');
-                          }
-                        } catch (e) {
-                          // Afficher l'erreur (comme on l'a vu précédemment)
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(e.toString().replaceAll('Exception: ', '')),
-                                backgroundColor: AppColors.error,
-                              ),
-                            );
-                          }
-                        }
-
-                      }
-                    },
+                                if (context.mounted) {
+                                  context.go('/home');
+                                }
+                              } catch (e) {
+                                // Afficher l'erreur (comme on l'a vu précédemment)
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        e.toString().replaceAll(
+                                          'Exception: ',
+                                          '',
+                                        ),
+                                      ),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -205,20 +220,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     child: isLoading
                         ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
                         : const Text(
-                      'Créer mon compte',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                            'Créer mon compte',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                   TextButton(
-                    onPressed: () => context.pop(), // pop ferme l'écran actuel et revient au login
+                    onPressed: () => context
+                        .pop(), // pop ferme l'écran actuel et revient au login
                     child: const Text(
                       "J'ai déjà un compte ? Me connecter",
                       style: TextStyle(color: AppColors.primary),
@@ -227,8 +246,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ],
               ),
             ),
-            ),
-
+          ),
         ),
       ),
     );

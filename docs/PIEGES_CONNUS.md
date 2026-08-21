@@ -369,3 +369,147 @@ secondes, sans téléphone.
 un commerçant, pas comme un développeur. Les tests vérifient ce qu'on a pensé à
 vérifier ; le test manuel tombe sur ce qu'on n'avait pas prévu. Les deux, pas
 l'un ou l'autre.
+
+---
+
+## 20. Le téléchargement réussit derrière un écran resté vide
+
+**Symptômes, apparemment sans rapport** — « je dois fermer l'application et la
+rouvrir pour que les produits s'affichent dans le comptage » ; « le vendeur se
+connecte sur l'émulateur, aucun produit, alors que la Samsung en a sept ».
+
+**Cause unique** : `pullDataFromSupabase()` remplit Drift et ne prévient
+personne. Un provider dont le `Future` est déjà résolu garde son résultat — sur
+un téléphone neuf, ce résultat est vide, et rien ne le recalcule jamais. Les
+logs le datent à la seconde : connexion à 14:03:14, `[SYNC] téléchargement
+terminé — 7 produits` à 14:03:51. Trente-sept secondes d'écran vide, puis un
+vide définitif.
+
+**Ce qui l'a trahi** : la ligne `[SYNC] téléchargement terminé` dans `adb
+logcat` annonçait les 7 produits pendant que l'écran en affichait zéro. Sans
+cette trace, le diagnostic partait vers RLS ou le rattachement du vendeur — les
+deux étaient corrects.
+
+**Correction** : `revisionDonneesLocalesProvider`
+(`lib/core/sync/revision_donnees.dart`), incrémenté après la transaction du
+pull et surveillé par `watchShopId()` — le passage commun à toute lecture liée
+à une boutique. Les quelques providers qui ne passent pas par lui
+(`productProvider`, `cyclesProvider`, `cycleReportProvider`, `dashboardProvider`)
+le surveillent directement.
+
+**Règle** : une écriture en base faite **hors** d'une action d'écran doit
+incrémenter ce compteur. Écrire dans Drift ne rafraîchit rien tout seul.
+
+**Pourquoi ça ne clignote pas** : la synchro n'est jamais déclenchée par un
+minuteur, seulement par un événement — reprise de l'app, retour du réseau,
+connexion, changement de boutique, tirer pour rafraîchir.
+
+**Le contrecoup, trouvé une heure plus tard** : `dashboardProvider` déclenche
+lui-même un téléchargement à chaque construction (`_runBackgroundSync`). Lui
+faire surveiller le compteur a bouclé — synchro → compteur → reconstruction →
+synchro, **un tour toutes les 700 ms**, visible dans `logcat` comme une
+répétition de `[SHOPS] réponse brute` / `[SYNC] téléchargement terminé`. Deux
+produits sur huit ont pu être créés avant que l'app devienne inutilisable.
+
+**Règle** : un provider qui **déclenche** une synchro ne doit pas **surveiller**
+ce compteur. Et par sécurité, `pullDataFromSupabase()` ne l'incrémente que si
+l'empreinte du contenu téléchargé a changé — une boucle éventuelle fait un tour
+au lieu de tourner sans fin, et une reprise d'app sans nouveauté ne reconstruit
+plus toute l'interface.
+
+---
+
+## 21. Deux écrans qui comptent juste et se contredisent
+
+**Vu en vrai** : l'accueil annonce « 3 jours sans recette notée », le rapport de
+la même période « 6 jour(s) ». Les deux calculs étaient corrects.
+
+L'accueil part de la **première recette notée** et s'arrête **avant
+aujourd'hui**. Le rapport partait du **premier comptage** et allait **jusqu'à
+aujourd'hui inclus**. Un seul des trois écarts était un bug — le jour même, où
+la recette se note le soir venu.
+
+**Ce qui restait après correction** : les jours entre le premier comptage et la
+première recette, absents de l'accueil et légitimes dans le rapport. Deux
+définitions différentes pour deux questions différentes.
+
+**Règle** : quand deux écrans affichent le même intitulé avec deux nombres, ne
+pas forcer l'un à copier l'autre — **montrer les éléments comptés**. Le rapport
+liste désormais les dates, comme l'accueil : la différence s'explique d'elle-même
+et n'a plus besoin d'être expliquée.
+
+---
+
+## 22. Une heure locale envoyée sans son fuseau
+
+**Vu en vrai le 21/08/2026** : le téléphone affiche 12:37, le journal de caisse
+date les ventes de 13:36 et 13:28. Une heure d'avance, exactement le décalage
+du Cameroun (UTC+1).
+
+**Cause** : `DateTime.now().toIso8601String()` sur une date **locale** produit
+`2026-08-21T12:36:00.000` — sans suffixe de fuseau. Postgres la range dans une
+colonne `timestamptz` en la supposant universelle, puis
+`DateTime.parse(...).toLocal()` à la relecture y rajoute l'heure du pays.
+
+**Douze endroits étaient concernés**, en deux familles :
+- six **écritures** (`created_at` d'une vente, d'un mouvement de caisse, d'une
+  perte de cycle ; `opened_at`/`closed_at` d'un cycle) — instant faux ;
+- six **bornes de requête** (`startOfDay`, `endOfDay`, `startDate`, `endDate`)
+  — fenêtre décalée d'une heure.
+
+**Plus grave que cosmétique** : une vente faite après 23h locale était rangée
+au lendemain. Elle disparaissait de la journée en cours, donc de sa clôture de
+caisse, et réapparaissait dans celle du lendemain. L'écart de caisse du soir
+devenait inexplicable.
+
+**Règle** : toute date envoyée à Supabase passe par `.toUtc()`. Sans exception,
+bornes de requête comprises. Le contrôle tient en une commande :
+
+```bash
+grep -rn "toIso8601String()" lib/ --include=*.dart | grep -v "toUtc()"
+```
+
+Elle doit ne rien renvoyer.
+
+**Les données déjà écrites gardent leur décalage** : elles ont été enregistrées
+avec la mauvaise valeur, la corriger demanderait de savoir quelles lignes sont
+antérieures au correctif. Sans conséquence sur les montants — seule l'heure
+affichée est décalée, et la date ne change que pour les ventes de fin de
+soirée.
+
+---
+
+## 23. Une lecture locale qui oublie la boutique
+
+**Vu en vrai le 21/08/2026** : passer d'une boutique en vente simple à une
+ferme en mode cycles sur le même téléphone affichait les cycles — et le bilan —
+de la boutique précédente. Un tirer-pour-actualiser corrigeait l'affichage, ce
+qui rendait le défaut intermittent, donc difficile à croire.
+
+**Cause** : le pull **fusionne** sans jamais vider (voir `sync_service`). La
+base locale garde donc les données de chaque boutique visitée sur cet appareil.
+Toute lecture Drift qui ne filtre pas par `shopId` les mélange.
+
+**Deux foyers trouvés** :
+- `cyclesProvider` lisait `localSupplyCycles` **sans aucun filtre** et sans
+  surveiller la boutique active : ni cloisonné, ni rafraîchi ;
+- `dashboard_provider` avait **douze** lectures — clôtures, ventes, mouvements
+  de caisse — filtrées par date seulement. Une journée close ailleurs masquait
+  celle qui restait à faire ; les ventes d'une épicerie réclamaient la clôture
+  d'une autre.
+
+**Règle** : toute lecture d'une table locale porteuse d'un `shopId` filtre
+dessus, et l'obtient par `watchShopId(ref)` — jamais par `read` — pour que
+changer de boutique reconstruise l'écran. Le contrôle :
+
+```bash
+grep -rn "db.select(db.local" -A 4 lib/ --include=*.dart | grep -B 2 "where"
+```
+
+Chaque bloc doit contenir un `shopId.equals`. Deux exceptions légitimes, toutes
+deux commentées : la recherche du produit d'origine d'un transfert, qui vit par
+construction dans une AUTRE boutique.
+
+**Pourquoi les tests ne le voyaient pas** : ils créent une seule boutique. Il
+faut deux boutiques sur le même appareil, donc deux jeux de données mêlés dans
+la même base locale — exactement ce que produit une journée d'essais réels.

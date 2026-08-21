@@ -14,6 +14,13 @@ import '../../../products/presentation/providers/product_provider.dart';
 /// La clé qui dit quel compte utilisait ce téléphone la dernière fois.
 const cleCompteMemorise = 'cached_user_id';
 
+/// Le dernier numéro qui s'est connecté sur ce téléphone.
+///
+/// Sert à le pré-remplir : sur un téléphone de boutique, c'est toujours le
+/// même compte qui revient, et retaper neuf chiffres à chaque ouverture n'a
+/// aucun intérêt. Seul le mot de passe reste à saisir — c'est lui qui protège.
+const cleDernierNumero = 'dernier_numero';
+
 /// Tout ce qu'il faut faire une fois l'authentification réussie.
 ///
 /// Écrit une seule fois, parce que les deux écrans l'oubliaient différemment :

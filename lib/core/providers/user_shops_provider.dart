@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'current_shop_provider.dart';
+import '../../features/dashboard/presentation/providers/dashboard_provider.dart';
+import '../../features/products/presentation/providers/product_provider.dart';
 import 'shop_settings_provider.dart';
 
 /// Une boutique à laquelle le compte connecté a accès.
@@ -70,18 +73,16 @@ final userShopsProvider = FutureProvider<List<UserShop>>((ref) async {
     // ne peut pas distinguer « absent » de « mal lu » sans voir la réponse.
     debugPrint('[SHOPS] réponse brute : $reponse');
 
-    return (reponse as List)
-        .map((ligne) {
-          final shop = ligne['shops'] as Map<String, dynamic>?;
-          final creation = shop?['created_at'] as String?;
-          return UserShop(
-            id: ligne['shop_id'] as String,
-            name: (shop?['name'] as String?) ?? 'Ma boutique',
-            role: (ligne['role'] as String?) ?? 'seller',
-            createdAt: creation == null ? null : DateTime.parse(creation),
-          );
-        })
-        .toList()
+    return (reponse as List).map((ligne) {
+        final shop = ligne['shops'] as Map<String, dynamic>?;
+        final creation = shop?['created_at'] as String?;
+        return UserShop(
+          id: ligne['shop_id'] as String,
+          name: (shop?['name'] as String?) ?? 'Ma boutique',
+          role: (ligne['role'] as String?) ?? 'seller',
+          createdAt: creation == null ? null : DateTime.parse(creation),
+        );
+      }).toList()
       // Ordre stable : le sélecteur ne doit pas changer d'ordre à chaque
       // chargement, sinon on tape sur la mauvaise boutique par habitude.
       ..sort((a, b) => a.name.compareTo(b.name));
@@ -150,6 +151,27 @@ class ShopCreation {
     }
 
     ref.invalidate(userShopsProvider);
+
+    // Basculer sur la boutique qu'on vient de créer, ET tout rafraîchir.
+    //
+    // Sans ça, on la crée et on reste sur l'ancienne — puis on va dans les
+    // réglages pour configurer « la nouvelle », et le changement s'applique à
+    // celle d'avant. Vu en vrai le 20/08/2026 : une boutique pleine de
+    // comptages basculée en mode simple par ce chemin, son accueil
+    // d'inventaire disparu, et une demi-journée à chercher pourquoi.
+    await ref.read(currentShopIdProvider.notifier).select(shopId);
+
+    // Les mêmes invalidations que le sélecteur de boutique (`shop_switcher`).
+    //
+    // Basculer sans elles laissait le tableau de bord sur les chiffres de la
+    // boutique précédente : une boutique neuve affichait la recette et la
+    // caisse d'une autre. `dashboardProvider` lit la boutique active en
+    // `read`, il ne se reconstruit donc pas tout seul — contrairement aux
+    // réglages et aux produits, qui la surveillent.
+    ref.invalidate(shopSettingsProvider);
+    ref.invalidate(productProvider);
+    ref.invalidate(dashboardProvider);
+
     return shopId;
   }
 }

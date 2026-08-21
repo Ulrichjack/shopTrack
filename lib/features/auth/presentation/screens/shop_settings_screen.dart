@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/errors/sync_error_message.dart';
+import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/providers/shop_settings_provider.dart';
+import '../../../../core/providers/user_shops_provider.dart';
 
 /// Réglages métier de la boutique : le patron active uniquement ce dont il a
 /// besoin. Tout est désactivé par défaut — une boutique neuve fonctionne en
@@ -12,8 +14,7 @@ class ShopSettingsScreen extends ConsumerStatefulWidget {
   const ShopSettingsScreen({super.key});
 
   @override
-  ConsumerState<ShopSettingsScreen> createState() =>
-      _ShopSettingsScreenState();
+  ConsumerState<ShopSettingsScreen> createState() => _ShopSettingsScreenState();
 }
 
 class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
@@ -91,10 +92,8 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(shopSettingsProvider);
-    final isHierarchical =
-        settingsAsync.value?.unitMode == 'hierarchical';
-    final isPeriodic =
-        settingsAsync.value?.saleCaptureMode == 'periodic';
+    final isHierarchical = settingsAsync.value?.unitMode == 'hierarchical';
+    final isPeriodic = settingsAsync.value?.saleCaptureMode == 'periodic';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -103,6 +102,16 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // QUELLE boutique on configure.
+            //
+            // Ces interrupteurs changent le mode de fonctionnement entier d'un
+            // commerce. Sans le nom sous les yeux, on croit configurer la
+            // boutique qu'on vient de créer alors qu'on modifie la
+            // précédente — c'est arrivé, et une boutique d'inventaire est
+            // repassée en vente simple sans que rien ne le signale.
+            const _CarteBoutique(),
+            const SizedBox(height: 20),
+
             Text(
               'Active uniquement ce dont ta boutique a besoin. '
               'Tout est désactivé par défaut.',
@@ -142,10 +151,7 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
                     'Un onglet « Cycles » est disponible en bas de l\'écran. '
                     'Les produits sans unité définie continuent de se vendre '
                     'normalement.',
-                    style: TextStyle(
-                      color: Colors.blue.shade900,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.blue.shade900, fontSize: 13),
                   ),
                 ),
               ),
@@ -197,6 +203,38 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Le nom de la boutique que ces réglages vont modifier.
+///
+/// Ces interrupteurs changent le mode de fonctionnement entier d'un commerce.
+/// Sans le nom sous les yeux, on croit configurer la boutique qu'on vient de
+/// créer alors qu'on modifie la précédente — c'est arrivé le 20/08/2026, et
+/// une boutique d'inventaire est repassée en vente simple sans que rien ne le
+/// signale.
+class _CarteBoutique extends ConsumerWidget {
+  const _CarteBoutique();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final shopId = ref.watch(currentShopIdProvider).valueOrNull;
+    final boutiques = ref.watch(userShopsProvider).valueOrNull;
+    final nom = boutiques
+        ?.where((boutique) => boutique.id == shopId)
+        .firstOrNull
+        ?.name;
+
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.storefront, color: AppColors.primary),
+        title: Text(
+          nom ?? 'Boutique active',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+        ),
+        subtitle: const Text('Les réglages ci-dessous ne touchent qu\'elle'),
       ),
     );
   }

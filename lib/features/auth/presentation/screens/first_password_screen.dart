@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/employees_provider.dart';
 import '../../domain/auth_error_message.dart';
+import '../providers/session_handover.dart';
 
 /// Le vendeur choisit son mot de passe avant d'entrer dans l'application.
 ///
@@ -92,6 +94,9 @@ class _FirstPasswordScreenState extends ConsumerState<FirstPasswordScreen> {
   /// passe que son patron lui a dit resterait bloqué sur cet écran, sans même
   /// pouvoir rendre le téléphone à quelqu'un d'autre.
   Future<void> _seDeconnecter() async {
+    // Même raison que dans le profil : ce vendeur rend le téléphone.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(cleDernierNumero);
     await Supabase.instance.client.auth.signOut();
     if (!mounted) return;
     context.go('/login');
@@ -158,8 +163,7 @@ class _FirstPasswordScreenState extends ConsumerState<FirstPasswordScreen> {
                         filled: true,
                         fillColor: AppColors.cardBg,
                       ),
-                      validator: (valeur) =>
-                          (valeur == null || valeur.isEmpty)
+                      validator: (valeur) => (valeur == null || valeur.isEmpty)
                           ? 'Entre le mot de passe provisoire'
                           : null,
                     ),

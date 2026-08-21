@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/session_handover.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -250,6 +251,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // compte a changé : voir `login_screen`. Même compte, données gardées.
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('boss_mode_active');
+
+      // Le numéro mémorisé s'oublie ICI, et nulle part ailleurs.
+      //
+      // Se déconnecter volontairement veut dire « quelqu'un d'autre prend la
+      // main » — le patron rend le téléphone au vendeur. Lui pré-remplir le
+      // numéro du patron l'expose à taper SON mot de passe sur le compte d'un
+      // autre, et à s'entendre dire qu'il est faux. Rouvrir l'application, en
+      // revanche, ne dit rien de tel : le numéro y reste.
+      await prefs.remove(cleDernierNumero);
 
       // Le mode Patron/Vendeur et les réglages de boutique vivent en mémoire :
       // vider la base ne les efface pas. Sans ce reset, le compte suivant
@@ -647,8 +657,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               size: 16,
                               color: Colors.grey,
                             ),
-                            onTap: () =>
-                                ouvrirCreationBoutique(context, ref),
+                            onTap: () => ouvrirCreationBoutique(context, ref),
                           ),
                           const Divider(height: 1),
                           ListTile(

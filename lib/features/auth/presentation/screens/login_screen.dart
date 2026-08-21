@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
 import '../../../../core/providers/employees_provider.dart';
@@ -22,6 +23,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _rappelerLeDernierNumero();
+  }
+
+  /// Le numéro de la dernière connexion, pré-rempli.
+  ///
+  /// Sur un téléphone de boutique c'est toujours le même compte qui revient.
+  /// Le mot de passe, lui, reste à taper : c'est lui qui protège, pas le
+  /// numéro — qui est de toute façon écrit sur l'enseigne.
+  Future<void> _rappelerLeDernierNumero() async {
+    final prefs = await SharedPreferences.getInstance();
+    final numero = prefs.getString(cleDernierNumero);
+    if (numero == null || numero.isEmpty || !mounted) return;
+    if (_phoneController.text.isNotEmpty) return;
+    _phoneController.text = numero;
+  }
+
+  /// Le geste de connexion — déclenché par le bouton ET par la touche de
+  /// validation du clavier, pour ne pas obliger à refermer celui-ci d'abord.
+  Future<void> _seConnecter() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      await ref
+          .read(authProvider.notifier)
+          .login(_phoneController.text, _passwordController.text);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        cleDernierNumero,
+        _phoneController.text.replaceAll(' ', '').trim(),
+      );
+
+      // Ménage, mémorisation du compte, invalidations et rechargement : tout
+      // est dans `prendreEnMainLaSession`, partagé avec l'inscription.
+      await prendreEnMainLaSession(ref, inscription: false);
+      if (!mounted) return;
+
+      // Sauf si le vendeur utilise encore le mot de passe provisoire que son
+      // patron lui a dit. Le routeur l'y renverrait de toute façon ; passer
+      // par ici permet de lui transmettre le mot de passe qu'il vient de
+      // taper, pour ne pas le lui redemander à la ligne suivante.
+      if (doitChangerMotDePasse()) {
+        context.go(routePremierMotDePasse, extra: _passwordController.text);
+      } else {
+        context.go('/home');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  @override
   void dispose() {
     // Très bonne pratique : évite les fuites de mémoire sur le téléphone
     _phoneController.dispose();
@@ -36,13 +97,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Center(
+        // Ancré en haut, PAS centré.
+        //
+        // Avec `Center` + une colonne centrée, fermer le clavier agrandit la
+        // zone visible et recentre tout : le bouton s'échappe sous le doigt
+        // avant que l'appui soit reconnu. D'où le « il faut taper deux fois »
+        // — le premier appui ne servait qu'à refermer le clavier.
+        child: Align(
+          alignment: Alignment.topCenter,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
             child: Form(
               key: _formKey,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Icon(
@@ -100,6 +168,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
+                    // Valider depuis le clavier : le chemin le plus court, et
+                    // celui qui contourne tout déplacement de mise en page.
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _seConnecter(),
                     decoration: const InputDecoration(
                       labelText: 'Mot de passe',
                       prefixIcon: Icon(Icons.lock),
@@ -119,67 +191,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 32),
 
                   ElevatedButton(
-                    onPressed: isLoading
-                        ? null
-                        : () async {
-                            // <-- Ajoute async ici
-
-                            if (_formKey.currentState!.validate()) {
-                              try {
-                                // 1. On attend que le login se termine
-                                await ref
-                                    .read(authProvider.notifier)
-                                    .login(
-                                      _phoneController.text,
-                                      _passwordController.text,
-                                    );
-
-                                // Ménage, mémorisation du compte,
-                                // invalidations et rechargement : tout est
-                                // dans `prendreEnMainLaSession`, partagé avec
-                                // l'inscription — qui n'en faisait aucun.
-                                await prendreEnMainLaSession(
-                                  ref,
-                                  inscription: false,
-                                );
-
-                                // 2. Si l'écran est toujours affiché (bonne pratique Flutter)
-                                if (context.mounted) {
-                                  // 3. On navigue vers le Dashboard — sauf si
-                                  // le vendeur utilise encore le mot de passe
-                                  // provisoire que son patron lui a dit. Le
-                                  // routeur l'y renverrait de toute façon ;
-                                  // passer par ici permet de lui transmettre
-                                  // le mot de passe qu'il vient de taper, pour
-                                  // ne pas le lui redemander à la ligne
-                                  // suivante.
-                                  if (doitChangerMotDePasse()) {
-                                    context.go(
-                                      routePremierMotDePasse,
-                                      extra: _passwordController.text,
-                                    );
-                                  } else {
-                                    context.go('/home');
-                                  }
-                                }
-                              } catch (e) {
-                                // Afficher l'erreur (comme on l'a vu précédemment)
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        e.toString().replaceAll(
-                                          'Exception: ',
-                                          '',
-                                        ),
-                                      ),
-                                      backgroundColor: AppColors.error,
-                                    ),
-                                  );
-                                }
-                              }
-                            }
-                          },
+                    onPressed: isLoading ? null : _seConnecter,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,

@@ -154,7 +154,8 @@ class _CreateCycleScreenState extends ConsumerState<CreateCycleScreen> {
                   decoration: _decoration('Ex: 18000'),
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Obligatoire';
-                    if (double.tryParse(value) == null) return 'Montant invalide';
+                    if (double.tryParse(value) == null)
+                      return 'Montant invalide';
                     return null;
                   },
                 ),
@@ -177,7 +178,8 @@ class _CreateCycleScreenState extends ConsumerState<CreateCycleScreen> {
                   decoration: _decoration('Ex: 6000'),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) return null;
-                    if (double.tryParse(value) == null) return 'Montant invalide';
+                    if (double.tryParse(value) == null)
+                      return 'Montant invalide';
                     return null;
                   },
                 ),

@@ -118,8 +118,11 @@ class _CycleSaleScreenState extends ConsumerState<CycleSaleScreen> {
     final quantity = int.tryParse(_quantityController.text);
     final pricePerUnit = double.tryParse(_priceController.text);
 
-    if (unit == null || quantity == null || quantity <= 0 ||
-        pricePerUnit == null || pricePerUnit < 0) {
+    if (unit == null ||
+        quantity == null ||
+        quantity <= 0 ||
+        pricePerUnit == null ||
+        pricePerUnit < 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Unité, quantité et prix sont obligatoires'),
@@ -234,10 +237,7 @@ class _CycleSaleScreenState extends ConsumerState<CycleSaleScreen> {
                     borderSide: BorderSide(color: Colors.grey.shade300),
                   ),
                   focusedBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(
-                      color: AppColors.primary,
-                      width: 2,
-                    ),
+                    borderSide: BorderSide(color: AppColors.primary, width: 2),
                   ),
                 ),
               ),
@@ -576,6 +576,29 @@ class _CycleSaleScreenState extends ConsumerState<CycleSaleScreen> {
                                                       u.ratioToBase)
                                                   .round()
                                                   .toString();
+                                        } else {
+                                          // Sans gain espéré déclaré à
+                                          // l'arrivage — un champ facultatif,
+                                          // donc souvent vide — le champ
+                                          // gardait le prix mis au choix du
+                                          // PRODUIT, c'est-à-dire celui de
+                                          // l'unité de base. Choisir
+                                          // « plaquette » laissait donc 200 F
+                                          // affichés pour trente œufs, et il
+                                          // fallait deviner qu'il fallait
+                                          // retaper. Le repli évident était là
+                                          // depuis le début : le prix de la
+                                          // fiche multiplié par la contenance.
+                                          final produit = productsAsync.value
+                                              ?.where((p) => p.id == productId)
+                                              .firstOrNull;
+                                          if (produit != null) {
+                                            _priceController.text =
+                                                (produit.sellPrice *
+                                                        u.ratioToBase)
+                                                    .round()
+                                                    .toString();
+                                          }
                                         }
                                       }),
                                       child: Container(
@@ -667,8 +690,7 @@ class _CycleSaleScreenState extends ConsumerState<CycleSaleScreen> {
                                     builder: (context) {
                                       final suggested =
                                           (cycle.purchaseCost +
-                                              cycle
-                                                  .referenceMarginPerUnit!) /
+                                              cycle.referenceMarginPerUnit!) /
                                           cycle.quantityReceived *
                                           _selectedUnit!.ratioToBase;
                                       return Padding(

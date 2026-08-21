@@ -163,55 +163,53 @@ class _ManageUnitsScreenState extends ConsumerState<ManageUnitsScreen> {
               if (_selectedProductId != null) ...[
                 Consumer(
                   builder: (context, ref, _) {
-                      final unitsAsync = ref.watch(
-                        productUnitsProvider(_selectedProductId!),
-                      );
-                      return unitsAsync.when(
-                        data: (units) => units.isEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
+                    final unitsAsync = ref.watch(
+                      productUnitsProvider(_selectedProductId!),
+                    );
+                    return unitsAsync.when(
+                      data: (units) => units.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Text(
+                                'Aucune unité. Commence par la plus petite '
+                                '— celle que tu vends à l\'unité — avec '
+                                'une quantité de 1. Les autres (plateau, '
+                                'carton…) s\'ajoutent après.',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 13,
                                 ),
-                                child: Text(
-                                  'Aucune unité. Commence par la plus petite '
-                                  '— celle que tu vends à l\'unité — avec '
-                                  'une quantité de 1. Les autres (plateau, '
-                                  'carton…) s\'ajoutent après.',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              )
-                            : ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: units.length,
-                                separatorBuilder: (_, __) =>
-                                    const Divider(height: 1),
-                                itemBuilder: (context, index) {
-                                  final unit = units[index];
-                                  return ListTile(
-                                    title: Text(unit.unitName),
-                                    subtitle: Text(
-                                      '1 ${unit.unitName} = '
-                                      '${unit.ratioToBase} $productName',
-                                    ),
-                                    trailing: IconButton(
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        color: AppColors.error,
-                                      ),
-                                      onPressed: () => _confirmDelete(unit),
-                                    ),
-                                  );
-                                },
                               ),
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                        error: (e, _) => Text('Erreur : $e'),
-                      );
-                    },
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: units.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final unit = units[index];
+                                return ListTile(
+                                  title: Text(unit.unitName),
+                                  subtitle: Text(
+                                    '1 ${unit.unitName} = '
+                                    '${unit.ratioToBase} $productName',
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      color: AppColors.error,
+                                    ),
+                                    onPressed: () => _confirmDelete(unit),
+                                  ),
+                                );
+                              },
+                            ),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (e, _) => Text('Erreur : $e'),
+                    );
+                  },
                 ),
                 const Divider(height: 32),
                 const Text(
