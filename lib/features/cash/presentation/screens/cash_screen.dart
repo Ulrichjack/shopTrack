@@ -8,6 +8,7 @@ import 'package:drift/drift.dart' hide Column;
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../../shared/widgets/network_error_widget.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
@@ -18,6 +19,10 @@ final todayWithdrawalsProvider = FutureProvider<List<CashMovementEntity>>((
   ref,
 ) async {
   final db = ref.read(localDbProvider);
+  // Les sorties de caisse de CETTE boutique. Sans le filtre, un retrait fait
+  // dans une autre boutique du même téléphone apparaissait ici et faussait le
+  // total de la journée.
+  final shopId = await watchShopId(ref);
 
   final now = DateTime.now();
   final startOfDay = DateTime(now.year, now.month, now.day);
@@ -26,6 +31,7 @@ final todayWithdrawalsProvider = FutureProvider<List<CashMovementEntity>>((
   final localMovements =
       await (db.select(db.localCashMovements)..where(
             (t) =>
+                t.shopId.equals(shopId) &
                 t.createdAt.isBetweenValues(startOfDay, endOfDay) &
                 t.type.equals('withdrawal'),
           ))
@@ -127,7 +133,7 @@ class _CashScreenState extends ConsumerState<CashScreen> {
         'type': 'withdrawal',
         'category': _selectedCategory,
         'note': _noteController.text.isEmpty ? null : _noteController.text,
-        'created_at': now.toIso8601String(),
+        'created_at': now.toUtc().toIso8601String(),
       };
       await db.addToQueue('ADD_CASH_MOVEMENT', jsonEncode(payload));
       ref.read(syncServiceProvider).processQueue();

@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../../core/sync/revision_donnees.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../../../core/providers/current_shop_provider.dart';
 
@@ -35,8 +36,21 @@ final openCycleForProductProvider =
 class CyclesNotifier extends AsyncNotifier<List<LocalSupplyCycle>> {
   @override
   Future<List<LocalSupplyCycle>> build() async {
+    ref.watch(revisionDonneesLocalesProvider);
+    // La boutique active — surveillée, donc changer de boutique reconstruit
+    // cette liste.
+    //
+    // Sans ce filtre, l'écran des cycles lisait TOUS les cycles du téléphone.
+    // Le pull fusionne sans jamais vider : la base locale garde donc les
+    // données de chaque boutique visitée. Un commerçant qui passait d'une
+    // épicerie en vente simple à sa ferme d'œufs voyait les arrivages de
+    // l'autre, et son bilan avec — jusqu'à ce qu'il tire pour actualiser.
+    // Constaté le 21/08/2026.
+    final shopId = await watchShopId(ref);
     final db = ref.read(localDbProvider);
-    return db.select(db.localSupplyCycles).get();
+    return (db.select(
+      db.localSupplyCycles,
+    )..where((cycle) => cycle.shopId.equals(shopId))).get();
   }
 
   Future<void> createCycle({
@@ -61,11 +75,11 @@ class CyclesNotifier extends AsyncNotifier<List<LocalSupplyCycle>> {
     // 360 créé par-dessus, et 500 œufs devenus invendables sur le papier.
     // `get()` et non `getSingleOrNull()` : celui-ci lèverait une erreur brute
     // sur les bases où le doublon existe déjà, au lieu du message ci-dessous.
-    final dejaOuverts = await (db.select(db.localSupplyCycles)..where(
-          (t) =>
-              t.productId.equals(productId) & t.status.equals('open'),
-        ))
-        .get();
+    final dejaOuverts =
+        await (db.select(db.localSupplyCycles)..where(
+              (t) => t.productId.equals(productId) & t.status.equals('open'),
+            ))
+            .get();
     if (dejaOuverts.isNotEmpty) {
       throw Exception(
         'Un arrivage est déjà en cours pour ce produit. '
@@ -94,7 +108,7 @@ class CyclesNotifier extends AsyncNotifier<List<LocalSupplyCycle>> {
       'id': id,
       'shop_id': shopId,
       'product_id': productId,
-      'opened_at': openedAt.toIso8601String(),
+      'opened_at': openedAt.toUtc().toIso8601String(),
       'quantity_received': quantityReceived,
       'purchase_cost': purchaseCost,
       'reference_margin_per_unit': referenceMarginPerUnit,
@@ -177,7 +191,7 @@ class CyclesNotifier extends AsyncNotifier<List<LocalSupplyCycle>> {
       jsonEncode({
         'id': cycleId,
         'status': status,
-        'closed_at': closedAt?.toIso8601String(),
+        'closed_at': closedAt?.toUtc().toIso8601String(),
       }),
     );
     await ref.read(syncServiceProvider).processQueue();

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
+import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../dashboard/domain/entities/daily_closing_entity.dart';
 
@@ -29,6 +30,14 @@ class MonthlyReportState {
 final monthlyReportProvider =
     FutureProvider.family<MonthlyReportState, DateTime>((ref, date) async {
       final db = ref.read(localDbProvider);
+      // La boutique active, SURVEILLÉE — le bilan doit se refaire quand on
+      // change de boutique.
+      //
+      // Sans ce filtre, il additionnait les clôtures de toutes les boutiques
+      // du téléphone : la journée du 21/08 d'une épicerie en vente simple
+      // apparaissait dans le bilan d'une ferme en mode cycles. Le pull
+      // fusionne sans jamais vider, donc la base locale les contient toutes.
+      final shopId = await watchShopId(ref);
 
       // Définir le 1er et le dernier jour du mois
       final startDate = DateTime(date.year, date.month, 1);
@@ -38,7 +47,9 @@ final monthlyReportProvider =
       final localClosings =
           await (db.select(db.localDailyClosings)
                 ..where(
-                  (t) => t.closingDate.isBetweenValues(startDate, endDate),
+                  (t) =>
+                      t.shopId.equals(shopId) &
+                      t.closingDate.isBetweenValues(startDate, endDate),
                 )
                 ..orderBy([(t) => OrderingTerm(expression: t.closingDate)]))
               .get();

@@ -84,6 +84,13 @@ class PendingClosing {
 final pendingClosingProvider = FutureProvider.family<PendingClosing?, DateTime>(
   (ref, date) async {
     final db = ref.watch(localDbProvider);
+    // La boutique active. Les trois lectures qui suivent l'ignoraient : sur un
+    // téléphone qui gère plusieurs boutiques, une journée déjà clôturée
+    // ailleurs masquait celle qui restait à faire, et les ventes d'une
+    // épicerie réclamaient la clôture d'une autre.
+    final shopId = await ref.watch(currentShopIdProvider.future);
+    if (shopId == null || shopId.isEmpty) return null;
+
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
@@ -93,17 +100,27 @@ final pendingClosingProvider = FutureProvider.family<PendingClosing?, DateTime>(
 
     final closing =
         await (db.select(db.localDailyClosings)..where(
-              (t) => t.closingDate.isBetweenValues(startOfDay, endOfDay),
+              (t) =>
+                  t.shopId.equals(shopId) &
+                  t.closingDate.isBetweenValues(startOfDay, endOfDay),
             ))
             .getSingleOrNull();
     if (closing != null) return null;
 
-    final sales = await (db.select(
-      db.localSales,
-    )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
-    final movements = await (db.select(
-      db.localCashMovements,
-    )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+    final sales =
+        await (db.select(db.localSales)..where(
+              (t) =>
+                  t.shopId.equals(shopId) &
+                  t.createdAt.isBetweenValues(startOfDay, endOfDay),
+            ))
+            .get();
+    final movements =
+        await (db.select(db.localCashMovements)..where(
+              (t) =>
+                  t.shopId.equals(shopId) &
+                  t.createdAt.isBetweenValues(startOfDay, endOfDay),
+            ))
+            .get();
     if (sales.isEmpty && movements.isEmpty) return null;
 
     return PendingClosing(
@@ -122,6 +139,13 @@ final dashboardProvider =
 class DashboardNotifier extends AsyncNotifier<DashboardState> {
   @override
   Future<DashboardState> build() async {
+    // Surtout PAS de `ref.watch(revisionDonneesLocalesProvider)` ici.
+    //
+    // Cet écran déclenche lui-même un téléchargement à chaque construction
+    // (`_runBackgroundSync`), et le téléchargement incrémente ce compteur.
+    // Le surveiller boucle : synchro → compteur → reconstruction → synchro,
+    // un tour toutes les 700 ms, vu en vrai le 20/08/2026. Il n'en a pas
+    // besoin — il invalide déjà `productProvider` une fois la synchro finie.
     return _fetchDashboardData();
   }
 
@@ -211,7 +235,11 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     // chronologique, sinon les journées intermédiaires resteraient trouées.
     final pastSales =
         await (db.select(db.localSales)
-              ..where((t) => t.createdAt.isSmallerThanValue(startOfDay))
+              ..where(
+                (t) =>
+                    t.shopId.equals(shopId) &
+                    t.createdAt.isSmallerThanValue(startOfDay),
+              )
               ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt)]))
             .get();
     final lastSale = pastSales.isEmpty ? null : pastSales.first;
@@ -240,10 +268,12 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
 
         final existingClosing =
             await (db.select(db.localDailyClosings)..where(
-                  (t) => t.closingDate.isBetweenValues(
-                    startOfSaleDay,
-                    endOfSaleDay,
-                  ),
+                  (t) =>
+                      t.shopId.equals(shopId) &
+                      t.closingDate.isBetweenValues(
+                        startOfSaleDay,
+                        endOfSaleDay,
+                      ),
                 ))
                 .getSingleOrNull();
 
@@ -270,7 +300,9 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     // ✅ FIX : Utilisation de isBetweenValues au lieu de .year.equals()
     final todayClosing =
         await (db.select(db.localDailyClosings)..where(
-              (t) => t.closingDate.isBetweenValues(startOfDay, endOfDay),
+              (t) =>
+                  t.shopId.equals(shopId) &
+                  t.closingDate.isBetweenValues(startOfDay, endOfDay),
             ))
             .getSingleOrNull();
 
@@ -287,14 +319,22 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       );
     }
 
-    final localSales = await (db.select(
-      db.localSales,
-    )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+    final localSales =
+        await (db.select(db.localSales)..where(
+              (t) =>
+                  t.shopId.equals(shopId) &
+                  t.createdAt.isBetweenValues(startOfDay, endOfDay),
+            ))
+            .get();
 
     // ✅ FIX : On trie par date décroissante pour prendre le solde le plus récent
     final localCashMovements =
         await (db.select(db.localCashMovements)
-              ..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))
+              ..where(
+                (t) =>
+                    t.shopId.equals(shopId) &
+                    t.createdAt.isBetweenValues(startOfDay, endOfDay),
+              )
               ..orderBy([
                 (t) => drift.OrderingTerm(
                   expression: t.createdAt,
@@ -390,7 +430,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         'user_id': userId,
         'amount': amount,
         'type': 'morning_balance',
-        'created_at': now.toIso8601String(),
+        'created_at': now.toUtc().toIso8601String(),
       };
       await db.addToQueue('ADD_CASH_MOVEMENT', jsonEncode(payload));
 
@@ -412,12 +452,17 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
   /// jusqu'à masquer un écart gênant.
   Future<void> reopenDay(DateTime date) async {
     final db = ref.read(localDbProvider);
+    // Rouvrir la journée de LA boutique active. Sans ce filtre, la requête
+    // pouvait tomber sur la clôture d'une autre boutique du même téléphone.
+    final shopId = await requireShopId(ref);
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
     final closing =
         await (db.select(db.localDailyClosings)..where(
-              (t) => t.closingDate.isBetweenValues(startOfDay, endOfDay),
+              (t) =>
+                  t.shopId.equals(shopId) &
+                  t.closingDate.isBetweenValues(startOfDay, endOfDay),
             ))
             .getSingleOrNull();
     if (closing == null) return;
@@ -496,18 +541,28 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         59,
       );
 
-      final localSales = await (db.select(
-        db.localSales,
-      )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
-      final localCashMovements = await (db.select(
-        db.localCashMovements,
-      )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+      final localSales =
+          await (db.select(db.localSales)..where(
+                (t) =>
+                    t.shopId.equals(shopId) &
+                    t.createdAt.isBetweenValues(startOfDay, endOfDay),
+              ))
+              .get();
+      final localCashMovements =
+          await (db.select(db.localCashMovements)..where(
+                (t) =>
+                    t.shopId.equals(shopId) &
+                    t.createdAt.isBetweenValues(startOfDay, endOfDay),
+              ))
+              .get();
       final totals = _calculateTotals(localSales, localCashMovements);
       final cashGap = physicalCash - totals.calculatedCash;
 
       final existingClosing =
           await (db.select(db.localDailyClosings)..where(
-                (t) => t.closingDate.isBetweenValues(startOfDay, endOfDay),
+                (t) =>
+                    t.shopId.equals(shopId) &
+                    t.closingDate.isBetweenValues(startOfDay, endOfDay),
               ))
               .getSingleOrNull();
       final closingId = existingClosing?.id ?? const Uuid().v4();
