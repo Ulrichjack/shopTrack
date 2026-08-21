@@ -435,6 +435,58 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
   }) async {
     if (buyPrice == previousBuyPrice && sellPrice == previousSellPrice) return;
 
+    // LE PREMIER CHANGEMENT DOIT D'ABORD GRAVER L'ANCIEN TARIF.
+    //
+    // Créer un produit n'écrit aucune ligne d'historique : le tarif de départ
+    // ne vit que dans la fiche. Au premier changement, l'historique ne
+    // contenait donc QUE le nouveau prix — et le calcul, faute de tarif
+    // applicable aux jours antérieurs, retombe sur le plus ancien connu,
+    // c'est-à-dire le nouveau. Une hausse saisie aujourd'hui revalorisait
+    // ainsi toute une période close au prix d'aujourd'hui : exactement ce que
+    // cet historique existe pour empêcher.
+    //
+    // On date l'ancien tarif de la CRÉATION du produit : c'est depuis ce jour
+    // qu'il s'appliquait. Écrit une seule fois, et seulement pour les fiches
+    // créées avant que cette règle existe.
+    final dejaUnHistorique =
+        await (db.select(db.localProductPrices)
+              ..where((row) => row.productId.equals(productId))
+              ..limit(1))
+            .getSingleOrNull() !=
+        null;
+    if (!dejaUnHistorique) {
+      // Une date volontairement très ancienne : ce tarif s'appliquait depuis
+      // toujours et jusqu'à aujourd'hui. On ne cherche pas la vraie date de
+      // création — elle n'est pas dans la base locale, et elle n'a pas
+      // d'importance : ce qui compte est que ce prix couvre TOUTE la fenêtre
+      // antérieure au changement.
+      final depuis = DateTime(2000);
+      final idInitial = const Uuid().v4();
+      await db
+          .into(db.localProductPrices)
+          .insert(
+            LocalProductPrice(
+              id: idInitial,
+              shopId: shopId,
+              productId: productId,
+              buyPrice: previousBuyPrice,
+              sellPrice: previousSellPrice,
+              effectiveAt: depuis,
+            ),
+          );
+      await db.addToQueue(
+        'ADD_PRODUCT_PRICE',
+        jsonEncode({
+          'id': idInitial,
+          'shop_id': shopId,
+          'product_id': productId,
+          'buy_price': previousBuyPrice,
+          'sell_price': previousSellPrice,
+          'effective_at': depuis.toUtc().toIso8601String(),
+        }),
+      );
+    }
+
     final id = const Uuid().v4();
     final effectiveAt = DateTime.now();
     await db
