@@ -183,6 +183,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       text: currentProduct.sellPrice.toInt().toString(),
     );
     bool isSaving = false;
+    // Le jour où la marchandise est ARRIVÉE. Aujourd'hui par défaut, parce que
+    // c'est le cas courant — mais modifiable, parce qu'on note souvent la
+    // livraison le soir, voire le lendemain. Mode inventaire uniquement : en
+    // vente simple le stock monte, aucune période ne le découpe.
+    DateTime dateArrivage = DateTime.now();
 
     showModalBottomSheet(
       context: context,
@@ -289,6 +294,54 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      InkWell(
+                        onTap: () async {
+                          final maintenant = DateTime.now();
+                          final choisie = await showDatePicker(
+                            context: context,
+                            initialDate: dateArrivage,
+                            // Un an en arrière comme les pertes et les
+                            // recettes ; jamais dans le futur : on ne range
+                            // pas une livraison qu'on n'a pas reçue.
+                            firstDate: DateTime(maintenant.year - 1),
+                            lastDate: DateTime(
+                              maintenant.year,
+                              maintenant.month,
+                              maintenant.day,
+                            ),
+                            helpText: 'Reçu quel jour ?',
+                          );
+                          if (choisie != null) {
+                            setModalState(() => dateArrivage = choisie);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'Reçu le',
+                            helperText:
+                                'La période du bilan suit cette date, pas '
+                                'celle de la saisie',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.event,
+                                size: 18,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                DateFormat('dd/MM/yyyy').format(dateArrivage),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 20),
                     ] else
                       const SizedBox(height: 4),
@@ -308,10 +361,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                     .addStock(
                                       currentProduct,
                                       qty,
+                                      recuLe: isPeriodic ? dateArrivage : null,
+                                      // Repli sur le prix d'achat connu : sans
+                                      // coût, aucune ligne d'arrivage n'est
+                                      // écrite, et le bilan ne verrait jamais
+                                      // cette entrée de stock.
                                       unitCost: isPeriodic
-                                          ? double.tryParse(
-                                              costController.text.trim(),
-                                            )
+                                          ? (double.tryParse(
+                                                  costController.text.trim(),
+                                                ) ??
+                                                currentProduct.buyPrice)
                                           : null,
                                       sellPrice: isPeriodic
                                           ? double.tryParse(

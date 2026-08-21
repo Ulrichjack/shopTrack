@@ -241,6 +241,39 @@ class _Body extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
+        // Deux colonnes annoncées une fois en haut plutôt que répétées sous
+        // chaque nombre : les chiffres s'alignent, et « vendus » ne se lit plus
+        // comme une étiquette collée au seul produit qu'on regarde.
+        const Padding(
+          padding: EdgeInsets.only(right: 12, bottom: 6),
+          child: Row(
+            children: [
+              Expanded(child: SizedBox()),
+              SizedBox(
+                width: _largeurColonne,
+                child: Text(
+                  'vendus',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: _largeurColonne,
+                child: Text(
+                  'perdus',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         Card(
           margin: EdgeInsets.zero,
           child: Column(
@@ -275,7 +308,7 @@ class _Body extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: Column(
               children: [
-                _Line('Valeur de ce qui est sorti', r.expectedRevenue),
+                _Line('Valeur de ce qui a été vendu', r.expectedRevenue),
                 _Line('Recettes que tu as notées', r.actualTakings),
                 const Divider(height: 24),
                 _GapLine(gap: r.unexplainedGap),
@@ -302,7 +335,7 @@ class _Body extends StatelessWidget {
             child: Column(
               children: [
                 _Line('Recettes encaissées', r.actualTakings),
-                _Line('Coût de la marchandise sortie', -r.costOfGoodsSold),
+                _Line('Coût de la marchandise vendue', -r.costOfGoodsSold),
                 // Sans cette ligne le total ne tomberait pas juste dès qu'une
                 // perte est déclarée, et le bénéfice paraîtrait faux.
                 if (r.lossValue > 0) _Line('Pertes déclarées', -r.lossValue),
@@ -338,6 +371,10 @@ class _Body extends StatelessWidget {
   }
 }
 
+/// Largeur des deux colonnes de nombres. Fixe, sinon « 12 » et « 148 » ne
+/// tombent pas sous le même axe et le tableau cesse d'en être un.
+const double _largeurColonne = 54;
+
 class _ProductLine extends StatelessWidget {
   const _ProductLine({required this.product});
 
@@ -345,38 +382,59 @@ class _ProductLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      visualDensity: VisualDensity.compact,
-      title: Text(
-        product.productName,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-      subtitle: Text(
-        '${CurrencyFormatter.format(product.expectedRevenue)} · '
-        'gain ${CurrencyFormatter.format(product.margin)}'
-        // La casse déclarée n'apparaissait que dans le total de la boutique :
-        // impossible de savoir QUEL article se casse. C'est pourtant ce qui
-        // fait décider d'arrêter d'en vendre, ou de changer de fournisseur.
-        '${product.declaredLosses > 0 ? ' · ${product.declaredLosses} perdu(s)' : ''}',
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
+    final perdus = product.declaredLosses;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Row(
         children: [
-          Text(
-            '${product.presumedSales}',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.productName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${CurrencyFormatter.format(product.expectedRevenue)} · '
+                  'gain ${CurrencyFormatter.format(product.margin)}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
-          Text(
-            // « vendus », pas « sortis » : le nombre affiché est
-            // `presumedSales`, c'est-à-dire ce qui est parti MOINS les pertes
-            // déclarées. Tout le modèle du module sépare exprès les deux — une
-            // sortie ne dit pas pourquoi la marchandise est partie, une vente
-            // présumée si. L'étiquette disait l'un, le chiffre montrait
-            // l'autre.
-            'vendus',
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          SizedBox(
+            width: _largeurColonne,
+            child: Text(
+              // `presumedSales`, c'est-à-dire ce qui est parti MOINS les
+              // pertes déclarées. Tout le modèle du module sépare exprès les
+              // deux — une sortie ne dit pas pourquoi la marchandise est
+              // partie, une vente présumée si.
+              '${product.presumedSales}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ),
+          SizedBox(
+            width: _largeurColonne,
+            // La casse n'apparaissait que dans le total de la boutique :
+            // impossible de savoir QUEL article se casse. C'est pourtant ce
+            // qui fait décider d'arrêter d'en vendre, ou de changer de
+            // fournisseur. Un tiret plutôt qu'un zéro : l'œil saute les
+            // lignes saines et s'arrête sur les autres.
+            child: Text(
+              perdus > 0 ? '$perdus' : '—',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: perdus > 0 ? 20 : 16,
+                fontWeight: perdus > 0 ? FontWeight.bold : FontWeight.normal,
+                color: perdus > 0 ? AppColors.error : Colors.grey.shade400,
+              ),
+            ),
           ),
         ],
       ),
@@ -511,14 +569,53 @@ class _MissingTakingsWarning extends StatelessWidget {
         border: Border.all(color: AppColors.error),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline, color: AppColors.error),
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.error_outline, color: AppColors.error),
+          ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              '${days.length} jour(s) sans recette notée : l\'écart peut '
-              'venir de là.',
-              style: const TextStyle(fontSize: 13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  days.length == 1
+                      ? '1 jour sans recette notée : l\'écart peut venir de là.'
+                      : '${days.length} jours sans recette notée : l\'écart '
+                            'peut venir de là.',
+                  style: const TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                // Dire LESQUELS. L'accueil compte depuis la première recette
+                // notée, le rapport depuis le premier comptage : les deux
+                // chiffres diffèrent légitimement, mais un nombre seul avait
+                // l'air de contredire l'autre écran. Les dates lèvent le doute
+                // sans qu'on ait à expliquer deux définitions.
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final jour in days)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppColors.error),
+                        ),
+                        child: Text(
+                          DateFormat('d MMM', 'fr_FR').format(jour),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],

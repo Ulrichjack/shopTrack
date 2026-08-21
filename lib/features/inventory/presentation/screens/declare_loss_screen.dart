@@ -182,9 +182,17 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
                       labelText: 'Combien ?',
+                      // Dire d'où sort ce nombre. « Maximum 30 » ressemblait
+                      // à une limite arbitraire ; c'est le stock que l'app
+                      // croit avoir, et en mode inventaire il est TOUJOURS
+                      // généreux — les ventes ne le décrémentent pas, seuls un
+                      // comptage, une perte ou un transfert le font bouger. Il
+                      // ne bloque donc pas une casse réelle : il arrête une
+                      // faute de frappe (200 pour 20), qui effacerait des
+                      // ventes du rapport et inventerait un excédent de caisse.
                       helperText: _product == null
                           ? null
-                          : 'Maximum ${_product!.quantity}',
+                          : 'Il en reste ${_product!.quantity} d\'après l\'app',
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -198,7 +206,7 @@ class _DeclareLossScreenState extends ConsumerState<DeclareLossScreen> {
                       // rapport, donc invente un excédent de caisse.
                       final max = _product?.quantity;
                       if (max != null && quantity > max) {
-                        return 'Pas plus de $max';
+                        return 'Tu n\'en as que $max en stock';
                       }
                       return null;
                     },

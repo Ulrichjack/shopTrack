@@ -33,6 +33,8 @@ supabase/migrations/202608170004_rls_audit.sql
 supabase/migrations/202608180001_stock_transfers_identite_produit.sql
 supabase/migrations/202608190001_stock_transfers_annulation.sql
 supabase/migrations/202608190002_stock_transfers_noms_boutiques.sql
+supabase/migrations/202608210001_mouvement_stock_date_reelle.sql
+supabase/migrations/202608210002_mouvement_stock_supprimer_ancienne_signature.sql
 ```
 
 ### Fonctions serveur

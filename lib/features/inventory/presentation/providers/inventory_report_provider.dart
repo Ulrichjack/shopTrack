@@ -158,10 +158,6 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
               ..orderBy([(row) => drift.OrderingTerm.desc(row.countedAt)]))
             .get();
 
-    final movements = await (db.select(
-      db.localStockMovements,
-    )..where((row) => row.shopId.equals(shopId))).get();
-
     final losses = await (db.select(
       db.localInventoryLosses,
     )..where((row) => row.shopId.equals(shopId))).get();
@@ -228,18 +224,33 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
         continue;
       }
 
-      // Les entrées de stock de la fenêtre. On réutilise les recharges déjà
-      // enregistrées par l'app plutôt que d'attendre une table dédiée : c'est
-      // le geste que le commerçant fait déjà quand il s'approvisionne.
-      final purchases = movements
+      // Les arrivages de ce produit. Le prix payé, pas le prix affiché
+      // aujourd'hui : sinon revaloriser un produit réécrit le coût des
+      // périodes déjà closes.
+      final productPurchases = purchaseLines.where(
+        (p) => p.productId == product.id,
+      );
+
+      // Les entrées de stock de la fenêtre, lues sur les lignes d'ARRIVAGE et
+      // non sur les mouvements.
+      //
+      // Les deux décrivent le même geste, mais seule la ligne d'arrivage porte
+      // `purchased_at` — le jour où la marchandise est arrivée, que le
+      // commerçant peut corriger. Le mouvement, lui, est horodaté par le
+      // serveur au moment de l'envoi : une livraison de lundi notée mercredi
+      // tombait dans la mauvaise période, et les ventes présumées
+      // s'effondraient sans explication. Sur un deuxième téléphone c'était
+      // pire encore, la date étant celle de la synchro.
+      //
+      // Les lignes d'arrivage sont toujours écrites en mode inventaire :
+      // l'écran d'ajout y impose un prix d'achat, avec repli sur le prix connu.
+      final purchases = productPurchases
           .where(
-            (m) =>
-                m.productId == product.id &&
-                m.type == 'recharge' &&
-                m.createdAt.isAfter(previousAt) &&
-                !m.createdAt.isAfter(last.countedAt),
+            (a) =>
+                a.purchasedAt.isAfter(previousAt) &&
+                !a.purchasedAt.isAfter(last.countedAt),
           )
-          .fold<int>(0, (sum, m) => sum + m.quantity);
+          .fold<int>(0, (sum, a) => sum + a.quantity);
 
       // Pertes déclarées sur la même fenêtre. Sans elles, la casse se retrouve
       // dans les ventes présumées : l'app réclame l'argent d'une bouteille
@@ -313,11 +324,6 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
         }
       }
 
-      // Le prix payé, pas le prix affiché aujourd'hui : sinon revaloriser un
-      // produit réécrit le coût des périodes déjà closes.
-      final productPurchases = purchaseLines.where(
-        (p) => p.productId == product.id,
-      );
       final historique = priceLines
           .where((p) => p.productId == product.id)
           .map(
@@ -414,11 +420,7 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
     final recettesOrphelines = toutPremierComptage == null
         ? 0
         : takings.where((t) {
-            final jourRecette = DateTime(
-              t.date.year,
-              t.date.month,
-              t.date.day,
-            );
+            final jourRecette = DateTime(t.date.year, t.date.month, t.date.day);
             final jourPremierComptage = DateTime(
               toutPremierComptage.year,
               toutPremierComptage.month,
@@ -463,11 +465,22 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
         periodStart.day,
       );
       final to = DateTime(periodEnd.year, periodEnd.month, periodEnd.day);
+      // Aujourd'hui ne compte pas : la recette se note le soir, et un
+      // comptage fait dans la journée accusait le jour même d'être un oubli.
+      // L'accueil applique déjà cette règle — les deux écrans se
+      // contredisaient sur le même chiffre.
+      final maintenant = DateTime.now();
+      final aujourdhui = DateTime(
+        maintenant.year,
+        maintenant.month,
+        maintenant.day,
+      );
       for (
         var day = from;
         !day.isAfter(to);
         day = day.add(const Duration(days: 1))
       ) {
+        if (day == aujourdhui) continue;
         if (!notedDays.contains(day)) missing.add(day);
       }
     }

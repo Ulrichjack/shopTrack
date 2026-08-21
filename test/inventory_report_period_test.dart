@@ -109,7 +109,11 @@ void main() {
         .declaredLosses;
 
     expect(pertesDe(ancienne), 4, reason: 'la période qui se ferme la porte');
-    expect(pertesDe(recente), 0, reason: 'celle qui s\'ouvre ne la reprend pas');
+    expect(
+      pertesDe(recente),
+      0,
+      reason: 'celle qui s\'ouvre ne la reprend pas',
+    );
   });
 
   test('la recette du jour de bascule n\'est encaissée qu\'une fois', () async {
@@ -183,6 +187,111 @@ void main() {
           .single
           .presumedSales,
       10,
+    );
+  });
+  test('le jour même n\'est pas compté comme un oubli de recette', () async {
+    // La recette se note le soir. Un comptage fait dans l'après-midi accusait
+    // donc la journée en cours d'être un oubli — et le rapport annonçait un
+    // jour de plus que l'accueil, qui applique déjà cette règle. Deux écrans
+    // se contredisaient sur le même chiffre.
+    final maintenant = DateTime.now();
+    final aujourdhui = DateTime(
+      maintenant.year,
+      maintenant.month,
+      maintenant.day,
+    );
+    final hier = aujourdhui.subtract(const Duration(days: 1));
+
+    // Repartir d'une ardoise vide : les comptages du `setUp` sont datés de
+    // janvier et allongeraient la période jusqu'à noyer les deux jours testés.
+    await db.delete(db.localInventoryCounts).go();
+    await db.batch((batch) {
+      batch.insertAll(db.localInventoryCounts, [
+        _comptage('r1', 'p1', hier, 10),
+        _comptage(
+          'r2',
+          'p1',
+          aujourdhui.add(const Duration(hours: 14)),
+          6,
+          precedent: hier,
+          quantitePrecedente: 10,
+        ),
+      ]);
+    });
+
+    final container = ProviderContainer(
+      overrides: [localDbProvider.overrideWithValue(db)],
+    );
+    addTearDown(container.dispose);
+
+    final rapport = await container.read(inventoryReportProvider(null).future);
+
+    expect(
+      rapport.daysWithoutTakings,
+      isNot(contains(aujourdhui)),
+      reason: 'la journée n\'est pas finie',
+    );
+    expect(
+      rapport.daysWithoutTakings,
+      contains(hier),
+      reason: 'un jour révolu sans recette reste un oubli à signaler',
+    );
+  });
+  test('un arrivage compte selon SA date, pas celle de la saisie', () async {
+    // Le rapport lisait les mouvements de stock, horodatés par le serveur au
+    // moment de l'envoi. Une livraison de lundi notée mercredi tombait donc
+    // dans la mauvaise période : les ventes présumées s'effondraient, et sur
+    // un deuxième téléphone la date était celle de la synchro.
+    await db.delete(db.localInventoryCounts).go();
+    await db.batch((batch) {
+      batch.insertAll(db.localInventoryCounts, [
+        _comptage('a1', 'p1', DateTime(2026, 5, 1), 100),
+        _comptage(
+          'a2',
+          'p1',
+          DateTime(2026, 5, 31),
+          40,
+          precedent: DateTime(2026, 5, 1),
+          quantitePrecedente: 100,
+        ),
+      ]);
+      batch.insertAll(db.localStockPurchases, [
+        // Reçu pendant la période : il s'ajoute à ce qui pouvait sortir.
+        LocalStockPurchase(
+          id: 'arr-dedans',
+          shopId: 'shop-1',
+          productId: 'p1',
+          quantity: 30,
+          unitCost: 10,
+          purchasedAt: DateTime(2026, 5, 10),
+        ),
+        // Reçu APRÈS le comptage de clôture : il appartient à la suite.
+        LocalStockPurchase(
+          id: 'arr-apres',
+          shopId: 'shop-1',
+          productId: 'p1',
+          quantity: 50,
+          unitCost: 10,
+          purchasedAt: DateTime(2026, 6, 2),
+        ),
+      ]);
+    });
+
+    final container = ProviderContainer(
+      overrides: [localDbProvider.overrideWithValue(db)],
+    );
+    addTearDown(container.dispose);
+
+    final rapport = await container.read(inventoryReportProvider(null).future);
+    final riz = rapport.result.products
+        .where((produit) => produit.productId == 'p1')
+        .single;
+
+    // 100 au départ + 30 reçus − 40 comptés = 90 sortis.
+    expect(
+      riz.presumedSales,
+      90,
+      reason: 'l\'arrivage du 10/05 entre dans la période',
     );
   });
 }

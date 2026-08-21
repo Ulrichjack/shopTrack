@@ -66,8 +66,7 @@ final stockTransfersProvider = FutureProvider<List<TransferEntry>>((ref) async {
       await (db.select(db.localStockTransfers)
             ..where(
               (row) =>
-                  row.fromShopId.equals(shopId) |
-                  row.toShopId.equals(shopId),
+                  row.fromShopId.equals(shopId) | row.toShopId.equals(shopId),
             )
             ..orderBy([(row) => OrderingTerm.desc(row.transferredAt)]))
           .get();
@@ -119,7 +118,9 @@ class StockTransferActions {
     String? note,
   }) async {
     if (quantity <= 0) {
-      throw ArgumentError('La quantité transférée doit être supérieure à zéro.');
+      throw ArgumentError(
+        'La quantité transférée doit être supérieure à zéro.',
+      );
     }
 
     final shopId = await requireShopId(ref);
@@ -128,10 +129,9 @@ class StockTransferActions {
     }
 
     final db = ref.read(localDbProvider);
-    final produit =
-        await (db.select(db.localProducts)
-              ..where((row) => row.id.equals(productId)))
-            .getSingleOrNull();
+    final produit = await (db.select(
+      db.localProducts,
+    )..where((row) => row.id.equals(productId))).getSingleOrNull();
     if (produit == null) {
       throw Exception('Produit introuvable.');
     }
@@ -203,9 +203,7 @@ class StockTransferActions {
       await (db.update(
         db.localProducts,
       )..where((row) => row.id.equals(productId))).write(
-        LocalProductsCompanion(
-          quantity: Value(produit.quantity - quantity),
-        ),
+        LocalProductsCompanion(quantity: Value(produit.quantity - quantity)),
       );
       await db.addToQueue(
         'ADD_STOCK',
@@ -238,10 +236,9 @@ class StockTransferActions {
 
     final shopId = await requireShopId(ref);
     final db = ref.read(localDbProvider);
-    final transfert =
-        await (db.select(db.localStockTransfers)
-              ..where((row) => row.id.equals(transferId)))
-            .getSingleOrNull();
+    final transfert = await (db.select(
+      db.localStockTransfers,
+    )..where((row) => row.id.equals(transferId))).getSingleOrNull();
     if (transfert == null) throw Exception('Transfert introuvable.');
     if (transfert.toShopId != shopId) {
       throw Exception('Seule la boutique qui reçoit peut confirmer.');
@@ -249,6 +246,24 @@ class StockTransferActions {
     if (receivedQuantity > transfert.quantity) {
       throw ArgumentError(
         'Tu ne peux pas recevoir plus que les ${transfert.quantity} envoyés.',
+      );
+    }
+    // Confirmer deux fois créditait le stock deux fois.
+    //
+    // La méthode réécrivait simplement `received_quantity` — donc la ligne de
+    // transfert restait juste — mais elle ajoutait la quantité au produit à
+    // CHAQUE appel. Vu en vrai le 20/08/2026 : 6 bidons d'huile envoyés, 6
+    // confirmés, 12 sur l'étagère. Invisible dans la table des transferts, qui
+    // affichait sagement « 6 reçus ». Un double appui, un écran resté ouvert
+    // sur deux appareils, et le stock d'une vraie boutique est faux.
+    //
+    // `annuler()` avait déjà cette garde ; la réception ne l'avait pas.
+    if (transfert.receivedAt != null) {
+      throw Exception(
+        'Ce transfert a déjà été reçu le '
+        '${transfert.receivedAt!.day.toString().padLeft(2, '0')}/'
+        '${transfert.receivedAt!.month.toString().padLeft(2, '0')}. '
+        'Le confirmer encore ajouterait la marchandise une deuxième fois.',
       );
     }
 
@@ -292,10 +307,9 @@ class StockTransferActions {
       //
       // La fiche locale reste une roue de secours pour les transferts
       // enregistrés avant que ces colonnes existent.
-      final envoye =
-          await (db.select(db.localProducts)
-                ..where((row) => row.id.equals(transfert.productId)))
-              .getSingleOrNull();
+      final envoye = await (db.select(
+        db.localProducts,
+      )..where((row) => row.id.equals(transfert.productId))).getSingleOrNull();
 
       final nom = transfert.productName ?? envoye?.name;
       if (nom == null) {
@@ -409,11 +423,9 @@ class StockTransferActions {
     final quand = DateTime.now();
 
     await db.transaction(() async {
-      await (db.update(
-        db.localStockTransfers,
-      )..where((row) => row.id.equals(transfert.id))).write(
-        LocalStockTransfersCompanion(cancelledAt: Value(quand)),
-      );
+      await (db.update(db.localStockTransfers)
+            ..where((row) => row.id.equals(transfert.id)))
+          .write(LocalStockTransfersCompanion(cancelledAt: Value(quand)));
       await db.addToQueue(
         'CANCEL_STOCK_TRANSFER',
         jsonEncode({

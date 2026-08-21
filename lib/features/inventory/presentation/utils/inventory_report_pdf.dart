@@ -142,7 +142,7 @@ Future<Uint8List> buildInventoryReportPdf(
               pw.SizedBox(height: 10),
               _encadreMontants([
                 _ligneMontant(
-                  'Valeur de ce qui est sorti',
+                  'Valeur de ce qui a été vendu',
                   result.expectedRevenue,
                 ),
                 _ligneMontant(
@@ -165,7 +165,7 @@ Future<Uint8List> buildInventoryReportPdf(
               _encadreMontants([
                 _ligneMontant('Recettes encaissées', result.actualTakings),
                 _ligneMontant(
-                  'Coût de la marchandise sortie',
+                  'Coût de la marchandise vendue',
                   -result.costOfGoodsSold,
                 ),
                 // Sans cette ligne, un lecteur qui refait l'addition trouve un
