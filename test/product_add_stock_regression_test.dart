@@ -69,10 +69,16 @@ void main() {
     expect(achats.single.quantity, 4);
     expect(achats.single.unitCost, 120);
 
-    final tarifs = await db.select(db.localProductPrices).get();
-    expect(tarifs, hasLength(1));
-    expect(tarifs.single.buyPrice, 120);
-    expect(tarifs.single.sellPrice, 180);
+    // DEUX lignes : le premier changement grave d'abord l'ancien tarif, sinon
+    // le calcul d'inventaire retombe sur le nouveau pour toute la période
+    // antérieure et revalorise un bilan déjà consulté.
+    final tarifs = await db.select(db.localProductPrices).get()
+      ..sort((a, b) => a.effectiveAt.compareTo(b.effectiveAt));
+    expect(tarifs, hasLength(2));
+    expect(tarifs.first.buyPrice, 100, reason: 'l\'ancien prix d\'achat');
+    expect(tarifs.first.sellPrice, 150, reason: 'l\'ancien prix de vente');
+    expect(tarifs.last.buyPrice, 120);
+    expect(tarifs.last.sellPrice, 180);
 
     final actualise = await db.select(db.localProducts).getSingle();
     expect(actualise.buyPrice, 120);
@@ -83,6 +89,9 @@ void main() {
       unorderedEquals([
         'ADD_STOCK',
         'UPDATE_PRODUCT',
+        // Deux tarifs : l'ancien gravé avant le premier changement, puis le
+        // nouveau. Sans le premier, une hausse revalorise une période close.
+        'ADD_PRODUCT_PRICE',
         'ADD_PRODUCT_PRICE',
         'ADD_STOCK_PURCHASE',
       ]),
