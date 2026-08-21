@@ -1041,3 +1041,28 @@ se termine ou s'abandonne), soit rendre le rapport tolérant à des périodes
 par produit — ce qui rendrait la section « et l'argent ? » incomparable, les
 recettes portant sur une fenêtre unique alors que les ventes viendraient de
 fenêtres différentes. La première option est la plus honnête.
+
+### Le fonds de caisse bloque le tout premier lancement
+
+Constaté dans les données le 21/08, pas dans un test. Le compte JOWANY STORE,
+créé le 16/08, ne contient **rien** : aucun produit, aucune vente. Seulement
+**deux fonds de caisse à 0 F**, le même jour, à quelques secondes d'écart.
+
+Le déroulé se reconstitue tout seul : il ouvre l'app, la boîte « Combien y a-t-il
+dans le tiroir-caisse ce matin ? » s'impose d'emblée, il ne comprend pas
+pourquoi on lui demande ça avant qu'il ait enregistré le moindre article, il
+tape 0 pour passer — deux fois — puis se retrouve devant un stock vide sans
+savoir quoi faire. Il n'est jamais revenu.
+
+Ce n'est pas un bug : l'écran fait ce qu'on lui a demandé. C'est un défaut de
+parcours, et il coûte des clients. À comparer avec CEDRIC TELECOM, qui a saisi
+51 produits et revient depuis un mois : lui avait été accompagné.
+
+**Piste** : ne pas réclamer le fonds de caisse tant qu'aucun produit n'existe,
+et mettre à la place un premier écran qui dit quoi faire — « commence par
+enregistrer tes articles ». Le fonds de caisse n'a de sens qu'à partir du jour
+où il y a quelque chose à vendre.
+
+**Ce que ça enseigne au-delà de cet écran** : les données d'usage disent ce
+qu'aucun test ne dit. Deux lignes à 0 F dans une table de mouvements de caisse
+racontent un client perdu.
