@@ -24,9 +24,13 @@ void main() {
     addTearDown(container.dispose);
 
     final actions = container.read(inventoryCountActionsProvider);
+    // Deux JOURS différents : depuis le 21/08/2026, recompter le même jour
+    // corrige le chiffre au lieu d'ajouter un repère — c'est le geste
+    // « je me suis trompé ». Une vraie période se mesure entre deux jours.
     final first = await actions.saveCount(
       productId: 'product-1',
       countedQuantity: 18,
+      dateDuComptage: DateTime.now().subtract(const Duration(days: 1)),
     );
     final second = await actions.saveCount(
       productId: 'product-1',
@@ -104,11 +108,21 @@ void main() {
     expect(premier.isFirstRound, isTrue);
     expect(premier.periodStartedAt, isNull);
 
-    await actions.saveCount(productId: 'product-1', countedQuantity: 8);
-    await actions.saveCount(productId: 'product-2', countedQuantity: 5);
+    final hier = DateTime.now().subtract(const Duration(days: 1));
+    await actions.saveCount(
+      productId: 'product-1',
+      countedQuantity: 8,
+      dateDuComptage: hier,
+    );
+    await actions.saveCount(
+      productId: 'product-2',
+      countedQuantity: 5,
+      dateDuComptage: hier,
+    );
 
-    // Deuxième tour : le même geste ferme désormais une période, et l'app sait
-    // depuis quand elle est ouverte sans qu'on le lui déclare.
+    // Deuxième tour, un autre jour : le même geste ferme désormais une
+    // période, et l'app sait depuis quand elle est ouverte sans qu'on le lui
+    // déclare. Le même jour, ce serait une correction du premier tour.
     await actions.saveCount(productId: 'product-1', countedQuantity: 3);
 
     final second = await loadInventoryCountOverview(db, 'shop-1');

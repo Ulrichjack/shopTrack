@@ -248,7 +248,20 @@ class _InventoryCountScreenState extends ConsumerState<InventoryCountScreen> {
                               line.product.id,
                             ),
                             showInput: !line.isCounted || recounting,
-                            canRecount: overview.isRoundComplete && !recounting,
+                            // Recompter dès qu'un produit est compté, sans
+                            // attendre la fin du tour.
+                            //
+                            // La condition était `overview.isRoundComplete` :
+                            // sur un catalogue de 234 articles, il fallait les
+                            // compter TOUS avant d'avoir le droit de corriger
+                            // une faute de frappe sur le premier. Le
+                            // commerçant voyait sa coche verte, son chiffre
+                            // faux, et aucun moyen d'y revenir.
+                            //
+                            // Recompter le même jour remplace le chiffre au
+                            // lieu d'ajouter un repère (cf. `saveCount`), donc
+                            // corriger ne dérègle plus les périodes.
+                            canRecount: line.isCounted && !recounting,
                             onSave: () => _saveLine(line),
                             onRecount: () {
                               setState(
@@ -311,10 +324,11 @@ class _ProgressCard extends StatelessWidget {
   final VoidCallback? onVoirRapport;
 
   /// Durée de la période, en jours pleins.
-  static int _joursEntre(DateTime debut, DateTime fin) =>
-      DateTime(fin.year, fin.month, fin.day)
-          .difference(DateTime(debut.year, debut.month, debut.day))
-          .inDays;
+  static int _joursEntre(DateTime debut, DateTime fin) => DateTime(
+    fin.year,
+    fin.month,
+    fin.day,
+  ).difference(DateTime(debut.year, debut.month, debut.day)).inDays;
 
   @override
   Widget build(BuildContext context) {
@@ -568,34 +582,45 @@ class _ProductCountCard extends StatelessWidget {
                           '${line.count!.countedQuantity} compté(s)',
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Écart après validation : '
-                          '${_formatDifference(line.difference!)}',
-                          style: TextStyle(
-                            color: line.difference == 0
-                                ? AppColors.successDark
-                                : AppColors.warningDark,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        // Avertir, jamais refuser : un comptage est une
-                        // observation, on ne discute pas avec ce que le
-                        // commerçant a sous les yeux. Compter plus que
-                        // possible est d'ailleurs une information — un
-                        // arrivage n'a pas été enregistré — et bloquer la
-                        // saisie la ferait disparaître au profit d'un chiffre
-                        // inventé pour passer le formulaire.
-                        if (line.difference! > 0) ...[
+                        // Un écart n'existe qu'à partir du DEUXIÈME comptage.
+                        //
+                        // Au premier, on pose le point de départ : le stock
+                        // enregistré vaut zéro puisque personne n'a encore
+                        // rien déclaré. Afficher « écart +10 » et surtout
+                        // « arrivage oublié ? » inquiétait le commerçant à
+                        // chacun de ses 234 premiers articles, pour une
+                        // anomalie qui n'en était pas une. Il veut une
+                        // information, pas un reproche.
+                        if (line.dernierComptage != null) ...[
                           const SizedBox(height: 4),
                           Text(
-                            'Plus que possible : arrivage oublié ?',
+                            'Écart après validation : '
+                            '${_formatDifference(line.difference!)}',
                             style: TextStyle(
-                              color: Colors.orange.shade900,
-                              fontSize: 12,
+                              color: line.difference == 0
+                                  ? AppColors.successDark
+                                  : AppColors.warningDark,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
+                          // Avertir, jamais refuser : un comptage est une
+                          // observation, on ne discute pas avec ce que le
+                          // commerçant a sous les yeux. Compter plus que
+                          // possible est d'ailleurs une information — un
+                          // arrivage n'a pas été enregistré — et bloquer la
+                          // saisie la ferait disparaître au profit d'un
+                          // chiffre inventé pour passer le formulaire.
+                          if (line.difference! > 0) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Plus que possible : arrivage oublié ?',
+                              style: TextStyle(
+                                color: Colors.orange.shade900,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ],
                       ],
                     ),

@@ -151,6 +151,50 @@ class InventoryCountActions {
         base.minute,
         base.second,
       );
+      // RECOMPTER LE MÊME JOUR CORRIGE, ça n'ajoute pas un repère.
+      //
+      // Sans ça, se tromper de chiffre était définitif : l'app insérait un
+      // troisième comptage, le rapport — qui s'aligne sur le plus petit
+      // nombre de comptages commun à tous les produits — continuait d'utiliser
+      // le deuxième, et la correction restait invisible. Pire, le produit
+      // prenait de l'avance sur les autres et sa période suivante ne valait
+      // plus que quelques minutes.
+      //
+      // Deux comptages le même jour ne forment de toute façon jamais une
+      // période utile. Le geste attendu est « je me suis trompé, je refais ».
+      //
+      // On garde le MÊME identifiant : l'envoi est un `upsert`, le serveur met
+      // donc la ligne à jour au lieu d'en créer une seconde. Et on garde
+      // `previousCountedAt` / `previousQuantity` intacts — corriger un chiffre
+      // ne déplace pas la borne de la période.
+      final memeJour =
+          previous != null &&
+          previous.countedAt.year == base.year &&
+          previous.countedAt.month == base.month &&
+          previous.countedAt.day == base.day;
+
+      if (memeJour) {
+        savedCount = previous.copyWith(countedQuantity: countedQuantity);
+        await db.update(db.localInventoryCounts).replace(savedCount);
+        await db.addToQueue(
+          'ADD_INVENTORY_COUNT',
+          jsonEncode({
+            'id': savedCount.id,
+            'shop_id': shopId,
+            'product_id': productId,
+            'counted_at': savedCount.countedAt.toUtc().toIso8601String(),
+            'counted_quantity': countedQuantity,
+            'previous_counted_at': previous.previousCountedAt
+                ?.toUtc()
+                .toIso8601String(),
+            'previous_quantity': previous.previousQuantity,
+            'created_at': savedCount.countedAt.toUtc().toIso8601String(),
+          }),
+        );
+        await _alignerLeStock(db, shopId, productId, product, countedQuantity);
+        return;
+      }
+
       if (previous != null && !now.isAfter(previous.countedAt)) {
         // Une date CHOISIE n'est jamais déplacée en douce.
         //
@@ -201,31 +245,7 @@ class InventoryCountActions {
         }),
       );
 
-      // Compter, c'est constater la réalité : le stock affiché doit s'aligner
-      // sur ce qui a été compté. Sans ça, l'écran Stock continue d'annoncer
-      // « Rupture : 0 » alors que le commerçant vient de déclarer 8 sacs.
-      //
-      // Le type 'inventory_adjustment' n'est pas un approvisionnement : le
-      // rapport ne compte que les 'recharge', donc un ajustement n'est jamais
-      // pris pour un achat.
-      final delta = countedQuantity - product.quantity;
-      if (delta != 0) {
-        await (db.update(
-          db.localProducts,
-        )..where((row) => row.id.equals(productId))).write(
-          LocalProductsCompanion(quantity: drift.Value(countedQuantity)),
-        );
-        await db.addToQueue(
-          'ADD_STOCK',
-          jsonEncode({
-            'movement_id': const Uuid().v4(),
-            'product_id': productId,
-            'shop_id': shopId,
-            'quantity': delta,
-            'type': 'inventory_adjustment',
-          }),
-        );
-      }
+      await _alignerLeStock(db, shopId, productId, product, countedQuantity);
     });
 
     await ref.read(syncServiceProvider).processQueue();
@@ -233,6 +253,38 @@ class InventoryCountActions {
     ref.invalidate(productProvider);
     ref.invalidate(inventoryReportProvider);
     return savedCount;
+  }
+
+  /// Compter, c'est constater la réalité : le stock affiché doit s'aligner sur
+  /// ce qui a été compté. Sans ça, l'écran Stock continue d'annoncer
+  /// « Rupture : 0 » alors que le commerçant vient de déclarer 8 sacs.
+  ///
+  /// Le type `inventory_adjustment` n'est pas un approvisionnement : le rapport
+  /// ne compte que les `recharge`, un ajustement n'est donc jamais pris pour un
+  /// achat.
+  Future<void> _alignerLeStock(
+    AppDatabase db,
+    String shopId,
+    String productId,
+    LocalProduct product,
+    int countedQuantity,
+  ) async {
+    final delta = countedQuantity - product.quantity;
+    if (delta == 0) return;
+
+    await (db.update(db.localProducts)
+          ..where((row) => row.id.equals(productId)))
+        .write(LocalProductsCompanion(quantity: drift.Value(countedQuantity)));
+    await db.addToQueue(
+      'ADD_STOCK',
+      jsonEncode({
+        'movement_id': const Uuid().v4(),
+        'product_id': productId,
+        'shop_id': shopId,
+        'quantity': delta,
+        'type': 'inventory_adjustment',
+      }),
+    );
   }
 }
 

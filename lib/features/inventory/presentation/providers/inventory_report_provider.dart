@@ -214,7 +214,16 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
           : null;
 
       if (last == null) {
-        neverCounted++;
+        // « Jamais compté » et « pas encore assez compté » ne sont pas la même
+        // chose. Un produit compté une fois, alors que la période affichée en
+        // demande deux, tombait dans le même sac que ceux qu'on n'a jamais
+        // touchés : l'app annonçait « jamais compté » à propos d'un article
+        // saisi une heure plus tôt, et le commerçant repartait le compter.
+        if (comptagesProduit.isEmpty) {
+          neverCounted++;
+        } else {
+          awaitingSecond++;
+        }
         continue;
       }
       final previousAt = last.previousCountedAt;
