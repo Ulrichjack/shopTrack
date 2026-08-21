@@ -68,7 +68,8 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
             ))
             .get();
 
-    return localProducts.map(_toEntity).toList();
+    return localProducts.map(_toEntity).toList()
+      ..sort((a, b) => comparerNomsProduits(a.name, b.name));
   }
 
   /// Les produits mis au placard, pour pouvoir les ressortir.
@@ -691,6 +692,63 @@ final knownUnitsProvider = Provider<List<String>>((ref) {
     });
   return units;
 });
+
+/// Compare deux noms de produit comme le ferait un œil humain.
+///
+/// `compareTo` compare les codes des caractères : les majuscules passent avant
+/// TOUTES les minuscules, et les lettres accentuées après tout le reste. Sur
+/// huit produits ça ne se voit pas ; sur les 235 d'un vrai catalogue saisi à
+/// la main, « dolait » se retrouvait après « Sucre » et « Éponge » entre les
+/// deux. Le commerçant conclut que la liste n'est pas triée — et il a raison.
+int comparerNomsProduits(String a, String b) {
+  final ca = _cleDeTri(a);
+  final cb = _cleDeTri(b);
+  final ordre = ca.compareTo(cb);
+  // Départage stable quand deux noms ne diffèrent que par la casse ou les
+  // accents : sans ça leur ordre change d'un affichage à l'autre.
+  return ordre != 0 ? ordre : a.compareTo(b);
+}
+
+/// Minuscules sans accents. Volontairement limité au français : le catalogue
+/// est camerounais, une table de correspondance suffit et évite une dépendance.
+String _cleDeTri(String nom) {
+  const accents = {
+    'à': 'a',
+    'â': 'a',
+    'ä': 'a',
+    'á': 'a',
+    'ã': 'a',
+    'å': 'a',
+    'ç': 'c',
+    'è': 'e',
+    'é': 'e',
+    'ê': 'e',
+    'ë': 'e',
+    'ì': 'i',
+    'í': 'i',
+    'î': 'i',
+    'ï': 'i',
+    'ò': 'o',
+    'ó': 'o',
+    'ô': 'o',
+    'ö': 'o',
+    'õ': 'o',
+    'ù': 'u',
+    'ú': 'u',
+    'û': 'u',
+    'ü': 'u',
+    'ý': 'y',
+    'ÿ': 'y',
+    'ñ': 'n',
+    'œ': 'oe',
+    'æ': 'ae',
+  };
+  final tampon = StringBuffer();
+  for (final lettre in nom.trim().toLowerCase().split('')) {
+    tampon.write(accents[lettre] ?? lettre);
+  }
+  return tampon.toString();
+}
 
 final productProvider =
     AsyncNotifierProvider<ProductNotifier, List<ProductEntity>>(() {
