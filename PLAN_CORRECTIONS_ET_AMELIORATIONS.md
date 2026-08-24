@@ -1066,3 +1066,50 @@ où il y a quelque chose à vendre.
 **Ce que ça enseigne au-delà de cet écran** : les données d'usage disent ce
 qu'aucun test ne dit. Deux lignes à 0 F dans une table de mouvements de caisse
 racontent un client perdu.
+
+### Inventaire — « combien devrait-il rester en rayon ? », avant de compter
+
+Demandé par le client du mode inventaire le 23/08, en décrivant sa méthode au
+cahier. Elle vaut d'être écrite telle quelle, parce qu'elle explique le besoin
+mieux qu'une formule :
+
+> Il additionne la marchandise qu'il a confiée. Il additionne les recettes que
+> le vendeur lui a remises. Il soustrait — ça lui dit combien il devrait rester.
+> Ensuite il va compter, ça lui donne la valeur réelle, et il compare.
+
+L'app fait la deuxième moitié (compter, comparer) et jamais la première.
+`inventory_dashboard_screen` n'affiche que « Encaissé ce mois » et « Jours
+notés » : aucune valeur de stock, à aucun moment.
+
+**Ce qui manque** — un chiffre calculable à tout instant, sans comptage :
+
+```
+valeur qui devrait être en rayon
+  = (stock du dernier comptage + arrivages depuis) × prix de vente
+  − recettes remises depuis
+```
+
+**Pourquoi ça compte pour lui** : il a onze boutiques tenues par d'autres. Il ne
+peut pas aller compter partout tout le temps. Ce chiffre lui permet de dire au
+téléphone « il devrait rester pour 400 000 F chez toi » — et d'entendre la
+réponse. Le comptage devient la vérification d'un soupçon, pas une corvée
+mensuelle systématique.
+
+**La limite à ne pas lui cacher** : ce chiffre ne détecte aucune perte à lui
+seul, c'est une prévision arithmétique. L'écart n'apparaît qu'au comptage. Ce
+qu'il gagne, c'est de savoir OÙ aller compter en premier.
+
+### Copier le catalogue d'une boutique à une autre
+
+Demandé le 23/08. Fait trois fois à la main en SQL depuis le 22/08 — 372 puis
+288 produits recopiés dans dix boutiques, avec à chaque fois la question de ce
+qu'il faut préserver dans la cible.
+
+**Ce que l'expérience manuelle a appris**, et qui doit être dans l'écran :
+- dédoublonner sur **nom + unité**, jamais sur le nom seul : un même article en
+  seau et en carton est deux fiches légitimes ;
+- **ne jamais écraser** un produit que la boutique cible a déjà tarifé ou
+  compté — c'est du travail humain ;
+- proposer trois gestes distincts : ajouter ce qui manque, mettre à jour les
+  prix, retirer ce que la source a supprimé. Le troisième est destructeur et
+  doit être décoché par défaut.
