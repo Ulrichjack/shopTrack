@@ -8,6 +8,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/providers/user_shops_provider.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../products/presentation/providers/product_history_provider.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import 'inventory_report_provider.dart';
 
@@ -468,6 +469,7 @@ class StockTransferActions {
 
   void _rafraichir() {
     ref.invalidate(stockTransfersProvider);
+    ref.invalidate(productHistoryProvider);
     ref.invalidate(productProvider);
     ref.invalidate(inventoryReportProvider);
   }

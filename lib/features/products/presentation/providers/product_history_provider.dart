@@ -1,6 +1,7 @@
 // lib/features/products/presentation/providers/product_history_provider.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/sync/revision_donnees.dart';
 import '../../../../core/sync/sync_service.dart';
 
 class ProductHistoryItem {
@@ -31,6 +32,9 @@ final productHistoryProvider =
       ref,
       productId,
     ) async {
+      // Se relire quand un téléchargement a rempli la base : une recharge
+      // faite sur un autre téléphone n'apparaissait jamais ici.
+      ref.watch(revisionDonneesLocalesProvider);
       final db = ref.read(localDbProvider);
       final List<ProductHistoryItem> history = [];
 

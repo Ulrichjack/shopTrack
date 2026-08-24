@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../products/presentation/providers/product_history_provider.dart';
 import 'inventory_report_provider.dart';
 
 /// Raisons possibles d'une perte. Les clés doivent rester identiques à la
@@ -131,6 +132,7 @@ class InventoryLossActions {
     // la file garde l'écriture si le réseau manque.
     await ref.read(syncServiceProvider).processQueue();
     ref.invalidate(inventoryLossesProvider);
+    ref.invalidate(productHistoryProvider);
     // Le rapport lit les pertes : sans cette invalidation il gardait ses
     // chiffres d'avant et la perte ne se voyait qu'après redémarrage de l'app.
     ref.invalidate(inventoryReportProvider);
