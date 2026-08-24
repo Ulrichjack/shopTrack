@@ -513,3 +513,31 @@ construction dans une AUTRE boutique.
 **Pourquoi les tests ne le voyaient pas** : ils créent une seule boutique. Il
 faut deux boutiques sur le même appareil, donc deux jeux de données mêlés dans
 la même base locale — exactement ce que produit une journée d'essais réels.
+
+---
+
+## 24. Un écran oublié dans la liste des invalidations
+
+**Vu en vrai le 24/08/2026** : le commerçant valide son tour de comptage, ouvre
+« Mes comptages », et n'y voit rien. Ses repères n'apparaissent qu'après avoir
+vidé les données de l'application — de quoi croire que le travail n'a pas été
+enregistré.
+
+**Cause** : `saveCount` invalidait `inventoryCountProvider`, `productProvider`
+et `inventoryReportProvider`, mais pas `historiqueComptagesProvider`. Ce
+dernier a été ajouté après les trois autres, et personne n'a pensé à
+l'inscrire dans la liste.
+
+C'est le pendant du piège n°20 : là, le téléchargement remplissait la base sans
+réveiller les écrans ; ici, c'est une action locale qui réveille trois écrans
+sur quatre. Même symptôme pour le commerçant — « mon travail a disparu ».
+
+**Règle** : quand on ajoute un provider qui lit une table déjà écrite par une
+action existante, chercher cette action et l'y inscrire. Le contrôle, pour les
+providers d'inventaire :
+
+```bash
+grep -n "ref.invalidate" lib/features/inventory/presentation/providers/*.dart
+```
+
+Chaque action doit réveiller TOUS les écrans qui lisent ce qu'elle écrit.

@@ -252,6 +252,12 @@ class InventoryCountActions {
     ref.invalidate(inventoryCountProvider);
     ref.invalidate(productProvider);
     ref.invalidate(inventoryReportProvider);
+    // « Mes comptages » aussi : c'est le seul écran qui liste les repères
+    // posés, et il était le seul qu'un comptage ne réveillait pas. Le
+    // commerçant validait son tour, ouvrait l'historique, et n'y voyait rien —
+    // jusqu'à ce qu'il vide les données de l'application. De quoi croire que
+    // son travail n'a pas été enregistré.
+    ref.invalidate(historiqueComptagesProvider);
     return savedCount;
   }
 
