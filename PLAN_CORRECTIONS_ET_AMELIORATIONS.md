@@ -1113,3 +1113,29 @@ qu'il faut préserver dans la cible.
 - proposer trois gestes distincts : ajouter ce qui manque, mettre à jour les
   prix, retirer ce que la source a supprimé. Le troisième est destructeur et
   doit être décoché par défaut.
+
+### Abonnement — le registre posé le 24/08, le blocage reste à faire
+
+Trois colonnes sur `shops` : `abonnement_actif`, `abonnement_jusqu_au`,
+`abonnement_note`. Elles se remplissent **à la main depuis la console
+Supabase** — la table n'a aucune politique UPDATE, donc aucun client ne peut y
+toucher.
+
+**Rien n'est branché dessus.** L'app ne les lit pas, personne ne peut être coupé
+par accident. C'était l'intention : poser le registre pendant qu'il n'y a qu'un
+client, garder le blocage pour le jour où il y en aura plusieurs.
+
+**Ce qu'il restera à faire, dans cet ordre** :
+
+1. La vérification dans les politiques d'accès — `is_shop_member()` devient
+   « membre ET abonnement actif ».
+2. **L'écran qui l'explique.** Sans lui, une coupure ressemble à une panne : le
+   commerçant voit sa boutique disparaître, sa synchro se bloquer, et il appelle
+   pour signaler un bug. Le message doit dire « abonnement expiré » et donner le
+   moyen de reprendre.
+
+**La limite de fond, à ne jamais oublier** : ShopTrack est local-first. Toutes
+les données du commerçant vivent sur son téléphone et l'app fonctionne sans
+serveur. On ne peut donc pas lui reprendre ce qu'il a saisi — on ne peut couper
+que la **synchronisation**. Pour une boutique unique c'est une gêne ; pour
+quelqu'un qui en gère onze, c'est perdre l'essentiel.
