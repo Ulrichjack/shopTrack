@@ -60,7 +60,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         // On teste « a-t-on saisi ? », pas « le montant vaut-il 0 ? » :
         // une caisse vide le matin est un 0 parfaitement valide.
         setState(() => _isDialogOpen = true);
-        _showMorningBalanceDialog();
+        _showMorningBalanceDialog(soldeDeLaVeille: data.soldeDeLaVeille);
       }
     });
   }
@@ -183,9 +183,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void _showMorningBalanceDialog({
     double currentBalance = 0,
     bool isEdit = false,
+    double? soldeDeLaVeille,
   }) {
+    // Proposer plutôt que faire retaper.
+    //
+    // Le champ s'ouvrait vide chaque matin. Le commerçant devait se souvenir
+    // de ce qu'il avait laissé, le retrouver, le retaper — et celui qui doute
+    // ressaisit. Vu en vrai : une clôture à 27 000 F le 18, un fonds de
+    // 27 000 F retapé à la main le 20, et deux fois le même montant saisi à
+    // une minute d'intervalle le 24.
+    //
+    // Ce qui restait à la dernière clôture est la meilleure proposition
+    // possible. S'il a emporté l'argent, il corrige — c'est un geste, pas une
+    // contrainte.
     final controller = TextEditingController(
-      text: isEdit ? currentBalance.toInt().toString() : '',
+      text: isEdit
+          ? currentBalance.toInt().toString()
+          : (soldeDeLaVeille?.toInt().toString() ?? ''),
     );
 
     // Le conteneur, capturé AVANT d'ouvrir la boîte.
@@ -210,6 +224,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               'Combien y a-t-il dans le tiroir-caisse ce matin ?',
               textAlign: TextAlign.center,
             ),
+            if (!isEdit && soldeDeLaVeille != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Tu avais laissé '
+                '${CurrencyFormatter.format(soldeDeLaVeille)} '
+                'à la dernière clôture.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             TextField(
               controller: controller,
