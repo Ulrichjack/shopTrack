@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,6 +21,7 @@ class InventoryPeriodReport {
     required this.productsAwaitingSecondCount,
     required this.productsNeverCounted,
     required this.daysWithoutTakings,
+    this.produitsAFinirDeCompter = const [],
     this.periodesDisponibles = const [],
     this.recettesAvantLePremierComptage = 0,
   });
@@ -38,6 +41,17 @@ class InventoryPeriodReport {
   final int productsNeverCounted;
 
   final List<DateTime> daysWithoutTakings;
+
+  /// Les produits qu'il reste à compter pour qu'une NOUVELLE période s'ouvre.
+  ///
+  /// Le rapport ne crée une période que lorsque tous les produits ayant déjà
+  /// au moins deux repères ont atteint le même nombre de comptages — il
+  /// s'aligne sur le plus petit. Recompter trois articles sur cinq ne change
+  /// donc rien à l'écran, et rien ne le disait : le commerçant comptait, allait
+  /// voir son bilan, ne voyait pas bouger, et concluait que ça ne marchait pas.
+  ///
+  /// Vide quand aucun produit n'a pris d'avance.
+  final List<String> produitsAFinirDeCompter;
   final List<PeriodeRapportInventaire> periodesDisponibles;
 
   /// Recettes notées AVANT le tout premier comptage jamais fait.
@@ -197,6 +211,29 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
     final indiceSelectionne = demandeExiste
         ? indiceDemande
         : periodesDisponibles.firstOrNull?.indiceComptage;
+
+    // Qui retient la prochaine période ?
+    //
+    // Seuls les produits ayant DEUX repères ou plus définissent les périodes ;
+    // le rapport s'aligne sur celui qui en a le moins. Ceux qui sont pile à ce
+    // minimum, quand d'autres l'ont dépassé, sont exactement ce qu'il reste à
+    // compter. Les nommer évite au commerçant de chercher lesquels.
+    final nombreDeComptages = <String, int>{};
+    for (final product in products) {
+      final n = comptagesParProduit[product.id]?.length ?? 0;
+      if (n >= 2) nombreDeComptages[product.id] = n;
+    }
+    var produitsAFinir = <String>[];
+    if (nombreDeComptages.isNotEmpty) {
+      final minimum = nombreDeComptages.values.reduce(math.min);
+      final maximum = nombreDeComptages.values.reduce(math.max);
+      if (maximum > minimum) {
+        produitsAFinir = products
+            .where((p) => nombreDeComptages[p.id] == minimum)
+            .map((p) => p.name)
+            .toList();
+      }
+    }
 
     final inputs = <InventoryProductInput>[];
     var awaitingSecond = 0;
@@ -505,6 +542,7 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
       productsAwaitingSecondCount: awaitingSecond,
       productsNeverCounted: neverCounted,
       daysWithoutTakings: missing,
+      produitsAFinirDeCompter: produitsAFinir,
       periodesDisponibles: periodesDisponibles,
       recettesAvantLePremierComptage: recettesOrphelines,
     );

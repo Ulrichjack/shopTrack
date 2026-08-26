@@ -286,6 +286,18 @@ class _Body extends StatelessWidget {
           ),
         ),
 
+        // Ce qu'il reste à compter pour que la PROCHAINE période s'ouvre.
+        //
+        // Recompter une partie de la boutique ne fait rien apparaître : le
+        // rapport s'aligne sur le produit le moins compté. Sans ce bandeau, le
+        // commerçant compte, revient, ne voit rien bouger, et croit que l'app
+        // ne fonctionne pas. C'est arrivé — d'où ce message, qui NOMME les
+        // articles au lieu d'en donner le nombre.
+        if (report.produitsAFinirDeCompter.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _ResteAFinir(produits: report.produitsAFinirDeCompter),
+        ],
+
         if (r.inconsistentProducts.isNotEmpty) ...[
           const SizedBox(height: 12),
           _InconsistentWarning(products: r.inconsistentProducts),
@@ -743,6 +755,73 @@ class _EmptyState extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// « Tu as recompté, mais il reste ceux-ci avant que le bilan suivant existe. »
+class _ResteAFinir extends StatelessWidget {
+  const _ResteAFinir({required this.produits});
+
+  final List<String> produits;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibles = produits.take(6).toList();
+    final reste = produits.length - visibles.length;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primaryDark),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.playlist_add_check, color: AppColors.primaryDark),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  produits.length == 1
+                      ? 'Un produit reste à compter pour ouvrir le bilan '
+                            'suivant.'
+                      : '${produits.length} produits restent à compter pour '
+                            'ouvrir le bilan suivant.',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  visibles.join(' · ') +
+                      (reste > 0 ? ' · et $reste autre(s)' : ''),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Ce que tu viens de compter est bien enregistré : le bilan '
+                  'ne se ferme que lorsque tous ces articles ont le même '
+                  'nombre de comptages.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
