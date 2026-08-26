@@ -1,6 +1,7 @@
 // lib/features/products/presentation/providers/product_history_provider.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/sync/revision_donnees.dart';
 import '../../../../core/sync/sync_service.dart';
 
 class ProductHistoryItem {
@@ -31,6 +32,9 @@ final productHistoryProvider =
       ref,
       productId,
     ) async {
+      // Se relire quand un téléchargement a rempli la base : une recharge
+      // faite sur un autre téléphone n'apparaissait jamais ici.
+      ref.watch(revisionDonneesLocalesProvider);
       final db = ref.read(localDbProvider);
       final List<ProductHistoryItem> history = [];
 
@@ -90,6 +94,26 @@ final productHistoryProvider =
             ),
           );
         }
+      }
+
+      // 2 bis. La casse déclarée. Sans elle, l'historique montre le stock qui
+      // descend sans jamais dire pourquoi : le commerçant lit « compté 25 »
+      // puis « compté 20 » et rien ne l'informe que deux ont été cassés. En
+      // mode inventaire c'est le seul endroit où la casse d'un article
+      // particulier se raconte.
+      final pertes = await (db.select(
+        db.localInventoryLosses,
+      )..where((t) => t.productId.equals(productId))).get();
+      for (final perte in pertes) {
+        history.add(
+          ProductHistoryItem(
+            id: perte.id,
+            date: perte.occurredAt,
+            type: 'perte',
+            quantity: -perte.quantity,
+            label: perte.reason,
+          ),
+        );
       }
 
       // 3. Trier du plus récent au plus ancien

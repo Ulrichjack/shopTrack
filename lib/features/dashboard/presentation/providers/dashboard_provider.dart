@@ -41,6 +41,19 @@ class DashboardState {
   final bool isClosed;
   final DailyClosingEntity? closingData;
 
+  /// Ce qui restait en caisse à la dernière clôture, s'il y en a eu une.
+  ///
+  /// Sert à PROPOSER le fonds du matin au lieu de le faire retaper. Un
+  /// commerçant qui referme sa journée sur 27 000 F rouvre le lendemain sur
+  /// 27 000 F — sauf s'il a emporté l'argent, et là il corrige. Vu en vrai :
+  /// une clôture à 27 000 le 18, puis un fonds de 27 000 ressaisi à la main le
+  /// 20. Le champ vide oblige à se souvenir, et celui qui doute ressaisit.
+  final double? soldeDeLaVeille;
+
+  /// Le jour de cette clôture. Affiché avec le montant : une clôture qui date
+  /// d'une semaine ne doit pas se faire passer pour celle d'hier.
+  final DateTime? dateDerniereCloture;
+
   /// Un solde a-t-il été saisi aujourd'hui ? Distinct de `morningBalance == 0`,
   /// car 0 est une valeur légitime (caisse vide le matin) : sans ce drapeau,
   /// la boîte de saisie revient en boucle après un 0 enregistré.
@@ -58,6 +71,8 @@ class DashboardState {
     required this.grossProfit,
     required this.netProfit,
     required this.salesCount,
+    this.soldeDeLaVeille,
+    this.dateDerniereCloture,
     required this.isClosed,
     this.hasMorningBalance = false,
     this.closingData,
@@ -348,7 +363,28 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       (movement) => movement.type == 'morning_balance',
     );
 
+    // Ce qui restait en caisse à la dernière clôture, pour le proposer au lieu
+    // de le faire retaper. On prend la clôture la plus récente ANTÉRIEURE à
+    // aujourd'hui : celle du jour, s'il y en a une, ne dit rien du matin.
+    final derniereCloture =
+        await (db.select(db.localDailyClosings)
+              ..where(
+                (t) =>
+                    t.shopId.equals(shopId) &
+                    t.closingDate.isSmallerThanValue(startOfDay),
+              )
+              ..orderBy([
+                (t) => drift.OrderingTerm(
+                  expression: t.closingDate,
+                  mode: drift.OrderingMode.desc,
+                ),
+              ])
+              ..limit(1))
+            .getSingleOrNull();
+
     return DashboardState(
+      soldeDeLaVeille: derniereCloture?.physicalCash,
+      dateDerniereCloture: derniereCloture?.closingDate,
       hasMorningBalance: hasMorningBalance,
       morningBalance: totals.morningBalance,
       totalSales: totals.totalSales,
@@ -408,19 +444,41 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final shopId = await requireShopId(ref);
       final userId = prefs.getString('cached_user_id') ?? 'offline_user';
 
-      final movementId = const Uuid().v4();
       final now = DateTime.now();
+      final debutDuJour = DateTime(now.year, now.month, now.day);
+      final finDuJour = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      // SAISIR DEUX FOIS CORRIGE, ça n'ajoute pas un second fonds.
+      //
+      // Le calcul ne retient que le plus récent, donc un doublon était sans
+      // effet sur le total — mais il laissait deux lignes dans le journal de
+      // caisse, et le commerçant qui doute retape. Vu chez un client en vrai :
+      // 23 500 saisis deux fois à une minute d'intervalle, et deux retraits
+      // identiques dans la foulée.
+      //
+      // On réutilise la ligne du jour au lieu d'en créer une seconde : même
+      // identifiant, donc l'envoi met à jour au lieu d'insérer.
+      final existant =
+          await (db.select(db.localCashMovements)..where(
+                (row) =>
+                    row.shopId.equals(shopId) &
+                    row.type.equals('morning_balance') &
+                    row.createdAt.isBetweenValues(debutDuJour, finDuJour),
+              ))
+              .getSingleOrNull();
+
+      final movementId = existant?.id ?? const Uuid().v4();
 
       await db
           .into(db.localCashMovements)
-          .insert(
+          .insertOnConflictUpdate(
             LocalCashMovement(
               id: movementId,
               shopId: shopId,
               userId: userId,
               amount: amount,
               type: 'morning_balance',
-              createdAt: now,
+              createdAt: existant?.createdAt ?? now,
             ),
           );
 
@@ -430,7 +488,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         'user_id': userId,
         'amount': amount,
         'type': 'morning_balance',
-        'created_at': now.toUtc().toIso8601String(),
+        'created_at': (existant?.createdAt ?? now).toUtc().toIso8601String(),
       };
       await db.addToQueue('ADD_CASH_MOVEMENT', jsonEncode(payload));
 

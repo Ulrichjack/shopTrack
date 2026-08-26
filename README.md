@@ -35,6 +35,7 @@ supabase/migrations/202608190001_stock_transfers_annulation.sql
 supabase/migrations/202608190002_stock_transfers_noms_boutiques.sql
 supabase/migrations/202608210001_mouvement_stock_date_reelle.sql
 supabase/migrations/202608210002_mouvement_stock_supprimer_ancienne_signature.sql
+supabase/migrations/202608240001_abonnement_boutique.sql
 ```
 
 ### Fonctions serveur

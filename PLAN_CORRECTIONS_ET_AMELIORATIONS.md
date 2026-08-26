@@ -1066,3 +1066,126 @@ où il y a quelque chose à vendre.
 **Ce que ça enseigne au-delà de cet écran** : les données d'usage disent ce
 qu'aucun test ne dit. Deux lignes à 0 F dans une table de mouvements de caisse
 racontent un client perdu.
+
+### Inventaire — « combien devrait-il rester en rayon ? », avant de compter
+
+Demandé par le client du mode inventaire le 23/08, en décrivant sa méthode au
+cahier. Elle vaut d'être écrite telle quelle, parce qu'elle explique le besoin
+mieux qu'une formule :
+
+> Il additionne la marchandise qu'il a confiée. Il additionne les recettes que
+> le vendeur lui a remises. Il soustrait — ça lui dit combien il devrait rester.
+> Ensuite il va compter, ça lui donne la valeur réelle, et il compare.
+
+L'app fait la deuxième moitié (compter, comparer) et jamais la première.
+`inventory_dashboard_screen` n'affiche que « Encaissé ce mois » et « Jours
+notés » : aucune valeur de stock, à aucun moment.
+
+**Ce qui manque** — un chiffre calculable à tout instant, sans comptage :
+
+```
+valeur qui devrait être en rayon
+  = (stock du dernier comptage + arrivages depuis) × prix de vente
+  − recettes remises depuis
+```
+
+**Pourquoi ça compte pour lui** : il a onze boutiques tenues par d'autres. Il ne
+peut pas aller compter partout tout le temps. Ce chiffre lui permet de dire au
+téléphone « il devrait rester pour 400 000 F chez toi » — et d'entendre la
+réponse. Le comptage devient la vérification d'un soupçon, pas une corvée
+mensuelle systématique.
+
+**La limite à ne pas lui cacher** : ce chiffre ne détecte aucune perte à lui
+seul, c'est une prévision arithmétique. L'écart n'apparaît qu'au comptage. Ce
+qu'il gagne, c'est de savoir OÙ aller compter en premier.
+
+### Copier le catalogue d'une boutique à une autre
+
+Demandé le 23/08. Fait trois fois à la main en SQL depuis le 22/08 — 372 puis
+288 produits recopiés dans dix boutiques, avec à chaque fois la question de ce
+qu'il faut préserver dans la cible.
+
+**Ce que l'expérience manuelle a appris**, et qui doit être dans l'écran :
+- dédoublonner sur **nom + unité**, jamais sur le nom seul : un même article en
+  seau et en carton est deux fiches légitimes ;
+- **ne jamais écraser** un produit que la boutique cible a déjà tarifé ou
+  compté — c'est du travail humain ;
+- proposer trois gestes distincts : ajouter ce qui manque, mettre à jour les
+  prix, retirer ce que la source a supprimé. Le troisième est destructeur et
+  doit être décoché par défaut.
+
+### Abonnement — le registre posé le 24/08, le blocage reste à faire
+
+Trois colonnes sur `shops` : `abonnement_actif`, `abonnement_jusqu_au`,
+`abonnement_note`. Elles se remplissent **à la main depuis la console
+Supabase** — la table n'a aucune politique UPDATE, donc aucun client ne peut y
+toucher.
+
+**Rien n'est branché dessus.** L'app ne les lit pas, personne ne peut être coupé
+par accident. C'était l'intention : poser le registre pendant qu'il n'y a qu'un
+client, garder le blocage pour le jour où il y en aura plusieurs.
+
+**Ce qu'il restera à faire, dans cet ordre** :
+
+1. La vérification dans les politiques d'accès — `is_shop_member()` devient
+   « membre ET abonnement actif ».
+2. **L'écran qui l'explique.** Sans lui, une coupure ressemble à une panne : le
+   commerçant voit sa boutique disparaître, sa synchro se bloquer, et il appelle
+   pour signaler un bug. Le message doit dire « abonnement expiré » et donner le
+   moyen de reprendre.
+
+**La limite de fond, à ne jamais oublier** : ShopTrack est local-first. Toutes
+les données du commerçant vivent sur son téléphone et l'app fonctionne sans
+serveur. On ne peut donc pas lui reprendre ce qu'il a saisi — on ne peut couper
+que la **synchronisation**. Pour une boutique unique c'est une gêne ; pour
+quelqu'un qui en gère onze, c'est perdre l'essentiel.
+
+### Inventaire — aligner les périodes sur des DATES, pas sur des numéros de comptage
+
+Analyse du 26/08/2026, après une journée de tests sur un catalogue réel et une
+comparaison avec les pratiques du métier.
+
+**Ce que fait ShopTrack aujourd'hui** : il apparie les comptages par leur
+NUMÉRO — le premier avec le premier, le deuxième avec le deuxième — et
+s'aligne sur le produit qui en a le moins (`nombreCommun`, dans
+`construirePeriodesRapport`).
+
+**Ce que fait le métier** : une période est une FENÊTRE DE TEMPS. Pour chaque
+article on prend son dernier comptage avant le début, et son dernier avant la
+fin. Le nombre de comptages entre les deux n'a aucune importance.
+
+**Trois conséquences de notre modèle, toutes observées en vrai :**
+
+*Un produit en AVANCE bloque tout le monde.* Cinq articles comptés trois fois,
+un sixième compté deux fois : la période suivante n'existe pas tant que le
+sixième n'a pas rattrapé. Et il ne peut pas rattraper le jour même, puisque
+recompter le même jour corrige au lieu d'ajouter un repère.
+
+*Ajouter un produit au groupe repousse le bilan suivant.* Compter un article
+qui n'avait qu'un repère le fait entrer dans le calcul avec un tour de retard.
+Le commerçant croit avancer, il recule.
+
+*LA FENÊTRE D'UNE PÉRIODE DÉJÀ LUE PEUT S'ÉTENDRE.* C'est le plus grave. Les
+bornes sont le minimum des débuts et le maximum des fins sur les produits
+appariés. Un tour étalé — 100 articles lundi, 100 mercredi, 46 samedi — fait
+grandir la fenêtre à chaque vague. Les quantités par produit ne bougent pas,
+mais les RECETTES sont additionnées sur la fenêtre : le « manquant » consulté
+lundi n'est plus le même samedi. Tout le travail fait sur l'historique des prix
+visait précisément à ce qu'un bilan déjà lu ne change plus.
+
+**Ce que le modèle par dates réglerait** : les trois d'un coup. Chaque article
+apporte ses propres bornes dans une fenêtre choisie ; aucun ne retient les
+autres ; une période close est close.
+
+**Ce qu'il coûte** : refonte de `construirePeriodesRapport`, du sélecteur de
+période et des tests. Une à deux journées.
+
+**Quand le faire** : avant que le client multi-boutiques ne dépasse quelques
+centaines d'articles comptés à des rythmes différents. Avec 335 produits sur
+onze boutiques, il aura toujours un article en avance quelque part.
+
+**Vocabulaire utile** : ce que pratique ce client s'appelle le *comptage
+tournant* — compter des sous-ensembles à tour de rôle. L'autre modèle,
+l'*inventaire périodique*, arrête la boutique pour tout compter d'un coup.
+ShopTrack laisse faire le premier mais calcule comme le second, et c'est de là
+que vient la tension.

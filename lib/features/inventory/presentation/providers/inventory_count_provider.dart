@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../products/presentation/providers/product_history_provider.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import 'inventory_report_provider.dart';
 
@@ -252,6 +253,16 @@ class InventoryCountActions {
     ref.invalidate(inventoryCountProvider);
     ref.invalidate(productProvider);
     ref.invalidate(inventoryReportProvider);
+    // « Mes comptages » aussi : c'est le seul écran qui liste les repères
+    // posés, et il était le seul qu'un comptage ne réveillait pas. Le
+    // commerçant validait son tour, ouvrait l'historique, et n'y voyait rien —
+    // jusqu'à ce qu'il vide les données de l'application. De quoi croire que
+    // son travail n'a pas été enregistré.
+    ref.invalidate(historiqueComptagesProvider);
+    // Un comptage écrit un mouvement d'ajustement : la fiche produit doit le
+    // montrer. Sans argument, toute la famille est invalidée — on ne sait pas
+    // quelle fiche est ouverte.
+    ref.invalidate(productHistoryProvider);
     return savedCount;
   }
 

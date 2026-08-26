@@ -791,8 +791,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final item = history[index];
-                    final isRecharge = item.type == 'recharge';
-                    final isComptage = item.type == 'comptage';
+                    // Un type, une apparence. Les conditions imbriquées ne
+                    // tenaient qu'à deux cas ; la casse en faisait un
+                    // troisième, et la vente devenait le « sinon » de tout le
+                    // reste — impossible à relire.
+                    final aspect = _AspectHistorique.pour(item.type);
                     final dateStr = DateFormat(
                       'dd/MM/yy HH:mm',
                     ).format(item.date);
@@ -807,22 +810,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       child: Row(
                         children: [
                           CircleAvatar(
-                            backgroundColor: isComptage
-                                ? Colors.orange.shade50
-                                : (isRecharge
-                                      ? Colors.blue.shade50
-                                      : AppColors.primaryLight),
+                            backgroundColor: aspect.fond,
                             child: Icon(
-                              isComptage
-                                  ? Icons.checklist
-                                  : (isRecharge
-                                        ? Icons.add_shopping_cart
-                                        : Icons.point_of_sale),
-                              color: isComptage
-                                  ? Colors.orange.shade800
-                                  : (isRecharge
-                                        ? Colors.blue
-                                        : AppColors.primaryDark),
+                              aspect.icone,
+                              color: aspect.couleur,
                               size: 20,
                             ),
                           ),
@@ -832,10 +823,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  item.label ??
-                                      (isRecharge
-                                          ? 'Recharge de stock'
-                                          : 'Vente'),
+                                  item.label ?? aspect.titre,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -854,27 +842,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                // Un comptage n'est pas un mouvement : il
-                                // constate un stock, il ne l'augmente ni ne
-                                // le diminue. D'où l'absence de + ou −.
-                                isComptage
-                                    ? '${item.quantity}'
-                                    : (isRecharge
-                                          ? '+ ${item.quantity}'
-                                          : '- ${item.quantity}'),
+                                aspect.chiffre(item.quantity),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
-                                  color: isComptage
-                                      ? Colors.orange.shade800
-                                      : (isRecharge
-                                            ? Colors.blue
-                                            : AppColors.primaryDark),
+                                  color: aspect.couleur,
                                 ),
                               ),
-                              if (!isRecharge &&
-                                  !isComptage &&
-                                  item.totalAmount != null)
+                              if (item.totalAmount != null)
                                 Text(
                                   CurrencyFormatter.format(item.totalAmount!),
                                   style: const TextStyle(
@@ -923,4 +898,59 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           : null,
     );
   }
+}
+
+/// L'apparence d'une ligne d'historique selon ce qu'elle raconte.
+///
+/// Recharge, comptage, vente, casse : quatre gestes différents, quatre
+/// lectures différentes. Un comptage n'est pas un mouvement — il constate un
+/// stock sans l'augmenter ni le diminuer — d'où l'absence de signe devant son
+/// chiffre.
+class _AspectHistorique {
+  const _AspectHistorique({
+    required this.titre,
+    required this.icone,
+    required this.couleur,
+    required this.fond,
+    required this.signe,
+  });
+
+  final String titre;
+  final IconData icone;
+  final Color couleur;
+  final Color fond;
+  final String signe;
+
+  String chiffre(int quantite) => '$signe${quantite.abs()}';
+
+  static _AspectHistorique pour(String type) => switch (type) {
+    'comptage' => _AspectHistorique(
+      titre: 'Comptage',
+      icone: Icons.checklist,
+      couleur: Colors.orange.shade800,
+      fond: Colors.orange.shade50,
+      signe: '',
+    ),
+    'recharge' => _AspectHistorique(
+      titre: 'Recharge de stock',
+      icone: Icons.add_shopping_cart,
+      couleur: Colors.blue,
+      fond: Colors.blue.shade50,
+      signe: '+ ',
+    ),
+    'perte' => _AspectHistorique(
+      titre: 'Casse déclarée',
+      icone: Icons.report_gmailerrorred,
+      couleur: AppColors.error,
+      fond: const Color(0xFFFDECEC),
+      signe: '- ',
+    ),
+    _ => const _AspectHistorique(
+      titre: 'Vente',
+      icone: Icons.point_of_sale,
+      couleur: AppColors.primaryDark,
+      fond: AppColors.primaryLight,
+      signe: '- ',
+    ),
+  };
 }
