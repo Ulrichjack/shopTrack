@@ -1139,3 +1139,53 @@ les données du commerçant vivent sur son téléphone et l'app fonctionne sans
 serveur. On ne peut donc pas lui reprendre ce qu'il a saisi — on ne peut couper
 que la **synchronisation**. Pour une boutique unique c'est une gêne ; pour
 quelqu'un qui en gère onze, c'est perdre l'essentiel.
+
+### Inventaire — aligner les périodes sur des DATES, pas sur des numéros de comptage
+
+Analyse du 26/08/2026, après une journée de tests sur un catalogue réel et une
+comparaison avec les pratiques du métier.
+
+**Ce que fait ShopTrack aujourd'hui** : il apparie les comptages par leur
+NUMÉRO — le premier avec le premier, le deuxième avec le deuxième — et
+s'aligne sur le produit qui en a le moins (`nombreCommun`, dans
+`construirePeriodesRapport`).
+
+**Ce que fait le métier** : une période est une FENÊTRE DE TEMPS. Pour chaque
+article on prend son dernier comptage avant le début, et son dernier avant la
+fin. Le nombre de comptages entre les deux n'a aucune importance.
+
+**Trois conséquences de notre modèle, toutes observées en vrai :**
+
+*Un produit en AVANCE bloque tout le monde.* Cinq articles comptés trois fois,
+un sixième compté deux fois : la période suivante n'existe pas tant que le
+sixième n'a pas rattrapé. Et il ne peut pas rattraper le jour même, puisque
+recompter le même jour corrige au lieu d'ajouter un repère.
+
+*Ajouter un produit au groupe repousse le bilan suivant.* Compter un article
+qui n'avait qu'un repère le fait entrer dans le calcul avec un tour de retard.
+Le commerçant croit avancer, il recule.
+
+*LA FENÊTRE D'UNE PÉRIODE DÉJÀ LUE PEUT S'ÉTENDRE.* C'est le plus grave. Les
+bornes sont le minimum des débuts et le maximum des fins sur les produits
+appariés. Un tour étalé — 100 articles lundi, 100 mercredi, 46 samedi — fait
+grandir la fenêtre à chaque vague. Les quantités par produit ne bougent pas,
+mais les RECETTES sont additionnées sur la fenêtre : le « manquant » consulté
+lundi n'est plus le même samedi. Tout le travail fait sur l'historique des prix
+visait précisément à ce qu'un bilan déjà lu ne change plus.
+
+**Ce que le modèle par dates réglerait** : les trois d'un coup. Chaque article
+apporte ses propres bornes dans une fenêtre choisie ; aucun ne retient les
+autres ; une période close est close.
+
+**Ce qu'il coûte** : refonte de `construirePeriodesRapport`, du sélecteur de
+période et des tests. Une à deux journées.
+
+**Quand le faire** : avant que le client multi-boutiques ne dépasse quelques
+centaines d'articles comptés à des rythmes différents. Avec 335 produits sur
+onze boutiques, il aura toujours un article en avance quelque part.
+
+**Vocabulaire utile** : ce que pratique ce client s'appelle le *comptage
+tournant* — compter des sous-ensembles à tour de rôle. L'autre modèle,
+l'*inventaire périodique*, arrête la boutique pour tout compter d'un coup.
+ShopTrack laisse faire le premier mais calcule comme le second, et c'est de là
+que vient la tension.
