@@ -50,6 +50,10 @@ class DashboardState {
   /// 20. Le champ vide oblige à se souvenir, et celui qui doute ressaisit.
   final double? soldeDeLaVeille;
 
+  /// Le jour de cette clôture. Affiché avec le montant : une clôture qui date
+  /// d'une semaine ne doit pas se faire passer pour celle d'hier.
+  final DateTime? dateDerniereCloture;
+
   /// Un solde a-t-il été saisi aujourd'hui ? Distinct de `morningBalance == 0`,
   /// car 0 est une valeur légitime (caisse vide le matin) : sans ce drapeau,
   /// la boîte de saisie revient en boucle après un 0 enregistré.
@@ -68,6 +72,7 @@ class DashboardState {
     required this.netProfit,
     required this.salesCount,
     this.soldeDeLaVeille,
+    this.dateDerniereCloture,
     required this.isClosed,
     this.hasMorningBalance = false,
     this.closingData,
@@ -379,6 +384,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
 
     return DashboardState(
       soldeDeLaVeille: derniereCloture?.physicalCash,
+      dateDerniereCloture: derniereCloture?.closingDate,
       hasMorningBalance: hasMorningBalance,
       morningBalance: totals.morningBalance,
       totalSales: totals.totalSales,

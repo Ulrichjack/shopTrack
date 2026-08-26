@@ -60,7 +60,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         // On teste « a-t-on saisi ? », pas « le montant vaut-il 0 ? » :
         // une caisse vide le matin est un 0 parfaitement valide.
         setState(() => _isDialogOpen = true);
-        _showMorningBalanceDialog(soldeDeLaVeille: data.soldeDeLaVeille);
+        _showMorningBalanceDialog(
+          soldeDeLaVeille: data.soldeDeLaVeille,
+          dateDerniereCloture: data.dateDerniereCloture,
+        );
       }
     });
   }
@@ -184,6 +187,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     double currentBalance = 0,
     bool isEdit = false,
     double? soldeDeLaVeille,
+    DateTime? dateDerniereCloture,
   }) {
     // Proposer plutôt que faire retaper.
     //
@@ -229,7 +233,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Text(
                 'Tu avais laissé '
                 '${CurrencyFormatter.format(soldeDeLaVeille)} '
-                'à la dernière clôture.',
+                '${dateDerniereCloture == null ? 'à la dernière clôture.' : 'en fermant le ${DateFormat('dd/MM').format(dateDerniereCloture)}.'}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
