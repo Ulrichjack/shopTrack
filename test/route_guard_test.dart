@@ -83,11 +83,67 @@ void main() {
       }
     });
 
-    test('les écrans ordinaires restent ouverts au vendeur', () {
-      expect(route(vers: '/home'), isNull);
-      expect(route(vers: '/products'), isNull);
-      expect(route(vers: '/sales/new'), isNull);
-      expect(route(vers: '/profile'), isNull);
+    test('les écrans de son métier restent ouverts au vendeur', () {
+      for (final vers in sellerAllowedRoutes) {
+        expect(
+          route(vers: vers),
+          isNull,
+          reason: '$vers fait partie du travail du vendeur',
+        );
+      }
+    });
+  });
+
+  group('liste blanche', () {
+    // Ce que douze routes oubliées ont coûté : le catalogue et ses prix
+    // d'achat, les arrivages et leur coût, la clôture et son écart de caisse
+    // étaient atteignables par un vendeur, par simple lien direct.
+    test('les écrans sensibles ne s\'ouvrent plus au vendeur', () {
+      const sensibles = [
+        '/products',
+        '/add-product',
+        '/edit-product',
+        '/product-detail',
+        '/manage-units',
+        '/cash-out',
+        '/closing',
+        '/cycles',
+        '/create-cycle',
+        '/cycle-report',
+        '/transfers',
+        '/transfer-detail',
+      ];
+      for (final vers in sensibles) {
+        expect(
+          route(vers: vers),
+          '/profile',
+          reason: '$vers expose des chiffres réservés au patron',
+        );
+      }
+    });
+
+    test('un écran ajouté demain est fermé sans qu\'on y pense', () {
+      // LA propriété qui justifie la liste blanche. Avec une liste noire, ce
+      // test passait aussi — en laissant l'écran grand ouvert.
+      expect(route(vers: '/un-ecran-ajoute-plus-tard'), '/profile');
+      expect(
+        route(accesPatron: true, vers: '/un-ecran-ajoute-plus-tard'),
+        isNull,
+      );
+    });
+
+    test('aucun écran n\'est à la fois ouvert au vendeur et réservé', () {
+      expect(
+        sellerAllowedRoutes.intersection(bossOnlyRoutes),
+        isEmpty,
+        reason: 'les deux listes se contrediraient',
+      );
+    });
+
+    test('le patron atteint tout ce que le vendeur atteint', () {
+      for (final vers in sellerAllowedRoutes) {
+        expect(route(accesPatron: true, vers: vers), isNull);
+      }
     });
   });
 

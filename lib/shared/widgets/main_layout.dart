@@ -14,7 +14,8 @@ class MainLayout extends ConsumerWidget {
   const MainLayout({super.key, required this.child});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) { // 👈 On ajoute WidgetRef ref
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 👈 On ajoute WidgetRef ref
 
     // 👈 ON LIT LE MODE ICI
     final isBossMode = ref.watch(appModeProvider).value ?? false;
@@ -43,13 +44,22 @@ class MainLayout extends ConsumerWidget {
           icon: Icons.receipt_long_outlined,
           activeIcon: Icons.receipt_long,
         ),
-      const _NavDestination(
-        route: '/products',
-        label: 'Stock',
-        icon: Icons.inventory_2_outlined,
-        activeIcon: Icons.inventory_2,
-      ),
-      if (isHierarchical)
+      // Le stock montre les quantités exactes et les prix d'achat : il est au
+      // patron. La barrière de `router.dart` renvoie déjà le vendeur vers son
+      // profil, mais lui laisser l'onglet reviendrait à lui proposer une porte
+      // fermée — il croirait à une panne.
+      //
+      // La vente n'en dépend pas : elle passe par le sélecteur de produits,
+      // pas par cet écran.
+      if (isBossMode)
+        const _NavDestination(
+          route: '/products',
+          label: 'Stock',
+          icon: Icons.inventory_2_outlined,
+          activeIcon: Icons.inventory_2,
+        ),
+      // Même raison : un cycle porte le coût de l'arrivage et la marge.
+      if (isHierarchical && isBossMode)
         const _NavDestination(
           route: '/cycles',
           label: 'Cycles',
@@ -100,9 +110,7 @@ class MainLayout extends ConsumerWidget {
         children: [
           const SafeArea(
             bottom: false,
-            child: Column(
-              children: [OfflineBanner(), BlockedSyncBanner()],
-            ),
+            child: Column(children: [OfflineBanner(), BlockedSyncBanner()]),
           ),
           Expanded(child: child),
         ],

@@ -53,20 +53,75 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 /// Les deux écrans qu'on peut ouvrir sans être connecté.
 const _routesAuth = {'/login', '/register'};
 
-/// Les écrans réservés au patron.
+/// Les seuls écrans qu'un vendeur peut atteindre.
 ///
-/// '/inventory-report' y figure aussi : il donne le bénéfice et l'écart
-/// inexpliqué, exactement ce que le bilan protège en mode simple.
+/// Liste BLANCHE, et c'est le point important : **tout ce qui n'y figure pas
+/// est réservé au patron**. On énumérait l'inverse — les écrans à fermer — et
+/// douze routes sensibles sont restées ouvertes pendant des mois : le
+/// catalogue avec ses prix d'achat, les arrivages avec leur coût, la clôture
+/// avec son écart de caisse, les transferts qui recopient le prix d'achat.
+///
+/// Personne ne les avait laissées ouvertes par négligence. Une liste noire
+/// demande de penser à chaque écran neuf, et un jour on n'y pense pas. Une
+/// liste blanche fait l'inverse : l'oubli ferme au lieu d'ouvrir.
+///
+/// Basculé le 27/08/2026, après avoir vérifié qu'aucun compte vendeur
+/// n'existait encore en production — le seul risque d'une liste blanche est
+/// d'oublier une route et de bloquer quelqu'un en plein travail. Il n'y avait
+/// personne à bloquer ; l'occasion ne se représentera pas.
+///
+/// **Ajouter une route ici est une décision**, pas une formalité : elle ouvre
+/// un écran à quelqu'un qui n'est pas le patron. Les deux écrans
+/// d'authentification n'y sont pas, ils sont traités plus haut.
+const sellerAllowedRoutes = {
+  '/home',
+
+  // Vendre, de bout en bout. `/scanner` et `/sale-confirm` sont des étapes de
+  // `/sales/new` : les fermer casserait la vente au milieu.
+  '/sales/new',
+  '/sale-confirm',
+  '/cycle-sale',
+  '/scanner',
+
+  // Revoir ce qu'il a vendu, pour se relire ou signaler une erreur. Les
+  // marges et prix d'achat de cet écran sont masqués séparément : la route
+  // s'ouvre, les chiffres du patron non.
+  '/sales-history',
+
+  // Signaler une casse. Sans ça, la perte devient un manquant qu'on lui
+  // reproche — exactement ce que le rapprochement d'inventaire existe pour
+  // éviter. Une déclaration porte son auteur et ne s'efface pas.
+  '/declare-loss',
+  '/loss-entry',
+
+  // Noter la recette du jour, en mode inventaire. Le hub lui-même n'ouvre
+  // rien de sensible : compter et lire le rapport sont fermés plus bas.
+  '/inventory',
+  '/daily-takings',
+
+  '/profile',
+  '/sync-status',
+};
+
+/// Écrans que même un patron ne voit qu'en mode Patron actif (PIN saisi).
+///
+/// Redondant avec la liste blanche depuis le basculement — un vendeur n'y
+/// accède plus de toute façon. On les garde nommés parce qu'ils portent une
+/// décision métier qu'il ne faut pas perdre en relisant la liste blanche.
+///
+/// '/inventory-report' donne le bénéfice et l'écart inexpliqué, exactement ce
+/// que le bilan protège en mode simple.
+///
+/// '/inventory-count' : compter, c'est constater ce qui manque — donc pouvoir
+/// effacer la trace de ce qu'on a pris. Un vendeur qui recompte jusqu'à tomber
+/// juste fait disparaître un manquant sans que personne le sache. Demandé par
+/// le client le 19/08/2026.
 const bossOnlyRoutes = {
   '/employees',
   '/bilan',
   '/activity-log',
   '/shop-settings',
   '/inventory-report',
-  // Compter, c'est constater ce qui manque — donc pouvoir effacer la trace de
-  // ce qu'on a pris. Un vendeur qui recompte jusqu'à tomber juste fait
-  // disparaître un manquant sans que personne le sache. Demandé par le client
-  // le 19/08/2026, et cohérent avec `/inventory-report` déjà réservé.
   '/inventory-count',
 };
 
@@ -93,13 +148,20 @@ String? routeImposee({
   // redirection fonctionnait encore — mais en deux sauts, et l'accueil avait
   // le temps de lancer ses chargements pour un compte qui n'entre pas encore.
   if (doitChangerMotDePasse) {
-    return emplacement == routePremierMotDePasse ? null : routePremierMotDePasse;
+    return emplacement == routePremierMotDePasse
+        ? null
+        : routePremierMotDePasse;
   }
 
   // Mot de passe déjà choisi : cet écran n'a plus lieu d'être.
   if (surAuth || emplacement == routePremierMotDePasse) return '/home';
 
-  if (bossOnlyRoutes.contains(emplacement) && !accesPatron) return '/profile';
+  // La barrière, inversée le 27/08/2026 : ce qui n'est pas explicitement
+  // ouvert au vendeur est fermé. Un écran ajouté demain est protégé sans que
+  // personne ait à y penser.
+  if (!accesPatron && !sellerAllowedRoutes.contains(emplacement)) {
+    return '/profile';
+  }
   return null;
 }
 
