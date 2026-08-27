@@ -541,3 +541,132 @@ grep -n "ref.invalidate" lib/features/inventory/presentation/providers/*.dart
 ```
 
 Chaque action doit réveiller TOUS les écrans qui lisent ce qu'elle écrit.
+
+---
+
+## 25. Un total partiel comparé à une caisse entière
+
+**Symptôme** : le rapport d'inventaire annonce un bénéfice — ou un excédent —
+qui n'existe pas. Sur une boutique à 100 000 F par jour dont la moitié des
+produits vient d'être recomptée, l'app affichait **1 500 000 F d'excédent**
+inventé, en gros et en vert, avec la réserve écrite en petit dessous.
+
+**Cause** : chaque produit calcule ses sorties sur **sa propre fenêtre** (de
+son comptage précédent au sien), mais les recettes étaient additionnées sur
+**une seule grande enveloppe** allant du plus ancien repère au plus récent, et
+la recette d'une boutique est un montant unique pour **tous** ses produits. On
+comparait donc les sorties de dix articles à l'argent encaissé sur vingt.
+
+Le même défaut existe en plus petit quand les produits sont comptés par vagues
+étalées : chaque jour d'écart entre la première et la dernière vague apporte de
+l'argent sans apporter de sorties.
+
+**Règle** : `verdictFinancierFiable` garde tout ce qui compare le calculé à
+l'encaissé — bénéfice, écart, et les mêmes sections du PDF. Il exige deux
+choses, et il faut les deux :
+
+- **tout est compté** (`isComplete`) ;
+- **aucune recette n'est oubliée** (`daysWithoutTakings` vide) — un jour non
+  noté produit exactement le même chiffre qu'un vol du même montant, et
+  quelqu'un se fait accuser sur un oubli de saisie.
+
+Quand c'est faux, l'écran montre ce qui est **sorti** produit par produit — un
+fait vérifiable — et ce qu'il reste à faire. Jamais un montant assorti d'une
+réserve : le commerçant retient le montant et oublie la réserve.
+
+Vérifié par `test/inventory_bilan_partiel_test.dart`.
+
+---
+
+## 26. Un article rangé qui gèle toute la boutique
+
+**Symptôme** : le bandeau « résultat partiel » ne part plus, quoi que le
+commerçant compte. Et, dans le cas grave, plus aucune nouvelle période ne
+s'ouvre — jamais.
+
+**Cause** : l'écran de comptage exclut les produits archivés
+(`archivedAt.isNull()`), mais le rapport les gardait dans **tous** ses calculs.
+Un archivé n'étant plus jamais recomptable, il restait éternellement « en
+attente d'un 2e comptage » : `isComplete` ne pouvait plus redevenir vrai. Pire,
+un archivé possédant deux comptages retenait le nombre de comptages commun, et
+bloquait définitivement l'ouverture de la période suivante.
+
+Constaté sur des données réelles : sept articles rangés dans une seule boutique
+suffisaient.
+
+**Règle** : la distinction n'est pas « on filtre » ou « on ne filtre pas », elle
+est en deux temps :
+
+- un archivé **ne borne plus rien** — hors du calcul des périodes disponibles,
+  hors de `produitsAFinirDeCompter`, hors des compteurs « jamais compté » et
+  « en attente » ;
+- un archivé **reste dans les périodes où il a servi** — s'il a ses deux
+  repères pour la période affichée, ses sorties y sont, parce qu'un bilan déjà
+  consulté ne se réécrit pas.
+
+Le filtrer partout aurait effacé ses lignes d'un rapport déjà imprimé, ce que
+`CLAUDE.md` interdit explicitement.
+
+---
+
+## 27. « Il en reste 10 » sans dire lesquels
+
+**Symptôme** : le commerçant recompte une partie de sa boutique, revient au
+rapport, lit « 10 en attente d'un 2e comptage » — et n'a aucun moyen de savoir
+lesquels. Il repart parcourir ses rayons.
+
+**Cause** : la liste des produits à finir ne regardait que ceux ayant **déjà
+deux repères**, et ne les nommait que si l'un d'eux avait pris de l'avance.
+Juste après un premier tour complet, personne n'est en retard sur personne : la
+liste sortait vide alors qu'il restait tout le catalogue à recompter.
+
+**Règle** : le seuil à atteindre est le **maximum** de comptages observé parmi
+les produits actifs, et jamais moins de deux. Tout produit en dessous est à
+compter, y compris ceux qui n'ont qu'un repère ou aucun.
+
+```dart
+final seuil = math.max(2, comptagesParId.values.reduce(math.max));
+```
+
+Vérifié sur les quatre étapes du scénario à 20 produits : les 20 après le
+premier tour, les 10 oubliés quand la moitié est recomptée, aucun quand tout
+est à égalité, les 15 en retard quand 5 ont pris de l'avance.
+
+---
+
+## 28. Le jour de bascule réclamé des deux côtés
+
+**Symptôme** : à partir de la **deuxième** période, le rapport signale toujours
+un jour sans recette — celui de son ouverture — et le bilan reste bloqué. Noter
+la recette de ce jour ne change rien : elle reste signalée manquante.
+
+**Cause** : deux boucles lisent les mêmes jours avec deux règles différentes.
+
+La boucle des **recettes** applique correctement la règle du jour de bascule :
+le jour d'ouverture appartient à la période qui se **ferme**, sauf s'il n'y a
+rien avant lui (`ouvertureIncluse`). Sa recette est donc exclue du total, et
+elle n'entre jamais dans `notedDays`.
+
+La boucle des **jours manquants**, elle, partait de `from` sans condition. Elle
+cherchait donc ce jour dans `notedDays` — où il ne pouvait pas être. Boucle
+fermée : le jour manquait pour toujours.
+
+**Ce qui l'a rendu grave** : tant que `daysWithoutTakings` n'était qu'un
+bandeau d'information, le défaut passait pour un détail cosmétique. Depuis que
+`verdictFinancierFiable` s'appuie dessus (piège n°25), il bloquait le bénéfice
+de **toutes** les périodes suivantes, définitivement. Un correctif juste a
+transformé un détail en mur.
+
+**Règle** : deux boucles qui parcourent la même fenêtre doivent partager la
+même borne. Ici :
+
+```dart
+final premierJourAVerifier = ouvertureIncluse
+    ? from
+    : from.add(const Duration(days: 1));
+```
+
+**Ce qui l'a trahi** : un test manuel sur une deuxième période. Les 136 tests
+automatiques ne l'ont pas vu — ils ne construisaient jamais deux périodes
+successives avec des recettes complètes. Vérifié désormais par
+`test/inventory_bilan_partiel_test.dart`.

@@ -32,10 +32,13 @@ Future<Uint8List> buildInventoryReportPdf(
   // Les mêmes réserves qu'à l'écran : un PDF présenté comme complet alors
   // qu'il ne l'est pas circule ensuite sans son contexte.
   final reserves = <String>[
+    if (!report.verdictFinancierFiable)
+      'Bilan pas encore prêt : le bénéfice et le rapprochement avec la caisse '
+          'ne sont pas imprimés, ils ne seraient pas comparables.',
     if (!report.isComplete) 'Résultat partiel : ${morceaux.join(', ')}.',
     if (report.daysWithoutTakings.isNotEmpty)
       '${report.daysWithoutTakings.length} jour(s) sans recette notée : '
-          'l\'écart peut venir de là.',
+          'le bilan attend que tu les notes.',
     if (result.inconsistentProducts.isNotEmpty)
       'Compté plus que possible sur : '
           '${result.inconsistentProducts.map((p) => p.productName).join(', ')}.',
@@ -131,60 +134,70 @@ Future<Uint8List> buildInventoryReportPdf(
               )
               .toList(),
         ),
-        pw.SizedBox(height: 18),
-        // Insécable : sans ça le cadre se coupait en deux pages et le patron
-        // recevait un « TON RÉSULTAT » réduit à une seule ligne.
-        pw.Inseparable(
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              _titreSection('ET L\'ARGENT ?'),
-              pw.SizedBox(height: 10),
-              _encadreMontants([
-                _ligneMontant(
-                  'Valeur de ce qui a été vendu',
-                  result.expectedRevenue,
-                ),
-                _ligneMontant(
-                  'Recettes que tu as notées',
-                  result.actualTakings,
-                ),
-                pw.Divider(color: PdfColors.grey300),
-                _ligneEcart(result.unexplainedGap),
-              ]),
-            ],
+        // Le rapprochement avec la caisse et le bénéfice ne s'impriment que
+        // s'ils sont comparables — voir `verdictFinancierFiable`.
+        //
+        // Un PDF circule seul : photographié, renvoyé sur WhatsApp, relu des
+        // mois plus tard. La réserve reste en haut de la page, mais un lecteur
+        // qui reçoit le document ne retient que le chiffre du bas. Sur une
+        // boutique à moitié comptée, ce chiffre est faux de moitié.
+        if (report.verdictFinancierFiable) ...[
+          pw.SizedBox(height: 18),
+          // Insécable : sans ça le cadre se coupait en deux pages et le patron
+          // recevait un « TON RÉSULTAT » réduit à une seule ligne.
+          pw.Inseparable(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _titreSection('ET L\'ARGENT ?'),
+                pw.SizedBox(height: 10),
+                _encadreMontants([
+                  _ligneMontant(
+                    'Valeur de ce qui a été vendu',
+                    result.expectedRevenue,
+                  ),
+                  _ligneMontant(
+                    'Recettes que tu as notées',
+                    result.actualTakings,
+                  ),
+                  pw.Divider(color: PdfColors.grey300),
+                  _ligneEcart(result.unexplainedGap),
+                ]),
+              ],
+            ),
           ),
-        ),
-        pw.SizedBox(height: 18),
-        pw.Inseparable(
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              _titreSection('TON RÉSULTAT'),
-              pw.SizedBox(height: 10),
-              _encadreMontants([
-                _ligneMontant('Recettes encaissées', result.actualTakings),
-                _ligneMontant(
-                  'Coût de la marchandise vendue',
-                  -result.costOfGoodsSold,
-                ),
-                // Sans cette ligne, un lecteur qui refait l'addition trouve un
-                // autre bénéfice que celui imprimé — sur un document partagé.
-                if (result.lossValue > 0)
-                  _ligneMontant('Pertes déclarées', -result.lossValue),
-                pw.Divider(color: PdfColors.grey300),
-                _ligneMontant(
-                  'Bénéfice',
-                  result.profit,
-                  accentue: true,
-                  couleur: result.profit >= 0
-                      ? PdfColors.green700
-                      : PdfColors.red700,
-                ),
-              ]),
-            ],
+          pw.SizedBox(height: 18),
+          pw.Inseparable(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _titreSection('TON RÉSULTAT'),
+                pw.SizedBox(height: 10),
+                _encadreMontants([
+                  _ligneMontant('Recettes encaissées', result.actualTakings),
+                  _ligneMontant(
+                    'Coût de la marchandise vendue',
+                    -result.costOfGoodsSold,
+                  ),
+                  // Sans cette ligne, un lecteur qui refait l'addition trouve
+                  // un autre bénéfice que celui imprimé — sur un document
+                  // partagé.
+                  if (result.lossValue > 0)
+                    _ligneMontant('Pertes déclarées', -result.lossValue),
+                  pw.Divider(color: PdfColors.grey300),
+                  _ligneMontant(
+                    'Bénéfice',
+                    result.profit,
+                    accentue: true,
+                    couleur: result.profit >= 0
+                        ? PdfColors.green700
+                        : PdfColors.red700,
+                  ),
+                ]),
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     ),
   );

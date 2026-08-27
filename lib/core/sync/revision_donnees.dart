@@ -10,9 +10,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// comptage vide, le stock vide chez le vendeur) n'étaient que ce silence.
 ///
 /// Surveillé par `watchShopId()`, donc par tout provider lisant une table
-/// téléchargée. La synchro n'est déclenchée que par un événement — reprise de
-/// l'app, retour du réseau, connexion, changement de boutique — jamais par un
-/// minuteur : le rafraîchissement ne peut donc pas clignoter en boucle.
+/// téléchargée. La synchro tourne sur événement — reprise de l'app, retour du
+/// réseau, connexion, changement de boutique — ET sur un minuteur de deux
+/// minutes (`main.dart`), pour qu'une boutique tenue sur deux téléphones se
+/// tienne à jour.
+///
+/// Ce minuteur ne fait pas clignoter les écrans : le compteur n'avance que si
+/// le serveur a renvoyé autre chose qu'au tour précédent
+/// (`_empreinteDernierPull` dans `sync_service`). Sans cette empreinte, un
+/// pull toutes les deux minutes reconstruirait tous les écrans pour rien.
 ///
 /// Ce fichier n'importe rien d'autre que Riverpod exprès : `sync_service` et
 /// `current_shop_provider` en dépendent tous les deux.

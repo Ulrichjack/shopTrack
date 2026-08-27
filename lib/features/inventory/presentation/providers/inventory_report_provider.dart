@@ -7,6 +7,7 @@ import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_service.dart';
 import '../../../../core/utils/inventory_reconciliation_calculator.dart';
+import '../../../products/presentation/providers/product_provider.dart';
 
 /// Rapport d'une période, reconstruit depuis les repères de comptage.
 ///
@@ -70,6 +71,40 @@ class InventoryPeriodReport {
   /// recettes complètes donnerait un bénéfice faussement optimiste.
   bool get isComplete =>
       productsNeverCounted == 0 && productsAwaitingSecondCount == 0;
+
+  /// Le verdict financier — bénéfice, écart avec la caisse — n'a de sens que
+  /// si ce qu'on a calculé couvre la même chose que ce qu'on a encaissé.
+  ///
+  /// Il faut les DEUX conditions :
+  ///
+  /// - **Tout est compté.** La recette est un montant unique pour toute la
+  ///   boutique ; on ne peut pas en extraire la part des seuls produits
+  ///   comptés. Comparer les sorties de 10 produits à la caisse de 20 affichait
+  ///   un excédent qui n'existe pas — sur une boutique à 100 000 F/jour, plus
+  ///   d'un million de bénéfice fantôme, en gros et en vert.
+  /// - **Aucune recette n'est oubliée.** Un jour non noté produit exactement le
+  ///   même chiffre qu'un vol du même montant. Accuser quelqu'un sur un oubli
+  ///   de saisie est le pire résultat que cette app puisse produire.
+  /// - **Aucun produit compté plus que possible.** Un comptage supérieur au
+  ///   stock disponible donne des sorties négatives, ramenées à zéro pour ne
+  ///   pas empoisonner le total. Ce zéro efface des ventes réelles : leur
+  ///   argent est dans la caisse mais plus dans l'attendu, et l'écart repart
+  ///   en excédent fantôme — exactement le défaut que ce garde-fou existe pour
+  ///   empêcher, par une autre porte. Cent sacs au départ, cent vingt comptés,
+  ///   un arrivage de cinquante oublié : trente sacs vendus disparaissent.
+  ///
+  /// Le comptage lui-même n'est jamais refusé — c'est une observation, et
+  /// « compté plus que possible » est une information utile (un arrivage
+  /// manque). Seul le VERDICT attend.
+  ///
+  /// Quand c'est faux, l'écran montre ce qui est **sorti** — un fait
+  /// vérifiable, produit par produit — et ce qu'il reste à faire. Jamais un
+  /// montant assorti d'une réserve : le commerçant retient le montant et
+  /// oublie la réserve.
+  bool get verdictFinancierFiable =>
+      isComplete &&
+      daysWithoutTakings.isEmpty &&
+      result.inconsistentProducts.isEmpty;
 }
 
 class PeriodeRapportInventaire {
@@ -166,6 +201,20 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
       db.localProducts,
     )..where((row) => row.shopId.equals(shopId))).get();
 
+    // Un produit archivé reste dans `products` : ses sorties appartiennent aux
+    // périodes déjà closes, et un bilan consulté ne se réécrit pas. Le filtrer
+    // partout effacerait ses lignes d'un rapport déjà imprimé.
+    //
+    // Mais il ne peut plus rien BORNER : l'écran de comptage le cache, donc il
+    // ne sera jamais recompté. Sans cette distinction, un article rangé
+    // bloquait tout — il retenait le nombre de comptages commun, et plus
+    // aucune période ne s'ouvrait. Gildas en avait sept dans une seule
+    // boutique : assez pour que `isComplete` reste faux à jamais et que le
+    // bandeau « résultat partiel » ne parte plus, quoi qu'il compte.
+    final produitsActifs = products
+        .where((product) => product.archivedAt == null)
+        .toList();
+
     final counts =
         await (db.select(db.localInventoryCounts)
               ..where((row) => row.shopId.equals(shopId))
@@ -201,8 +250,12 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
       comptagesProduit.sort((a, b) => a.countedAt.compareTo(b.countedAt));
     }
 
+    // Seuls les produits ACTIFS décident du nombre de périodes ouvertes : un
+    // archivé ne sera plus jamais recompté, il ne peut donc pas retenir la
+    // suivante. Les bornes réelles du rapport, elles, sont recalculées plus
+    // bas sur tout ce qui entre dans `inputs` — archivés compris.
     final periodesDisponibles = construirePeriodesRapport(
-      idsProduits: products.map((product) => product.id),
+      idsProduits: produitsActifs.map((product) => product.id),
       comptages: counts,
     );
     final demandeExiste = periodesDisponibles.any(
@@ -214,26 +267,36 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
 
     // Qui retient la prochaine période ?
     //
-    // Seuls les produits ayant DEUX repères ou plus définissent les périodes ;
-    // le rapport s'aligne sur celui qui en a le moins. Ceux qui sont pile à ce
-    // minimum, quand d'autres l'ont dépassé, sont exactement ce qu'il reste à
-    // compter. Les nommer évite au commerçant de chercher lesquels.
-    final nombreDeComptages = <String, int>{};
-    for (final product in products) {
-      final n = comptagesParProduit[product.id]?.length ?? 0;
-      if (n >= 2) nombreDeComptages[product.id] = n;
-    }
-    var produitsAFinir = <String>[];
-    if (nombreDeComptages.isNotEmpty) {
-      final minimum = nombreDeComptages.values.reduce(math.min);
-      final maximum = nombreDeComptages.values.reduce(math.max);
-      if (maximum > minimum) {
-        produitsAFinir = products
-            .where((p) => nombreDeComptages[p.id] == minimum)
+    // Une période ne s'ouvre que lorsque tous les produits ont le même nombre
+    // de comptages : le rapport s'aligne sur le moins compté. Le seuil à
+    // atteindre est donc le MAXIMUM observé — et jamais moins de deux, un
+    // comptage seul n'étant qu'un point de départ, pas une période.
+    //
+    // L'ancienne règle ne regardait que les produits ayant DÉJÀ deux repères.
+    // Juste après un premier tour complet, plus personne n'était en retard sur
+    // personne : la liste sortait vide alors qu'il restait toute la boutique à
+    // recompter. Le commerçant lisait « 10 en attente d'un 2e comptage » sans
+    // jamais savoir lesquels — il devait parcourir sa boutique pour les
+    // retrouver.
+    //
+    // Vérifié sur les quatre étapes du scénario à 20 produits : les 20 après
+    // le premier tour, les 10 oubliés quand la moitié est recomptée, aucun
+    // quand tout est à égalité, les 15 en retard quand 5 ont pris de l'avance.
+    final comptagesParId = {
+      for (final product in produitsActifs)
+        product.id: comptagesParProduit[product.id]?.length ?? 0,
+    };
+    final seuil = comptagesParId.isEmpty
+        ? 2
+        : math.max(2, comptagesParId.values.reduce(math.max));
+    final produitsAFinir =
+        produitsActifs
+            .where((p) => (comptagesParId[p.id] ?? 0) < seuil)
             .map((p) => p.name)
-            .toList();
-      }
-    }
+            .toList()
+          // Le même ordre que l'écran de comptage : c'est là qu'il va les
+          // chercher, une liste triée autrement l'oblige à relire chaque nom.
+          ..sort(comparerNomsProduits);
 
     final inputs = <InventoryProductInput>[];
     var awaitingSecond = 0;
@@ -250,12 +313,20 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
           ? comptagesProduit[indiceSelectionne]
           : null;
 
+      // Un archivé qui n'a pas de quoi border cette période n'est ni un oubli
+      // ni une attente : il est rangé. Le compter comme manquant retenait
+      // `isComplete` à faux pour toujours, puisque plus personne n'ira le
+      // compter. En revanche, s'il a ses deux repères, il descend plus bas
+      // comme les autres : sa marchandise est bien sortie pendant la période.
+      final estArchive = product.archivedAt != null;
+
       if (last == null) {
         // « Jamais compté » et « pas encore assez compté » ne sont pas la même
         // chose. Un produit compté une fois, alors que la période affichée en
         // demande deux, tombait dans le même sac que ceux qu'on n'a jamais
         // touchés : l'app annonçait « jamais compté » à propos d'un article
         // saisi une heure plus tôt, et le commerçant repartait le compter.
+        if (estArchive) continue;
         if (comptagesProduit.isEmpty) {
           neverCounted++;
         } else {
@@ -266,7 +337,7 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
       final previousAt = last.previousCountedAt;
       if (previousAt == null || last.previousQuantity == null) {
         // Premier comptage : c'est un point de départ, pas une période.
-        awaitingSecond++;
+        if (!estArchive) awaitingSecond++;
         continue;
       }
 
@@ -521,8 +592,24 @@ final inventoryReportProvider = FutureProvider.family<InventoryPeriodReport, int
         maintenant.month,
         maintenant.day,
       );
+      // La borne de départ suit EXACTEMENT la règle des recettes ci-dessus :
+      // le jour d'ouverture appartient à la période précédente, sauf s'il n'y
+      // a rien avant lui.
+      //
+      // Sans cette symétrie, chaque période à partir de la deuxième réclamait
+      // la recette de son jour d'ouverture — déjà encaissée dans la période
+      // qui se ferme, et volontairement exclue de ce total-ci. La noter n'y
+      // changeait donc rien : elle était filtrée avant d'entrer dans
+      // `notedDays`, et le jour restait manquant pour toujours.
+      //
+      // Tant que ce n'était qu'un bandeau, le défaut passait pour un détail.
+      // Depuis que `verdictFinancierFiable` s'appuie dessus, il bloquait le
+      // bénéfice de TOUTES les périodes suivantes, définitivement.
+      final premierJourAVerifier = ouvertureIncluse
+          ? from
+          : from.add(const Duration(days: 1));
       for (
-        var day = from;
+        var day = premierJourAVerifier;
         !day.isAfter(to);
         day = day.add(const Duration(days: 1))
       ) {

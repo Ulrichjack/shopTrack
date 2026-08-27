@@ -1189,3 +1189,117 @@ tournant* — compter des sous-ensembles à tour de rôle. L'autre modèle,
 l'*inventaire périodique*, arrête la boutique pour tout compter d'un coup.
 ShopTrack laisse faire le premier mais calcule comme le second, et c'est de là
 que vient la tension.
+
+---
+
+### Inventaire — corrigé le 27/08/2026 : le bilan ne ment plus
+
+Trois correctifs livrés ensemble, après une revue croisée du calcul et une
+vérification sur les données réelles d'un client (11 boutiques, 329 comptages).
+
+**Le défaut central** : le rapport additionnait les sorties de chaque produit
+sur **sa propre fenêtre**, puis comparait ce total aux recettes d'**une seule
+grande enveloppe**. Avec la moitié du catalogue recomptée, il annonçait plus
+d'un million d'excédent qui n'existait pas. Voir piège n°25.
+
+**Ce qui est fait :**
+
+| | Correctif | Vérifié par |
+|---|---|---|
+| B | `verdictFinancierFiable` garde le bénéfice, l'écart et les mêmes sections du PDF. Exige que tout soit compté **et** qu'aucune recette ne manque | piège n°25 |
+| C | La liste des produits à finir se calcule sur le **maximum** de comptages, minimum deux — elle sortait vide juste après un premier tour complet | piège n°27 |
+| A | Un archivé ne borne plus rien, mais reste dans les périodes où il a servi | piège n°26 |
+| F | `test/inventory_bilan_partiel_test.dart` — quatre scénarios de non-régression | 134 tests au total |
+
+**Décision de conception, prise avec le client** : pas de pourcentage de
+couverture, pas d'écart « estimé », pas de marge d'erreur. Un commerçant ne
+veut pas interpréter un chiffre, il veut son résultat. **Deux états seulement**
+— soit le bénéfice s'affiche, soit l'app dit ce qu'il reste à faire et nomme
+les produits.
+
+**Ce qui reste — D, les sessions de comptage**
+
+Le modèle actuel reste contraignant : il faut tout compter pour obtenir un
+résultat, et un tour partiel n'ouvre aucune période. C'est honnête, ce n'est
+pas pratique.
+
+La suite est le modèle de session — « Commencer un comptage » / « Terminer »,
+partiellement ou complètement — qui remplace l'appariement par numéro et fige
+le bilan à la clôture. Deux tables et une colonne suffisent :
+
+- `inventory_sessions` — dates, statut, totaux figés à la clôture (la session
+  close **est** le bilan, pas besoin d'une table `inventory_reports` séparée) ;
+- `inventory_session_results` — le résultat par produit au moment de la clôture ;
+- `inventory_counts.session_id` — nullable, les données existantes restent
+  valides.
+
+⚠️ Chaque table ajoutée doit entrer dans `tablesTirees` : c'est la source des
+bugs les plus silencieux du projet. Deux tables plutôt que quatre, exprès.
+
+**Avant de construire D, on mesure.** Le design dépend de faits qu'on n'a pas
+encore : largeur réelle des vagues, tours terminés ou abandonnés, produits
+jamais recomptés. Ces faits sont **déjà dans Supabase** — les comptages portent
+leurs dates, aucune instrumentation à ajouter. Deux semaines d'observation d'un
+client réel valent mieux qu'un modèle deviné.
+
+Relevé au 27/08 sur ce client : 324 produits comptés en **3 jours** dans sa
+boutique de référence, 47 en un seul jour dans une autre. Ses vagues sont donc
+serrées — le décalage résiduel est faible aujourd'hui, mais il grandira avec
+le nombre de boutiques.
+
+**Consigne terrain, gratuite et efficace** : compter tous les produits dans la
+même tranche horaire, boutique fermée — avant l'ouverture ou après la
+fermeture. C'est le stock-take classique du commerce, et c'est ce qui rend le
+rapprochement exact au lieu d'approximatif. Un article compté à 8 h puis vendu
+à 14 h ne représente plus le stock du soir.
+
+---
+
+### Inventaire — deux bugs trouvés par le test manuel du 27/08
+
+Trouvés en déroulant un vrai scénario sur émulateur, après que les 134 tests
+automatiques soient passés au vert. Les deux sont corrigés et couverts.
+
+**Un produit compté plus que possible faisait un faux excédent.** Cent au
+départ, cent vingt comptés, un arrivage de cinquante non saisi : les sorties
+partent en négatif, sont ramenées à zéro, et trente ventes réelles
+disparaissent de l'attendu. Leur argent reste dans la caisse — l'écart repart
+donc en excédent fantôme, exactement le défaut du piège n°25 par une autre
+porte. `verdictFinancierFiable` exige désormais aussi
+`result.inconsistentProducts.isEmpty`. Le comptage lui-même n'est toujours
+jamais refusé : c'est une observation.
+
+**Le jour de bascule était réclamé des deux côtés.** Voir piège n°28. À partir
+de la deuxième période, le bilan était bloqué **définitivement**. C'est le
+correctif du matin qui a transformé ce défaut cosmétique en mur.
+
+#### Reste à faire — rendre le blocage réparable
+
+Le bilan se bloque quand un jour de recette manque, et c'est juste. Mais il
+n'offre **aucune porte de sortie** : le commerçant lit « 22 août » et doit
+aller chercher l'écran de saisie ailleurs dans l'application.
+
+- **Rendre la date du bandeau cliquable** → saisie directe de la recette de ce
+  jour-là. `saveTaking` accepte déjà n'importe quelle date et
+  `daily_takings_screen` existe : c'est du câblage, pas une fonctionnalité.
+- **Ajouter « boutique fermée ce jour-là »** (= 0 F) pour les dimanches et
+  jours fériés, plutôt que de faire saisir un zéro qui ressemble à un oubli.
+
+Décision prise le 27/08 : **on garde la saisie quotidienne**, on ne passe pas à
+un montant unique par période. Le bilan n'utilise que la SOMME des recettes, la
+granularité quotidienne n'est donc pas une nécessité technique — mais un
+montant du jour se retrouve de mémoire, un total du mois se devine. Un total
+deviné rendrait tout le bilan faux en silence, ce qu'on passe cette journée à
+éliminer. C'est aussi l'habitude réelle des clients (le cahier du soir).
+
+#### Ce que le test manuel a encore prouvé
+
+Les deux bugs sont passés à travers 134 tests automatiques verts. Aucun ne
+construisait deux périodes successives avec des recettes complètes, ni un
+comptage supérieur au stock possible. Le scénario manuel — six produits, deux
+vagues, une date d'émulateur avancée de trois jours — les a sortis en une
+heure. À refaire avant chaque livraison.
+
+La boutique de test `TEST BILAN` (6 produits, premier comptage daté, recettes
+quotidiennes) est conservée sur Supabase : elle rejoue ce scénario en dix
+minutes.

@@ -66,6 +66,7 @@ Bêta contrôlée, pas encore production (tests multi-téléphones réels et sc�
 |-------|-----------|
 | Avant une livraison, ou en revue de synchro / mapping / écran de saisie | `docs/PIEGES_CONNUS.md` — bugs déjà rencontrés et ce qui les a trahis |
 | Modifier CLAUDE.md / AGENTS.md / skills / docs projet | `.claude/skills/context-governance/SKILL.md` |
+| Lancer ou débloquer l'émulateur Android (`Pixel_5`, écran noir, ADB) | `.claude/skills/android-emulator/SKILL.md` |
 | Architecture des modules métier custom (cycles œufs, multi-point/inventaire) | `docs/ARCHITECTURE_MODULES.md` · avancement `docs/PLAN_MODULES_CLIENTS.md` · tests `docs/PLAN_TESTS_MODULES.md` |
 | Stock d'un produit | En mode cycles ou inventaire, le stock est géré par le module (arrivage, comptage) : les écrans produit **masquent** la quantité et ne la réécrivent jamais |
 | Retirer un produit | **Archiver** (`archivedAt`) dès qu'il a une vente/comptage/transfert — supprimer réécrirait un bilan déjà consulté. La suppression ne vaut que pour un produit qui n'a jamais servi |

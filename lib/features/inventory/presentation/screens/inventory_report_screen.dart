@@ -142,43 +142,51 @@ class _Body extends StatelessWidget {
         // Le bénéfice d'abord, en grand. C'est la seule question que le
         // commerçant se pose en ouvrant cet écran ; l'enterrer sous trois
         // sections l'obligeait à faire défiler pour la trouver.
-        Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'BÉNÉFICE',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey,
-                    letterSpacing: 1.2,
+        //
+        // Mais seulement quand il veut dire quelque chose : voir
+        // `verdictFinancierFiable`. Les sorties de dix produits comparées à la
+        // caisse de vingt donnaient un excédent fantôme, affiché en grand et en
+        // vert, avec la réserve en petit dessous. On retient le gros chiffre.
+        if (report.verdictFinancierFiable)
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'BÉNÉFICE',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                      letterSpacing: 1.2,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  CurrencyFormatter.format(r.profit),
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: r.profit >= 0
-                        ? AppColors.primaryDark
-                        : AppColors.error,
+                  const SizedBox(height: 4),
+                  Text(
+                    CurrencyFormatter.format(r.profit),
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: r.profit >= 0
+                          ? AppColors.primaryDark
+                          : AppColors.error,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Du ${format.format(report.periodStart!)} '
-                  'au ${format.format(report.periodEnd!)}',
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(
+                    'Du ${format.format(report.periodStart!)} '
+                    'au ${format.format(report.periodEnd!)}',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          )
+        else
+          _BilanPasPret(report: report),
         const SizedBox(height: 12),
 
         // Une feuille de recherche plutôt qu'un menu déroulant : douze périodes
@@ -213,23 +221,22 @@ class _Body extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
-        // Les réserves d'abord : un chiffre présenté comme complet alors
-        // qu'il ne l'est pas est pire que pas de chiffre du tout.
-        if (!report.isComplete) _IncompleteWarning(report: report),
+        // Le détail des réserves. Ce qui manque est déjà annoncé en haut par
+        // `_BilanPasPret` ; ici on donne les dates exactes, qui sont ce dont
+        // le commerçant a besoin pour aller corriger.
         if (report.daysWithoutTakings.isNotEmpty) ...[
-          const SizedBox(height: 12),
           _MissingTakingsWarning(days: report.daysWithoutTakings),
+          const SizedBox(height: 12),
         ],
         if (report.recettesAvantLePremierComptage > 0) ...[
-          const SizedBox(height: 12),
           _RecettesOrphelinesNotice(
             nombre: report.recettesAvantLePremierComptage,
           ),
+          const SizedBox(height: 12),
         ],
-        if (!report.isComplete ||
-            report.daysWithoutTakings.isNotEmpty ||
+        if (report.daysWithoutTakings.isNotEmpty ||
             report.recettesAvantLePremierComptage > 0)
-          const SizedBox(height: 16),
+          const SizedBox(height: 4),
 
         const Text(
           'CE QUI A ÉTÉ VENDU',
@@ -293,7 +300,14 @@ class _Body extends StatelessWidget {
         // commerçant compte, revient, ne voit rien bouger, et croit que l'app
         // ne fonctionne pas. C'est arrivé — d'où ce message, qui NOMME les
         // articles au lieu d'en donner le nombre.
-        if (report.produitsAFinirDeCompter.isNotEmpty) ...[
+        //
+        // Seulement quand le bilan affiché EST prêt : c'est alors une
+        // information sur la période SUIVANTE, secondaire, qui a sa place en
+        // bas. Quand le bilan n'est pas prêt, les mêmes noms sont déjà tout en
+        // haut dans `_BilanPasPret` — les répéter ici ferait croire à deux
+        // listes différentes.
+        if (report.verdictFinancierFiable &&
+            report.produitsAFinirDeCompter.isNotEmpty) ...[
           const SizedBox(height: 12),
           _ResteAFinir(produits: report.produitsAFinirDeCompter),
         ],
@@ -303,81 +317,88 @@ class _Body extends StatelessWidget {
           _InconsistentWarning(products: r.inconsistentProducts),
         ],
 
-        const SizedBox(height: 20),
-        const Text(
-          'ET L\'ARGENT ?',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey,
-            letterSpacing: 1.2,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                _Line('Valeur de ce qui a été vendu', r.expectedRevenue),
-                _Line('Recettes que tu as notées', r.actualTakings),
-                const Divider(height: 24),
-                _GapLine(gap: r.unexplainedGap),
-              ],
+        // Les deux seuls blocs qui comparent le calculé à l'encaissé. Ils ne
+        // valent que si les deux couvrent la même chose — sinon on ne les
+        // montre pas du tout, plutôt que de les montrer sous réserve. La
+        // liste des produits ci-dessus, elle, reste : ce qui est sorti d'un
+        // produit compté est un fait, quel que soit l'état du reste.
+        if (report.verdictFinancierFiable) ...[
+          const SizedBox(height: 20),
+          const Text(
+            'ET L\'ARGENT ?',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+              letterSpacing: 1.2,
             ),
           ),
-        ),
+          const SizedBox(height: 10),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  _Line('Valeur de ce qui a été vendu', r.expectedRevenue),
+                  _Line('Recettes que tu as notées', r.actualTakings),
+                  const Divider(height: 24),
+                  _GapLine(gap: r.unexplainedGap),
+                ],
+              ),
+            ),
+          ),
 
-        const SizedBox(height: 20),
-        const Text(
-          'TON RÉSULTAT',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey,
-            letterSpacing: 1.2,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                _Line('Recettes encaissées', r.actualTakings),
-                _Line('Coût de la marchandise vendue', -r.costOfGoodsSold),
-                // Sans cette ligne le total ne tomberait pas juste dès qu'une
-                // perte est déclarée, et le bénéfice paraîtrait faux.
-                if (r.lossValue > 0) _Line('Pertes déclarées', -r.lossValue),
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Bénéfice',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 17,
-                      ),
-                    ),
-                    Text(
-                      CurrencyFormatter.format(r.profit),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: r.profit >= 0
-                            ? AppColors.primaryDark
-                            : AppColors.error,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          const SizedBox(height: 20),
+          const Text(
+            'TON RÉSULTAT',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+              letterSpacing: 1.2,
             ),
           ),
-        ),
+          const SizedBox(height: 10),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  _Line('Recettes encaissées', r.actualTakings),
+                  _Line('Coût de la marchandise vendue', -r.costOfGoodsSold),
+                  // Sans cette ligne le total ne tomberait pas juste dès qu'une
+                  // perte est déclarée, et le bénéfice paraîtrait faux.
+                  if (r.lossValue > 0) _Line('Pertes déclarées', -r.lossValue),
+                  const Divider(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Bénéfice',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                        ),
+                      ),
+                      Text(
+                        CurrencyFormatter.format(r.profit),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          color: r.profit >= 0
+                              ? AppColors.primaryDark
+                              : AppColors.error,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -529,41 +550,164 @@ class _GapLine extends StatelessWidget {
   }
 }
 
-class _IncompleteWarning extends StatelessWidget {
-  const _IncompleteWarning({required this.report});
+/// Ce qui prend la place du bénéfice quand le chiffre ne serait pas
+/// comparable à la caisse.
+///
+/// Deux états possibles, jamais trois : soit le commerçant a son résultat,
+/// soit il a la liste de ce qui manque pour l'obtenir. Un montant assorti
+/// d'une réserve est le pire des trois — il retient le montant et oublie la
+/// réserve. C'est ce qui affichait « bénéfice » sur la caisse de vingt
+/// produits dont dix seulement étaient comptés.
+class _BilanPasPret extends StatelessWidget {
+  const _BilanPasPret({required this.report});
 
   final InventoryPeriodReport report;
 
   @override
   Widget build(BuildContext context) {
-    final morceaux = <String>[
+    // Formulé en gestes à faire, pas en états du système : « à compter une
+    // deuxième fois » se traduit tout seul en action, « en attente d'un 2e
+    // comptage » demande de comprendre le modèle de données.
+    final manques = <String>[
       if (report.productsNeverCounted > 0)
-        '${report.productsNeverCounted} jamais compté(s)',
+        '${report.productsNeverCounted} produit(s) jamais compté(s)',
       if (report.productsAwaitingSecondCount > 0)
-        '${report.productsAwaitingSecondCount} en attente d\'un 2e comptage',
+        '${report.productsAwaitingSecondCount} produit(s) à compter une '
+            'deuxième fois',
+      if (report.daysWithoutTakings.isNotEmpty)
+        '${report.daysWithoutTakings.length} jour(s) sans recette notée',
+      // Nommés, pas comptés : ils sont rares, et le commerçant doit savoir
+      // lequel vérifier. C'est presque toujours un arrivage non saisi.
+      if (report.result.inconsistentProducts.isNotEmpty)
+        'compté plus que possible : '
+            '${report.result.inconsistentProducts.map((p) => p.productName).join(', ')}',
     ];
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.orange.shade50,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.orange.shade300),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Résultat partiel : ${morceaux.join(', ')}.',
-              style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+          Row(
+            children: [
+              Icon(
+                Icons.hourglass_empty_rounded,
+                color: Colors.orange.shade800,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Bilan pas encore prêt',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final manque in manques)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                '• $manque',
+                style: TextStyle(fontSize: 14, color: Colors.orange.shade900),
+              ),
+            ),
+          // Les noms tout de suite, ici. Le bandeau qui les portait vivait
+          // SOUS la liste des produits vendus : sur les 324 articles d'une
+          // vraie boutique, il fallait faire défiler tout le rapport pour
+          // apprendre ce qu'on devait aller compter.
+          if (report.produitsAFinirDeCompter.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              report.produitsAFinirDeCompter.take(6).join(' · '),
+              style: TextStyle(fontSize: 13, color: Colors.orange.shade900),
+            ),
+            if (report.produitsAFinirDeCompter.length > 6)
+              InkWell(
+                onTap: () =>
+                    montrerListeAFinir(context, report.produitsAFinirDeCompter),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Text(
+                    'Voir les ${report.produitsAFinirDeCompter.length} produits',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.underline,
+                      color: Colors.orange.shade900,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'Ton bénéfice s\'affichera ici quand tout sera compté. En '
+            'attendant, tu peux voir plus bas ce qui est sorti des produits '
+            'déjà comptés.',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.35,
+              color: Colors.orange.shade900,
             ),
           ),
         ],
       ),
     );
   }
+}
+
+/// La liste complète de ce qu'il reste à compter, dans une feuille déroulante.
+///
+/// Six noms suffisent sur une petite boutique. Sur les 324 articles d'un vrai
+/// catalogue, ils ne servent à rien — et trois cents lignes dans le corps du
+/// rapport le rendraient illisible.
+Future<void> montrerListeAFinir(BuildContext context, List<String> produits) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.7,
+      builder: (context, controleur) => Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              '${produits.length} produits à compter',
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.separated(
+              controller: controleur,
+              itemCount: produits.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) => ListTile(
+                dense: true,
+                leading: const Icon(
+                  Icons.check_box_outline_blank,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
+                title: Text(produits[index]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _MissingTakingsWarning extends StatelessWidget {
@@ -594,9 +738,12 @@ class _MissingTakingsWarning extends StatelessWidget {
               children: [
                 Text(
                   days.length == 1
-                      ? '1 jour sans recette notée : l\'écart peut venir de là.'
-                      : '${days.length} jours sans recette notée : l\'écart '
-                            'peut venir de là.',
+                      // « L'écart peut venir de là » datait d'avant : l'écart
+                      // n'est plus affiché du tout dans ce cas, la phrase
+                      // renvoyait donc à un chiffre absent de l'écran.
+                      ? 'Note la recette de ce jour pour débloquer ton bilan.'
+                      : 'Note la recette de ces ${days.length} jours pour '
+                            'débloquer ton bilan.',
                   style: const TextStyle(fontSize: 13),
                 ),
                 const SizedBox(height: 8),
@@ -804,13 +951,28 @@ class _ResteAFinir extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  visibles.join(' · ') +
-                      (reste > 0 ? ' · et $reste autre(s)' : ''),
+                  visibles.join(' · '),
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
                 ),
+                if (reste > 0)
+                  InkWell(
+                    onTap: () => montrerListeAFinir(context, produits),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Text(
+                        'Voir les ${produits.length} produits',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 6),
                 Text(
                   'Ce que tu viens de compter est bien enregistré : le bilan '
