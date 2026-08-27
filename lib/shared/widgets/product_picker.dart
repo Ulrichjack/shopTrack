@@ -7,21 +7,34 @@ import '../../core/sync/sync_service.dart';
 import '../../features/products/domain/entities/product_entity.dart';
 import '../../features/products/presentation/providers/product_provider.dart';
 
+/// Le vendeur voit-il la quantité exacte, ou seulement « Disponible » ?
+///
+/// **Décidé le 27/08/2026 : il la voit.** On livre l'option la plus utilisable
+/// et on restreindra si la cliente le demande après usage — pas l'inverse.
+///
+/// Les deux arguments, pour que la décision se reprenne en connaissance :
+///
+/// - **Cacher le nombre gêne la vente.** Un client demande vingt pièces, il en
+///   reste trois : la vendeuse commence, le bouton « + » se bloque, et elle
+///   découvre la limite au milieu de la vente, devant le client. Elle ne peut
+///   pas non plus signaler « il ne reste que trois savons, commande ».
+/// - **Cacher le nombre n'empêche pas de se servir.** Ce qui attrape un
+///   manquant, c'est le comptage — il l'attrape que le nombre ait été vu ou
+///   non. Le gain réel est mince : sans le chiffre, on ne sait pas calibrer un
+///   prélèvement pour qu'il passe inaperçu. C'est un frein, pas une barrière.
+///
+/// Le prix d'achat et la marge, eux, restent masqués sans discussion : aucune
+/// utilité pour vendre, et ils révèlent ce que gagne le patron.
+///
+/// Basculer se fait ici, en un mot — `etiquetteStock` est le seul endroit qui
+/// met le stock en forme.
+const bool stockChiffreVisibleParLeVendeur = true;
+
 /// Ce qu'on montre du stock, selon qui regarde.
-///
-/// La quantité exacte est une information de patron : elle dit ce qu'il a
-/// immobilisé, et comparée au comptage suivant, ce qui a disparu. Un vendeur
-/// a besoin de savoir s'il peut vendre — pas de combien il reste.
-///
-/// La cliente qui l'a demandé avait raison sur le fond : connaître le stock
-/// exact, c'est savoir de combien on peut se servir sans que ça se voie.
-///
-/// Le nombre reste dans la base locale, parce que la vente hors ligne doit
-/// pouvoir vérifier qu'il y a de quoi servir. Sur un build release il n'en
-/// sort pas : `adb run-as` est refusé et le bac à sable Android isole le
-/// dossier de l'application.
 String etiquetteStock(int quantite, {required bool modePatron}) {
-  if (modePatron) return 'Stock : $quantite';
+  if (modePatron || stockChiffreVisibleParLeVendeur) {
+    return 'Stock : $quantite';
+  }
   return quantite > 0 ? 'Disponible' : 'Rupture';
 }
 

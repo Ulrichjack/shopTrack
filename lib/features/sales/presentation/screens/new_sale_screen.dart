@@ -9,6 +9,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../../products/domain/entities/product_entity.dart';
+import '../../../../shared/widgets/product_picker.dart';
 import '../providers/cart_provider.dart';
 
 class NewSaleScreen extends ConsumerStatefulWidget {
@@ -127,12 +128,17 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  // Le stock restant, chiffré pour le patron seulement. Le
-                  // vendeur n'en a pas besoin pour travailler : le bouton «+»
-                  // se désactive tout seul quand il atteint la limite, et le
-                  // panier refuse d'aller au-delà.
+                  // Le stock restant. Chiffré pour tout le monde tant que
+                  // `stockChiffreVisibleParLeVendeur` vaut vrai — voir la
+                  // décision commentée sur cette constante.
+                  //
+                  // Les parenthèses comptent : `??` lie moins fort que `||`,
+                  // donc `value ?? false || drapeau` s'évalue en
+                  // `value ?? (false || drapeau)` et le drapeau ne sert plus à
+                  // rien dès que `value` a une valeur.
                   Text(
-                    (ref.watch(appModeProvider).value ?? false)
+                    ((ref.watch(appModeProvider).value ?? false) ||
+                            stockChiffreVisibleParLeVendeur)
                         ? 'Disponible pour ajout : $maxAvailable'
                         : 'En stock',
                     style: TextStyle(color: Colors.grey.shade600),
