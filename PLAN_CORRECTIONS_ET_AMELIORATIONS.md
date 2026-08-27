@@ -1253,6 +1253,80 @@ fermeture. C'est le stock-take classique du commerce, et c'est ce qui rend le
 rapprochement exact au lieu d'approximatif. Un article compté à 8 h puis vendu
 à 14 h ne représente plus le stock du soir.
 
+##### Ce que D ne résout PAS
+
+À ne pas oublier au moment de le construire, sous peine de promettre ce qu'on
+ne peut pas tenir : **D ne règle rien au problème de la caisse.** La recette
+reste un montant unique pour toute la boutique, donc une session partielle ne
+pourra toujours pas produire un bénéfice exact sur 100 produits parmi 324.
+
+D apporte deux choses, et deux seulement : **l'ergonomie** (savoir où on en
+est, terminer quand on le décide, ne plus être bloqué par un produit en avance)
+et **le figement** (un bilan clôturé ne bouge plus quand une recette arrive en
+retard ou qu'un comptage remonte d'un second téléphone).
+
+La partie réellement utile du comptage partiel — voir ce qui est sorti des
+produits qu'on a comptés — **fonctionne déjà** depuis le 27/08 : la liste « ce
+qui a été vendu » s'affiche même quand le verdict est bloqué.
+
+##### Les cinq questions à trancher AVANT d'écrire D
+
+Chaque réponse change une décision de conception. Aucune ne se devine.
+
+| Question | Si oui | Si non |
+|---|---|---|
+| Termine-t-il un tour complet ? | « Terminer complètement » est le chemin principal | « Terminer partiellement » devient la fonction centrale |
+| Ses vagues durent combien de jours ? | 1-3 j → D est surtout de l'ergonomie | 2 semaines → il faut traiter le décalage explicitement |
+| Compte-t-il par rayon ou catégorie ? | Une session doit pouvoir viser un sous-ensemble | Une session = toute la boutique |
+| Quels produits ne sont jamais recomptés ? | Il faut un mécanisme d'abandon explicite | Rien à prévoir |
+| Combien de jours de recette oublie-t-il ? | Le déblocage en un geste devient prioritaire | Le blocage actuel est acceptable |
+
+##### ⚠️ Le vrai risque : la migration des comptages existants
+
+Un client a déjà **329 comptages** sans `session_id`. Deux chemins, et le
+mauvais coûte cher :
+
+- **les laisser à `null`** et garder l'appariement par rang à côté → deux
+  logiques en parallèle pour toujours, chacune avec ses bugs ;
+- **les regrouper en sessions rétroactives**, par proximité de dates.
+
+Le regroupement demande une **fenêtre**. Trois jours ? Une semaine ? Deux ? On
+sait qu'un tour a duré 3 jours — on ignore si c'est son rythme ou une
+exception. **Une fenêtre trop large fusionne des périodes distinctes ; trop
+étroite en invente.** Dans les deux cas sur des bilans qu'il a peut-être déjà
+imprimés, ce que tout le reste du travail existe pour empêcher.
+
+C'est ça, la raison concrète de mesurer d'abord : un chiffre qui décide d'une
+ligne de code de migration, pas de la prudence en l'air.
+
+##### Les requêtes de mesure — à lancer chaque semaine
+
+Aucune instrumentation à ajouter : les comptages portent déjà leurs dates.
+
+```sql
+-- Largeur des vagues et avancement, par boutique
+select s.name, count(distinct ic.product_id) as produits_comptes,
+       count(*) as comptages,
+       max(ic.counted_at)::date - min(ic.counted_at)::date as etalement_jours,
+       count(distinct ic.counted_at::date) as jours_distincts
+from inventory_counts ic join shops s on s.id = ic.shop_id
+group by s.name order by comptages desc;
+
+-- Répartition : combien de produits à 1, 2, 3 comptages ?
+-- Dit s'il TERMINE ses tours ou s'il les abandonne.
+select fois_compte, count(*) as nb_produits from (
+  select product_id, count(*) as fois_compte
+  from inventory_counts where shop_id = '<id>' group by product_id
+) t group by fois_compte order by fois_compte;
+
+-- Jours sans recette notée, sur la période en cours
+select generate_series::date as jour_sans_recette
+from generate_series('<debut>'::date, current_date - 1, '1 day')
+where generate_series::date not in (
+  select date from shop_takings where shop_id = '<id>'
+);
+```
+
 ---
 
 ### Inventaire — deux bugs trouvés par le test manuel du 27/08

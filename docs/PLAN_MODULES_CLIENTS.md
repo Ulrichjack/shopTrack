@@ -263,3 +263,119 @@ Scénarios exhaustifs et leur état : `docs/PLAN_TESTS_MODULES.md`.
   session en cours.
 - Suivi entre sessions : ce fichier (coché au fur et à mesure) + mémoire projet
   (décisions/contexte non dérivable du repo).
+
+---
+
+## Cliente « prestations » — besoin recueilli le 27/08/2026
+
+Commerçante à Douala : boutique classique **plus** quatre activités sur
+commande — gâteaux d'événement, objets décoratifs personnalisés, formations
+pratiques (savons, gels, décoration ballons), décoration événementielle.
+Propriétaire **à distance**, vendeuse en boutique.
+
+### Décision : un seul module, pas quatre
+
+Le bon cadrage n'est pas « prestations » mais **« commandes avec acompte »**.
+Gâteau, vase, formation, décoration : c'est toujours *un client commande, verse
+une avance, récupère plus tard*. Formulé ainsi, le module sert aussi un
+tailleur, un menuisier, un traiteur — toute la famille des commerces qui
+prennent une réservation. C'est ce qui justifie de le construire plutôt que de
+livrer un développement pour une seule cliente.
+
+Trois tables, trois écrans :
+
+```
+clients                    Liste des dossiers
+dossiers_commandes         Créer / modifier un dossier
+paiements_commandes        Détail du dossier + paiements
+```
+
+Un seul formulaire pour les quatre catégories ; seuls quelques champs changent
+(parfum et taille pour un gâteau, lieu et thème pour une décoration, module et
+date pour une formation). Ces spécificités vivent dans un champ `details`, pas
+dans quatre architectures.
+
+### La règle à ne pas rater
+
+**Un devis de 150 000 F n'est PAS une recette de 150 000 F.** Si le client
+verse 40 000 F, seuls 40 000 F entrent en caisse.
+
+```
+solde = montant accepté − somme des paiements − remboursements
+```
+
+C'est exactement le bénéfice fantôme éliminé dans le module inventaire le
+27/08 (piège n°25), qui reviendrait par un module neuf. Le tableau de la
+propriétaire parle de **commandé / encaissé / reste dû / en retard**, jamais de
+« bénéfice réel » tant que les coûts (ingrédients, transport, main d'œuvre) ne
+sont pas saisis.
+
+### Prérequis bloquant : la sécurité des rôles
+
+La cliente exige que la vendeuse ne voie ni les quantités exactes, ni les prix
+d'achat, ni le chiffre d'affaires. **Ce n'est pas une fonctionnalité pour elle,
+c'est un défaut du produit actuel** — vérifié le 27/08 :
+
+- `router.dart` — `bossOnlyRoutes` ne protège que 6 routes. `/products`,
+  `/add-product`, `/edit-product`, `/cash`, `/cash-out` sont **ouvertes au
+  vendeur** ;
+- `pull_registry.dart` — le téléphone du vendeur télécharge `buy_price`,
+  `profit`, `total_profit`, `gross_profit`, `net_profit` ;
+- `202607270001_secure_sync.sql` — les règles RLS utilisent `is_shop_member()`,
+  **sans aucune distinction de rôle**.
+
+Un client exploite déjà 11 boutiques : le trou le concerne aujourd'hui.
+
+**Traitement proportionné**, plutôt qu'une synchro entièrement filtrée par
+rôle :
+
+| Donnée | Décision |
+|---|---|
+| `buy_price`, `profit`, totaux de clôture | **Ne plus les télécharger** + bloquer au niveau RLS. Le vendeur n'en a aucun besoin fonctionnel : coût zéro |
+| Quantité de stock | **Continuer à la télécharger** (la vente hors ligne en dépend), la **masquer dans l'écran** |
+
+La menace réelle est « le vendeur regarde l'écran », pas « le vendeur extrait
+la base SQLite avec adb » — qui demande un PC, le SDK Android et un téléphone
+en mode debug. Supprimer la quantité du téléchargement casserait la validation
+de stock hors ligne pour une protection théorique.
+
+### Question BLOQUANTE à poser à la cliente
+
+> Quand la vendeuse déclare une entrée de stock, est-ce que ça s'applique tout
+> de suite, ou est-ce que ça attend l'accord de la propriétaire ?
+
+Si c'est « ça attend », il faut un état **« en attente de validation »** sur les
+mouvements de stock : un écran de validation, une notification, et une règle de
+synchro qui ne double pas les mouvements. Ce n'est pas un champ, c'est un
+chantier. La poser maintenant coûte un message ; la découvrir en cours de route
+coûte plusieurs jours.
+
+Les deux autres questions (la vendeuse fixe-t-elle le devis ? qui valide les
+remises et annulations ?) sont des permissions, pas de la structure : elles
+peuvent attendre.
+
+### À couper en premier si le délai déborde
+
+1. **Les sessions de formation** (une session, plusieurs élèves, plusieurs
+   paiements). En v1, **une inscription = un dossier**. Répétitif mais
+   fonctionnel — et on saura alors combien d'élèves elle a réellement par
+   session, ce qui décidera si le modèle complet vaut le coup.
+2. **Le tableau de bord propriétaire.** La liste des dossiers suffit d'abord.
+
+Ce qu'on ne coupe pas, sinon le module ne sert à rien : client, demande,
+montant, acompte, **solde calculé**, date prévue, statut, historique des
+paiements.
+
+### Ordre retenu
+
+Les deux clientes sont **indépendantes** : rien n'oblige à attendre les retours
+du client inventaire. Seul **D (sessions de comptage)** dépend de ses mesures.
+
+Le seul point de contact est que la sécurité des rôles touche `pull_registry`
+et les règles RLS, partagés par tous les modules. D'où : branche
+`feature/roles-vendeur`, le client inventaire reste sur la version livrée, et
+on ne fusionne qu'après un test avec un vrai compte vendeur.
+
+Estimation : sécurité des rôles 3-4 jours, module commandes 5-6 jours.
+Deux semaines couvrent la sécurité **plus une première version** du module, pas
+une version finie.
