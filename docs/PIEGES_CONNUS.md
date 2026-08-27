@@ -670,3 +670,42 @@ final premierJourAVerifier = ouvertureIncluse
 automatiques ne l'ont pas vu — ils ne construisaient jamais deux périodes
 successives avec des recettes complètes. Vérifié désormais par
 `test/inventory_bilan_partiel_test.dart`.
+
+---
+
+## 29. Avancer la date de l'appareil casse toutes les requêtes serveur
+
+**Symptôme** : un écran tourne en rond indéfiniment, sans message d'erreur.
+Vu le 27/08/2026 sur « Employés », mais n'importe quel écran qui interroge le
+serveur fait pareil.
+
+**Cause** : l'émulateur avait été avancé de trois jours pour tester les
+périodes d'inventaire. Les jetons d'authentification portent alors une date
+d'émission **dans le futur** par rapport au serveur, et PostgREST les refuse :
+
+```
+PostgrestException: JWT issued at future — code PGRST303, Unauthorized
+```
+
+Le piège est que **la connexion elle-même continue de fonctionner** :
+`supabase.auth` rafraîchit sa session sans se plaindre, l'app se croit
+connectée, la boutique et le rôle s'affichent — et seules les requêtes de
+données échouent. Rien à l'écran ne dit « le serveur me refuse ».
+
+**Règle** : après avoir décalé la date d'un appareil pour tester, la remettre
+à l'automatique **et redémarrer l'application** — le jeton en mémoire porte
+encore l'ancienne date et le premier téléchargement échoue même après la
+remise à l'heure.
+
+```bash
+adb shell settings put global auto_time 1
+adb shell am force-stop cm.shoptrack.shoptrack
+```
+
+**Le décalage inverse est sans danger** : un jeton émis dans le passé reste
+valide jusqu'à son expiration. Seul l'avance pose problème.
+
+**Ce qui l'a trahi** : `adb logcat | grep flutter` — l'échec est écrit en
+clair par `[SYNC]`, alors que l'écran ne montre qu'un cercle qui tourne. Un
+écran qui tourne sans fin après un test de dates : chercher PGRST303 avant
+toute chose.
