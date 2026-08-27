@@ -1,4 +1,3 @@
-
 class ProductEntity {
   final String id;
   final String shopId;
@@ -9,6 +8,7 @@ class ProductEntity {
   final int minQuantity;
   final String? barcode;
   final String? photoUrl;
+
   /// Étiquette d'affichage en mode inventaire (sac, bouteille, casier…).
   final String? unit;
 

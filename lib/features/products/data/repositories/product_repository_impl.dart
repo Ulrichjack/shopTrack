@@ -32,7 +32,10 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
-  Future<ProductEntity?> getProductByBarCode(String barcode, String shopId) async {
+  Future<ProductEntity?> getProductByBarCode(
+    String barcode,
+    String shopId,
+  ) async {
     return remoteDataSource.getProductByBarCode(barcode, shopId);
   }
 
@@ -51,5 +54,4 @@ class ProductRepositoryImpl implements ProductRepository {
     );
     await remoteDataSource.updateProduct(productModel);
   }
-
 }

@@ -349,9 +349,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    gap == 0
-                        ? 'Écart'
-                        : (gap < 0 ? 'Manquant' : 'Surplus'),
+                    gap == 0 ? 'Écart' : (gap < 0 ? 'Manquant' : 'Surplus'),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(

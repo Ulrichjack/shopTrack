@@ -221,10 +221,7 @@ class EmployeesScreen extends ConsumerWidget {
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$error'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('$error'), backgroundColor: AppColors.error),
         );
       }
     }

@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,8 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/auth_error_message.dart';
 
 class AuthNotifier extends Notifier<bool> {
-
-
   @override
   bool build() {
     return false;
@@ -16,8 +12,7 @@ class AuthNotifier extends Notifier<bool> {
 
   Future<void> login(String phone, String password) async {
     state = true;
-    try{
-
+    try {
       final cleanPhone = phone.replaceAll(' ', '');
       final fakeEmail = '$cleanPhone@shoptrack.cm';
 
@@ -31,10 +26,10 @@ class AuthNotifier extends Notifier<bool> {
         password: password.trim(),
       );
 
-      if(response.user != null){
+      if (response.user != null) {
         state = false;
       }
-    } catch (e){
+    } catch (e) {
       state = false;
       // Le motif exact remonte à l'écran. Auparavant tout devenait « Erreur de
       // connexion » : le commerçant ne savait pas s'il avait tapé le mauvais
@@ -60,13 +55,13 @@ class AuthNotifier extends Notifier<bool> {
 
       final userId = response.user?.id;
       if (userId != null) {
-
         // 2. Création de la boutique dans la table 'shops'
         // On utilise .select().single() pour récupérer l'ID de la boutique fraîchement créée
-        final shopResponse = await Supabase.instance.client.from('shops').insert({
-          'owner_id': userId,
-          'name': shopName,
-        }).select().single();
+        final shopResponse = await Supabase.instance.client
+            .from('shops')
+            .insert({'owner_id': userId, 'name': shopName})
+            .select()
+            .single();
 
         final shopId = shopResponse['id'];
 
@@ -85,13 +80,8 @@ class AuthNotifier extends Notifier<bool> {
       throw Exception(messageDErreurAuth(e));
     }
   }
-
 }
 
-
-
-
-
-final authProvider = NotifierProvider<AuthNotifier, bool>((){
+final authProvider = NotifierProvider<AuthNotifier, bool>(() {
   return AuthNotifier();
 });

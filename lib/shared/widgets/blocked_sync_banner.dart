@@ -51,11 +51,7 @@ class BlockedSyncBanner extends ConsumerWidget {
                   decorationColor: Colors.white,
                 ),
               ),
-              const Icon(
-                Icons.chevron_right,
-                color: Colors.white,
-                size: 18,
-              ),
+              const Icon(Icons.chevron_right, color: Colors.white, size: 18),
             ],
           ),
         ),

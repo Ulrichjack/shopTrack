@@ -277,9 +277,7 @@ class InventoryPeriodResult {
 class InventoryReconciliationCalculator {
   const InventoryReconciliationCalculator._();
 
-  static InventoryProductResult calculateProduct(
-    InventoryProductInput input,
-  ) {
+  static InventoryProductResult calculateProduct(InventoryProductInput input) {
     final totalOutflow =
         input.openingStock +
         input.purchases +

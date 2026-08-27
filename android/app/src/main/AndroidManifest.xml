@@ -2,7 +2,12 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- La sauvegarde Google copierait la base de la boutique (stock, prix
+         d'achat, ventes) dans le compte Google du porteur du téléphone. Sur le
+         téléphone d'un vendeur, ce n'est pas sa donnée. -->
     <application
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:label="shoptrack"
         android:name="${applicationName}"
 

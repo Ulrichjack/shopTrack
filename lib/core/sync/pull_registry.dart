@@ -83,9 +83,7 @@ class _TableTireeImpl<T extends Table, D> implements TableTiree {
   void appliquer(AppDatabase db, Batch batch, List<dynamic> lignes) {
     batch.insertAll(
       cibleFn(db),
-      lignes
-          .map((ligne) => versLigne(ligne as Map<String, dynamic>))
-          .toList(),
+      lignes.map((ligne) => versLigne(ligne as Map<String, dynamic>)).toList(),
       mode: InsertMode.insertOrReplace,
     );
   }

@@ -69,20 +69,20 @@ class TransfersScreen extends ConsumerWidget {
                 ref.invalidate(stockTransfersProvider);
               },
               child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
-              children: [
-                // Ce qui attend un geste passe en premier : c'est la seule
-                // chose que le commerçant doit faire en ouvrant cet écran.
-                if (aVerifier.isNotEmpty) ...[
-                  const _Titre('À VÉRIFIER'),
-                  for (final t in aVerifier)
-                    _Ligne(entree: t, nomDe: nomDe, aVerifier: true),
-                  const SizedBox(height: 24),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
+                children: [
+                  // Ce qui attend un geste passe en premier : c'est la seule
+                  // chose que le commerçant doit faire en ouvrant cet écran.
+                  if (aVerifier.isNotEmpty) ...[
+                    const _Titre('À VÉRIFIER'),
+                    for (final t in aVerifier)
+                      _Ligne(entree: t, nomDe: nomDe, aVerifier: true),
+                    const SizedBox(height: 24),
+                  ],
+                  const _Titre('HISTORIQUE'),
+                  for (final t in reste)
+                    _Ligne(entree: t, nomDe: nomDe, aVerifier: false),
                 ],
-                const _Titre('HISTORIQUE'),
-                for (final t in reste)
-                  _Ligne(entree: t, nomDe: nomDe, aVerifier: false),
-              ],
               ),
             );
           },
@@ -390,7 +390,9 @@ class _FeuilleEnvoiState extends ConsumerState<_FeuilleEnvoi> {
                 // La boutique courante n'a rien à faire dans la liste : on ne
                 // s'envoie pas de la marchandise à soi-même.
                 items: widget.boutiques
-                    .where((b) => b.id != ref.watch(currentShopIdProvider).value)
+                    .where(
+                      (b) => b.id != ref.watch(currentShopIdProvider).value,
+                    )
                     .map(
                       (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
                     )

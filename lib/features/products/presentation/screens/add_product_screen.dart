@@ -140,10 +140,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background, // Fond gris très clair
-      appBar: AppBar(
-        title: const Text('Nouveau produit'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Nouveau produit'), elevation: 0),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
@@ -152,16 +149,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-
                 _buildFieldLabel("Nom de l'article"),
                 TextFormField(
                   controller: _nameController,
                   decoration: _buildInputDecoration(
                     'Ex: Casque P47',
-                    prefixIcon: const Icon(Icons.shopping_bag_outlined, color: Colors.grey),
+                    prefixIcon: const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: Colors.grey,
+                    ),
                   ),
-                  validator: (value) =>
-                  value == null || value.trim().isEmpty ? 'Le nom est obligatoire' : null,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Le nom est obligatoire'
+                      : null,
                 ),
 
                 // Le vendeur ne saisit pas le prix d'achat : il ne le connaît
@@ -232,10 +232,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                             keyboardType: TextInputType.number,
                             decoration: _buildInputDecoration('Ex: 50000'),
                             validator: (value) {
-                              if (value == null || value.isEmpty) return 'Obligatoire';
+                              if (value == null || value.isEmpty)
+                                return 'Obligatoire';
                               final sell = double.tryParse(value);
-                              final buy = double.tryParse(_buyPriceController.text);
-                              if (buy != null && sell != null && sell < buy) return 'Vente < Achat !';
+                              final buy = double.tryParse(
+                                _buyPriceController.text,
+                              );
+                              if (buy != null && sell != null && sell < buy)
+                                return 'Vente < Achat !';
                               return null;
                             },
                           ),
@@ -257,7 +261,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               controller: _quantityController,
                               keyboardType: TextInputType.number,
                               decoration: _buildInputDecoration('Ex: 3'),
-                              validator: (value) => value == null || value.isEmpty ? 'Obligatoire' : null,
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Obligatoire'
+                                  : null,
                             ),
                           ],
                         ),
@@ -273,7 +280,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                             controller: _minQuantityController,
                             keyboardType: TextInputType.number,
                             decoration: _buildInputDecoration('Ex: 2'),
-                            validator: (value) => value == null || value.isEmpty ? 'Obligatoire' : null,
+                            validator: (value) => value == null || value.isEmpty
+                                ? 'Obligatoire'
+                                : null,
                           ),
                         ],
                       ),
@@ -309,8 +318,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               .map(
                                 (unit) => ActionChip(
                                   label: Text(unit),
-                                  onPressed: () =>
-                                      _unitController.text = unit,
+                                  onPressed: () => _unitController.text = unit,
                                 ),
                               )
                               .toList(),
@@ -327,19 +335,32 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       Expanded(
                         child: TextFormField(
                           controller: _barcodeController,
-                          decoration: _buildInputDecoration('Aucun code scanné'),
+                          decoration: _buildInputDecoration(
+                            'Aucun code scanné',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryDark,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         onPressed: _scanBarcode,
-                        icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-                        label: const Text('Scanner', style: TextStyle(color: Colors.white)),
+                        icon: const Icon(
+                          Icons.qr_code_scanner,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          'Scanner',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -358,44 +379,58 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     ),
                     child: _imageFile != null
                         ? Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.file(_imageFile!, fit: BoxFit.cover),
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                _imageFile = null;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
+                            fit: StackFit.expand,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.file(
+                                  _imageFile!,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
-                              child: const Icon(Icons.delete, color: Colors.white, size: 20),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _imageFile = null;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.delete,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
                         : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_a_photo, color: Colors.grey.shade400, size: 40),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Prendre une photo du produit',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                        ),
-                      ],
-                    ),
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_a_photo,
+                                color: Colors.grey.shade400,
+                                size: 40,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Prendre une photo du produit',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
                 const SizedBox(height: 40),
@@ -404,61 +439,84 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   onPressed: isLoading
                       ? null
                       : () async {
-                    if (_formKey.currentState!.validate()) {
-                      try {
-                        final String? code = _barcodeController.text.trim().isEmpty
-                            ? null
-                            : _barcodeController.text.trim();
+                          if (_formKey.currentState!.validate()) {
+                            try {
+                              final String? code =
+                                  _barcodeController.text.trim().isEmpty
+                                  ? null
+                                  : _barcodeController.text.trim();
 
-                        await ref.read(productProvider.notifier).addProduct(
-                          name: _nameController.text.trim(),
-                          // Vide chez un vendeur, qui ne voit pas le champ.
-                          // `parse` lèverait ; `tryParse ?? 0` laisse le
-                          // patron compléter plus tard.
-                          buyPrice:
-                              double.tryParse(_buyPriceController.text) ?? 0,
-                          sellPrice: double.parse(_sellPriceController.text),
-                          quantity: stockGereParModule
-                              ? 0
-                              : int.parse(_quantityController.text),
-                          minQuantity: int.parse(_minQuantityController.text),
-                          barcode: code,
-                          unit: _unitController.text.trim().isEmpty
-                              ? null
-                              : _unitController.text.trim(),
-                          imageFile: _imageFile,
-                        );
+                              await ref
+                                  .read(productProvider.notifier)
+                                  .addProduct(
+                                    name: _nameController.text.trim(),
+                                    // Vide chez un vendeur, qui ne voit pas le champ.
+                                    // `parse` lèverait ; `tryParse ?? 0` laisse le
+                                    // patron compléter plus tard.
+                                    buyPrice:
+                                        double.tryParse(
+                                          _buyPriceController.text,
+                                        ) ??
+                                        0,
+                                    sellPrice: double.parse(
+                                      _sellPriceController.text,
+                                    ),
+                                    quantity: stockGereParModule
+                                        ? 0
+                                        : int.parse(_quantityController.text),
+                                    minQuantity: int.parse(
+                                      _minQuantityController.text,
+                                    ),
+                                    barcode: code,
+                                    unit: _unitController.text.trim().isEmpty
+                                        ? null
+                                        : _unitController.text.trim(),
+                                    imageFile: _imageFile,
+                                  );
 
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Produit enregistré avec succès !'),
-                              backgroundColor: AppColors.primary,
-                            ),
-                          );
-                          context.pop();
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(e.toString().replaceAll('Exception: ', '')),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
-                        }
-                      }
-                    }
-                  },
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Produit enregistré avec succès !',
+                                    ),
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                );
+                                context.pop();
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      e.toString().replaceAll(
+                                        'Exception: ',
+                                        '',
+                                      ),
+                                    ),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   icon: const Icon(Icons.save, color: Colors.white),
                   label: const Text(
                     'Enregistrer le produit',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),

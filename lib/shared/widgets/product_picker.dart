@@ -2,9 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/providers/app_mode_provider.dart';
 import '../../core/sync/sync_service.dart';
 import '../../features/products/domain/entities/product_entity.dart';
 import '../../features/products/presentation/providers/product_provider.dart';
+
+/// Ce qu'on montre du stock, selon qui regarde.
+///
+/// La quantité exacte est une information de patron : elle dit ce qu'il a
+/// immobilisé, et comparée au comptage suivant, ce qui a disparu. Un vendeur
+/// a besoin de savoir s'il peut vendre — pas de combien il reste.
+///
+/// La cliente qui l'a demandé avait raison sur le fond : connaître le stock
+/// exact, c'est savoir de combien on peut se servir sans que ça se voie.
+///
+/// Le nombre reste dans la base locale, parce que la vente hors ligne doit
+/// pouvoir vérifier qu'il y a de quoi servir. Sur un build release il n'en
+/// sort pas : `adb run-as` est refusé et le bac à sable Android isole le
+/// dossier de l'application.
+String etiquetteStock(int quantite, {required bool modePatron}) {
+  if (modePatron) return 'Stock : $quantite';
+  return quantite > 0 ? 'Disponible' : 'Rupture';
+}
 
 /// Nombre de ventes par produit, pour remonter en tête ceux qui servent le
 /// plus. Un vendeur d'œufs ne doit pas faire défiler 20 articles pour
@@ -55,10 +74,7 @@ class ProductPicker extends ConsumerWidget {
                 ? null
                 : () => _openSheet(context, ref, products),
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
@@ -104,7 +120,11 @@ class ProductPicker extends ConsumerWidget {
                         ),
                         if (selected != null)
                           Text(
-                            'Stock : ${selected.quantity}',
+                            etiquetteStock(
+                              selected.quantity,
+                              modePatron:
+                                  ref.watch(appModeProvider).value ?? false,
+                            ),
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey.shade600,
@@ -148,6 +168,7 @@ class ProductPicker extends ConsumerWidget {
         products: ordered,
         counts: counts,
         selectedProductId: selectedProductId,
+        modePatron: ref.read(appModeProvider).value ?? false,
       ),
     );
 
@@ -161,12 +182,17 @@ class _ProductSheet extends StatefulWidget {
     required this.products,
     required this.counts,
     required this.selectedProductId,
+    required this.modePatron,
   });
 
   final String label;
   final List<ProductEntity> products;
   final Map<String, int> counts;
   final String? selectedProductId;
+
+  /// Passé depuis le sélecteur : cette feuille est un `StatefulWidget` simple,
+  /// elle n'a pas de `ref` pour lire le mode elle-même.
+  final bool modePatron;
 
   @override
   State<_ProductSheet> createState() => _ProductSheetState();
@@ -266,11 +292,17 @@ class _ProductSheetState extends State<_ProductSheet> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            subtitle: Text(
-                              sold > 0
-                                  ? 'Stock : ${product.quantity} · vendu $sold fois'
-                                  : 'Stock : ${product.quantity}',
-                            ),
+                            subtitle: Text(() {
+                              final stock = etiquetteStock(
+                                product.quantity,
+                                modePatron: widget.modePatron,
+                              );
+                              // Le nombre de ventes n'est pas sensible : il
+                              // dit ce qui part, pas ce que ça coûte.
+                              return sold > 0
+                                  ? '$stock · vendu $sold fois'
+                                  : stock;
+                            }()),
                             trailing: isSelected
                                 ? const Icon(
                                     Icons.check,

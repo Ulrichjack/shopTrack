@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -126,9 +127,14 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  // 👇 On affiche le stock restant disponible
+                  // Le stock restant, chiffré pour le patron seulement. Le
+                  // vendeur n'en a pas besoin pour travailler : le bouton «+»
+                  // se désactive tout seul quand il atteint la limite, et le
+                  // panier refuse d'aller au-delà.
                   Text(
-                    'Disponible pour ajout : $maxAvailable',
+                    (ref.watch(appModeProvider).value ?? false)
+                        ? 'Disponible pour ajout : $maxAvailable'
+                        : 'En stock',
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 20),
@@ -197,14 +203,27 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Affichage du bénéfice en petit
-                  Center(
-                    child: Text(
-                      'Bénéfice estimé : ${CurrencyFormatter.format(currentProfit)}',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  // Le bénéfice se déduit du prix d'achat : l'afficher revient
+                  // à le donner. Un vendeur qui lit « bénéfice estimé : 500 »
+                  // sur un article vendu 3 500 connaît la marge de la boutique
+                  // en une soustraction, produit par produit.
+                  //
+                  // Le calcul, lui, reste : la ligne de vente doit porter son
+                  // bénéfice figé pour que le bilan du patron soit juste.
+                  if (ref.watch(appModeProvider).value ?? false) ...[
+                    Center(
+                      child: Text(
+                        'Bénéfice estimé : '
+                        '${CurrencyFormatter.format(currentProfit)}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
+                  ] else
+                    const SizedBox(height: 12),
 
                   ElevatedButton(
                     onPressed: () {

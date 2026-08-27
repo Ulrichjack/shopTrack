@@ -56,8 +56,7 @@ class _HistoriqueComptages extends ConsumerWidget {
             ),
             Expanded(
               child: toursAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),

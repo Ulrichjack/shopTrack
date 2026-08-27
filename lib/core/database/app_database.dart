@@ -19,6 +19,7 @@ class LocalProducts extends Table {
   IntColumn get minQuantity => integer()();
   TextColumn get barcode => text().nullable()();
   TextColumn get photoUrl => text().nullable()();
+
   /// Étiquette d'affichage (sac, bouteille, casier, g, l…). N'entre dans
   /// aucun calcul : le commerçant compte dans une seule unité par produit.
   TextColumn get unit => text().nullable()();
@@ -427,20 +428,14 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(localStockTransfers, localStockTransfers.unit);
       }
       if (from < 14) {
-        await m.addColumn(
-          localStockTransfers,
-          localStockTransfers.cancelledAt,
-        );
+        await m.addColumn(localStockTransfers, localStockTransfers.cancelledAt);
       }
       if (from < 15) {
         await m.addColumn(
           localStockTransfers,
           localStockTransfers.fromShopName,
         );
-        await m.addColumn(
-          localStockTransfers,
-          localStockTransfers.toShopName,
-        );
+        await m.addColumn(localStockTransfers, localStockTransfers.toShopName);
       }
     },
   );
@@ -517,14 +512,15 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> requeueAllSetAside() {
-    return (update(syncQueueItems)..where((t) => t.setAside.equals(true)))
-        .write(
-          const SyncQueueItemsCompanion(
-            setAside: Value(false),
-            attempts: Value(0),
-            lastError: Value(null),
-          ),
-        );
+    return (update(
+      syncQueueItems,
+    )..where((t) => t.setAside.equals(true))).write(
+      const SyncQueueItemsCompanion(
+        setAside: Value(false),
+        attempts: Value(0),
+        lastError: Value(null),
+      ),
+    );
   }
 
   Future<void> removeFromQueue(int id) {

@@ -21,7 +21,11 @@ class OfflineBanner extends ConsumerWidget {
       child: const Text(
         'Mode hors-ligne - Les ventes sont sauvegardées dans le téléphone',
         textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

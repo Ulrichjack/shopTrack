@@ -24,7 +24,7 @@ class ProductModel extends ProductEntity {
       quantity: json['quantity'] as int,
       minQuantity: json['min_quantity'] as int,
       barcode: json['barcode'],
-      photoUrl: json['photo_url']
+      photoUrl: json['photo_url'],
     );
   }
 
@@ -34,12 +34,12 @@ class ProductModel extends ProductEntity {
       // Pas besoin d'envoyer l'ID si on crée un nouveau produit, Supabase le génère
       'shop_id': shopId, // On envoie en snake_case pour la DB
       'name': name,
-      'buy_price':buyPrice,
-      'sell_price':sellPrice,
-      'quantity':quantity,
-      'min_quantity':minQuantity,
-      'barcode':barcode,
-      'photo_url':photoUrl
+      'buy_price': buyPrice,
+      'sell_price': sellPrice,
+      'quantity': quantity,
+      'min_quantity': minQuantity,
+      'barcode': barcode,
+      'photo_url': photoUrl,
     };
   }
 }
