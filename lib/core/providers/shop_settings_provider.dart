@@ -18,6 +18,11 @@ class ShopSettings {
   final String saleCaptureMode;
   final bool multiPointEnabled;
 
+  /// Module C — commandes avec acompte (gâteaux, objets sur mesure,
+  /// formations, décoration). Éteint par défaut : une boutique qui ne prend
+  /// aucune commande ne doit pas hériter d'un onglet vide.
+  final bool commandesEnabled;
+
   /// Le mode a-t-il été **lu quelque part**, ou est-ce encore la valeur par
   /// défaut faute de mieux ?
   ///
@@ -32,6 +37,7 @@ class ShopSettings {
     this.unitMode = 'simple',
     this.saleCaptureMode = 'realtime',
     this.multiPointEnabled = false,
+    this.commandesEnabled = false,
     this.connu = false,
   });
 }
@@ -89,6 +95,7 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
       unitMode: local.unitMode,
       saleCaptureMode: local.saleCaptureMode,
       multiPointEnabled: local.multiPointEnabled,
+      commandesEnabled: local.commandesEnabled,
       connu: true,
     );
   }
@@ -116,7 +123,8 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
         frais.connu != actuel.connu ||
         frais.unitMode != actuel.unitMode ||
         frais.saleCaptureMode != actuel.saleCaptureMode ||
-        frais.multiPointEnabled != actuel.multiPointEnabled) {
+        frais.multiPointEnabled != actuel.multiPointEnabled ||
+        frais.commandesEnabled != actuel.commandesEnabled) {
       state = AsyncValue.data(frais);
     }
   }
@@ -140,7 +148,7 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
           ),
         );
 
-    // Les TROIS réglages, pas seulement celui qui change.
+    // TOUS les réglages, pas seulement celui qui change.
     //
     // L'envoi est un `upsert` : quand la ligne n'existe pas encore côté
     // serveur, les colonnes absentes du message prennent leur valeur par
@@ -156,6 +164,7 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
         'unit_mode': mode,
         'sale_capture_mode': actuel.saleCaptureMode,
         'multi_point_enabled': actuel.multiPointEnabled,
+        'commandes_enabled': actuel.commandesEnabled,
       }),
     );
     await ref.read(syncServiceProvider).processQueue();
@@ -195,6 +204,7 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
         'unit_mode': actuel.unitMode,
         'sale_capture_mode': mode,
         'multi_point_enabled': actuel.multiPointEnabled,
+        'commandes_enabled': actuel.commandesEnabled,
       }),
     );
     await ref.read(syncServiceProvider).processQueue();
@@ -232,6 +242,17 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
               ),
               multiPointEnabled: drift.Value(
                 response['multi_point_enabled'] as bool,
+              ),
+              // Module C. Sans cette ligne, le réglage descend du serveur et
+              // se perd ici : la propriétaire active les commandes sur son
+              // téléphone, la vendeuse ne voit jamais l'onglet apparaître sur
+              // le sien. C'est le même oubli qui a fait disparaître
+              // `sale_items.cycle_id` — invisible sur un seul appareil.
+              //
+              // `?? false` parce qu'une boutique créée avant la migration n'a
+              // pas la colonne dans les réponses mises en cache.
+              commandesEnabled: drift.Value(
+                (response['commandes_enabled'] as bool?) ?? false,
               ),
             ),
           );

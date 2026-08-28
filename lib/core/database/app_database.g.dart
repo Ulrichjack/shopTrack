@@ -3595,6 +3595,21 @@ class $LocalShopSettingsTable extends LocalShopSettings
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _commandesEnabledMeta = const VerificationMeta(
+    'commandesEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> commandesEnabled = GeneratedColumn<bool>(
+    'commandes_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("commandes_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -3613,6 +3628,7 @@ class $LocalShopSettingsTable extends LocalShopSettings
     unitMode,
     saleCaptureMode,
     multiPointEnabled,
+    commandesEnabled,
     updatedAt,
   ];
   @override
@@ -3659,6 +3675,15 @@ class $LocalShopSettingsTable extends LocalShopSettings
         ),
       );
     }
+    if (data.containsKey('commandes_enabled')) {
+      context.handle(
+        _commandesEnabledMeta,
+        commandesEnabled.isAcceptableOrUnknown(
+          data['commandes_enabled']!,
+          _commandesEnabledMeta,
+        ),
+      );
+    }
     if (data.containsKey('updated_at')) {
       context.handle(
         _updatedAtMeta,
@@ -3690,6 +3715,10 @@ class $LocalShopSettingsTable extends LocalShopSettings
         DriftSqlType.bool,
         data['${effectivePrefix}multi_point_enabled'],
       )!,
+      commandesEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}commandes_enabled'],
+      )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -3709,12 +3738,18 @@ class LocalShopSetting extends DataClass
   final String unitMode;
   final String saleCaptureMode;
   final bool multiPointEnabled;
+
+  /// Module C — commandes avec acompte. Éteint par défaut : sans ça, les onze
+  /// boutiques d'un client qui ne prend aucune commande hériteraient d'un
+  /// onglet inutile.
+  final bool commandesEnabled;
   final DateTime updatedAt;
   const LocalShopSetting({
     required this.shopId,
     required this.unitMode,
     required this.saleCaptureMode,
     required this.multiPointEnabled,
+    required this.commandesEnabled,
     required this.updatedAt,
   });
   @override
@@ -3724,6 +3759,7 @@ class LocalShopSetting extends DataClass
     map['unit_mode'] = Variable<String>(unitMode);
     map['sale_capture_mode'] = Variable<String>(saleCaptureMode);
     map['multi_point_enabled'] = Variable<bool>(multiPointEnabled);
+    map['commandes_enabled'] = Variable<bool>(commandesEnabled);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -3734,6 +3770,7 @@ class LocalShopSetting extends DataClass
       unitMode: Value(unitMode),
       saleCaptureMode: Value(saleCaptureMode),
       multiPointEnabled: Value(multiPointEnabled),
+      commandesEnabled: Value(commandesEnabled),
       updatedAt: Value(updatedAt),
     );
   }
@@ -3748,6 +3785,7 @@ class LocalShopSetting extends DataClass
       unitMode: serializer.fromJson<String>(json['unitMode']),
       saleCaptureMode: serializer.fromJson<String>(json['saleCaptureMode']),
       multiPointEnabled: serializer.fromJson<bool>(json['multiPointEnabled']),
+      commandesEnabled: serializer.fromJson<bool>(json['commandesEnabled']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -3759,6 +3797,7 @@ class LocalShopSetting extends DataClass
       'unitMode': serializer.toJson<String>(unitMode),
       'saleCaptureMode': serializer.toJson<String>(saleCaptureMode),
       'multiPointEnabled': serializer.toJson<bool>(multiPointEnabled),
+      'commandesEnabled': serializer.toJson<bool>(commandesEnabled),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -3768,12 +3807,14 @@ class LocalShopSetting extends DataClass
     String? unitMode,
     String? saleCaptureMode,
     bool? multiPointEnabled,
+    bool? commandesEnabled,
     DateTime? updatedAt,
   }) => LocalShopSetting(
     shopId: shopId ?? this.shopId,
     unitMode: unitMode ?? this.unitMode,
     saleCaptureMode: saleCaptureMode ?? this.saleCaptureMode,
     multiPointEnabled: multiPointEnabled ?? this.multiPointEnabled,
+    commandesEnabled: commandesEnabled ?? this.commandesEnabled,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   LocalShopSetting copyWithCompanion(LocalShopSettingsCompanion data) {
@@ -3786,6 +3827,9 @@ class LocalShopSetting extends DataClass
       multiPointEnabled: data.multiPointEnabled.present
           ? data.multiPointEnabled.value
           : this.multiPointEnabled,
+      commandesEnabled: data.commandesEnabled.present
+          ? data.commandesEnabled.value
+          : this.commandesEnabled,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -3797,6 +3841,7 @@ class LocalShopSetting extends DataClass
           ..write('unitMode: $unitMode, ')
           ..write('saleCaptureMode: $saleCaptureMode, ')
           ..write('multiPointEnabled: $multiPointEnabled, ')
+          ..write('commandesEnabled: $commandesEnabled, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -3808,6 +3853,7 @@ class LocalShopSetting extends DataClass
     unitMode,
     saleCaptureMode,
     multiPointEnabled,
+    commandesEnabled,
     updatedAt,
   );
   @override
@@ -3818,6 +3864,7 @@ class LocalShopSetting extends DataClass
           other.unitMode == this.unitMode &&
           other.saleCaptureMode == this.saleCaptureMode &&
           other.multiPointEnabled == this.multiPointEnabled &&
+          other.commandesEnabled == this.commandesEnabled &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -3826,6 +3873,7 @@ class LocalShopSettingsCompanion extends UpdateCompanion<LocalShopSetting> {
   final Value<String> unitMode;
   final Value<String> saleCaptureMode;
   final Value<bool> multiPointEnabled;
+  final Value<bool> commandesEnabled;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const LocalShopSettingsCompanion({
@@ -3833,6 +3881,7 @@ class LocalShopSettingsCompanion extends UpdateCompanion<LocalShopSetting> {
     this.unitMode = const Value.absent(),
     this.saleCaptureMode = const Value.absent(),
     this.multiPointEnabled = const Value.absent(),
+    this.commandesEnabled = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3841,6 +3890,7 @@ class LocalShopSettingsCompanion extends UpdateCompanion<LocalShopSetting> {
     this.unitMode = const Value.absent(),
     this.saleCaptureMode = const Value.absent(),
     this.multiPointEnabled = const Value.absent(),
+    this.commandesEnabled = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : shopId = Value(shopId);
@@ -3849,6 +3899,7 @@ class LocalShopSettingsCompanion extends UpdateCompanion<LocalShopSetting> {
     Expression<String>? unitMode,
     Expression<String>? saleCaptureMode,
     Expression<bool>? multiPointEnabled,
+    Expression<bool>? commandesEnabled,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -3857,6 +3908,7 @@ class LocalShopSettingsCompanion extends UpdateCompanion<LocalShopSetting> {
       if (unitMode != null) 'unit_mode': unitMode,
       if (saleCaptureMode != null) 'sale_capture_mode': saleCaptureMode,
       if (multiPointEnabled != null) 'multi_point_enabled': multiPointEnabled,
+      if (commandesEnabled != null) 'commandes_enabled': commandesEnabled,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3867,6 +3919,7 @@ class LocalShopSettingsCompanion extends UpdateCompanion<LocalShopSetting> {
     Value<String>? unitMode,
     Value<String>? saleCaptureMode,
     Value<bool>? multiPointEnabled,
+    Value<bool>? commandesEnabled,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
@@ -3875,6 +3928,7 @@ class LocalShopSettingsCompanion extends UpdateCompanion<LocalShopSetting> {
       unitMode: unitMode ?? this.unitMode,
       saleCaptureMode: saleCaptureMode ?? this.saleCaptureMode,
       multiPointEnabled: multiPointEnabled ?? this.multiPointEnabled,
+      commandesEnabled: commandesEnabled ?? this.commandesEnabled,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -3895,6 +3949,9 @@ class LocalShopSettingsCompanion extends UpdateCompanion<LocalShopSetting> {
     if (multiPointEnabled.present) {
       map['multi_point_enabled'] = Variable<bool>(multiPointEnabled.value);
     }
+    if (commandesEnabled.present) {
+      map['commandes_enabled'] = Variable<bool>(commandesEnabled.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -3911,6 +3968,7 @@ class LocalShopSettingsCompanion extends UpdateCompanion<LocalShopSetting> {
           ..write('unitMode: $unitMode, ')
           ..write('saleCaptureMode: $saleCaptureMode, ')
           ..write('multiPointEnabled: $multiPointEnabled, ')
+          ..write('commandesEnabled: $commandesEnabled, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -12532,6 +12590,7 @@ typedef $$LocalShopSettingsTableCreateCompanionBuilder =
       Value<String> unitMode,
       Value<String> saleCaptureMode,
       Value<bool> multiPointEnabled,
+      Value<bool> commandesEnabled,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -12541,6 +12600,7 @@ typedef $$LocalShopSettingsTableUpdateCompanionBuilder =
       Value<String> unitMode,
       Value<String> saleCaptureMode,
       Value<bool> multiPointEnabled,
+      Value<bool> commandesEnabled,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -12571,6 +12631,11 @@ class $$LocalShopSettingsTableFilterComposer
 
   ColumnFilters<bool> get multiPointEnabled => $composableBuilder(
     column: $table.multiPointEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get commandesEnabled => $composableBuilder(
+    column: $table.commandesEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12609,6 +12674,11 @@ class $$LocalShopSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get commandesEnabled => $composableBuilder(
+    column: $table.commandesEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -12637,6 +12707,11 @@ class $$LocalShopSettingsTableAnnotationComposer
 
   GeneratedColumn<bool> get multiPointEnabled => $composableBuilder(
     column: $table.multiPointEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get commandesEnabled => $composableBuilder(
+    column: $table.commandesEnabled,
     builder: (column) => column,
   );
 
@@ -12688,6 +12763,7 @@ class $$LocalShopSettingsTableTableManager
                 Value<String> unitMode = const Value.absent(),
                 Value<String> saleCaptureMode = const Value.absent(),
                 Value<bool> multiPointEnabled = const Value.absent(),
+                Value<bool> commandesEnabled = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalShopSettingsCompanion(
@@ -12695,6 +12771,7 @@ class $$LocalShopSettingsTableTableManager
                 unitMode: unitMode,
                 saleCaptureMode: saleCaptureMode,
                 multiPointEnabled: multiPointEnabled,
+                commandesEnabled: commandesEnabled,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -12704,6 +12781,7 @@ class $$LocalShopSettingsTableTableManager
                 Value<String> unitMode = const Value.absent(),
                 Value<String> saleCaptureMode = const Value.absent(),
                 Value<bool> multiPointEnabled = const Value.absent(),
+                Value<bool> commandesEnabled = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalShopSettingsCompanion.insert(
@@ -12711,6 +12789,7 @@ class $$LocalShopSettingsTableTableManager
                 unitMode: unitMode,
                 saleCaptureMode: saleCaptureMode,
                 multiPointEnabled: multiPointEnabled,
+                commandesEnabled: commandesEnabled,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),

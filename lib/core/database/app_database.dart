@@ -128,6 +128,12 @@ class LocalShopSettings extends Table {
       text().withDefault(const Constant('realtime'))();
   BoolColumn get multiPointEnabled =>
       boolean().withDefault(const Constant(false))();
+
+  /// Module C — commandes avec acompte. Éteint par défaut : sans ça, les onze
+  /// boutiques d'un client qui ne prend aucune commande hériteraient d'un
+  /// onglet inutile.
+  BoolColumn get commandesEnabled =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -477,7 +483,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -546,6 +552,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(localClients);
         await m.createTable(localDossiersCommandes);
         await m.createTable(localPaiementsCommandes);
+      }
+      if (from < 17) {
+        await m.addColumn(
+          localShopSettings,
+          localShopSettings.commandesEnabled,
+        );
       }
     },
   );
