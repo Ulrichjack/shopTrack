@@ -85,6 +85,131 @@ class _CashScreenState extends ConsumerState<CashScreen> {
     super.dispose();
   }
 
+  Future<void> _showAdjustmentDialog() async {
+    final dashboard = ref.read(dashboardProvider).valueOrNull;
+    if (dashboard == null) return;
+
+    final amountController = TextEditingController(
+      text: dashboard.calculatedCash.toStringAsFixed(0),
+    );
+    final reasonController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final container = ProviderScope.containerOf(context, listen: false);
+
+    final input = await showDialog<_CashAdjustmentInput>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Ajuster la caisse'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'ShopTrack calcule actuellement '
+                '${CurrencyFormatter.format(dashboard.calculatedCash)}.',
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: amountController,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Montant réellement compté',
+                  suffixText: 'FCFA',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  final amount = double.tryParse(
+                    (value ?? '').trim().replaceAll(',', '.'),
+                  );
+                  if (amount == null || amount < 0) {
+                    return 'Saisis un montant valide.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  labelText: 'Motif obligatoire',
+                  hintText: 'Ex. retrait oublié, erreur de monnaie…',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Explique la différence.'
+                    : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.pop(
+                dialogContext,
+                _CashAdjustmentInput(
+                  physicalCash: double.parse(
+                    amountController.text.trim().replaceAll(',', '.'),
+                  ),
+                  reason: reasonController.text.trim(),
+                ),
+              );
+            },
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    );
+
+    amountController.dispose();
+    reasonController.dispose();
+    if (input == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final difference = await container
+          .read(dashboardProvider.notifier)
+          .adjustCashBalance(
+            physicalCash: input.physicalCash,
+            reason: input.reason,
+          );
+      container.invalidate(todayWithdrawalsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              difference.abs() < 0.01
+                  ? 'La caisse correspond déjà au montant compté.'
+                  : 'Ajustement de ${CurrencyFormatter.format(difference)} enregistré.',
+            ),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ajustement impossible : $error'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _saveWithdrawal() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -181,6 +306,15 @@ class _CashScreenState extends ConsumerState<CashScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            OutlinedButton.icon(
+              onPressed: _isLoading ? null : _showAdjustmentDialog,
+              icon: const Icon(Icons.balance),
+              label: const Text('Ajuster après un comptage réel'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+            const SizedBox(height: 24),
             Form(
               key: _formKey,
               child: Column(
@@ -450,4 +584,14 @@ class _CashScreenState extends ConsumerState<CashScreen> {
       ),
     );
   }
+}
+
+class _CashAdjustmentInput {
+  const _CashAdjustmentInput({
+    required this.physicalCash,
+    required this.reason,
+  });
+
+  final double physicalCash;
+  final String reason;
 }

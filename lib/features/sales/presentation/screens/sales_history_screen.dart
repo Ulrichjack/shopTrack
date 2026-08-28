@@ -77,20 +77,26 @@ final dailyTransactionsProvider =
       )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
 
       for (var movement in localCashMovements) {
+        final isIncome = {
+          'morning_balance',
+          'incoming',
+          'adjustment_in',
+        }.contains(movement.type);
         list.add(
           TransactionItem(
             id: movement.id,
-            title: movement.type == 'morning_balance'
-                ? 'Solde Matin' // 👈 On gère le titre
-                : (movement.type == 'withdrawal'
-                      ? 'Sortie : ${movement.category}'
-                      : 'Entrée caisse'),
+            title: switch (movement.type) {
+              'morning_balance' => 'Solde initial',
+              'withdrawal' => 'Sortie : ${movement.category ?? 'Autre'}',
+              'incoming' => 'Entrée caisse',
+              'adjustment_in' => 'Ajustement positif',
+              'adjustment_out' => 'Ajustement négatif',
+              _ => 'Mouvement de caisse',
+            },
             subtitle: movement.note ?? 'Aucun détail',
             amount: movement.amount,
             time: movement.createdAt,
-            isIncome:
-                movement.type ==
-                'morning_balance', // 👈 Le solde matin est une entrée
+            isIncome: isIncome,
             note: movement.note,
           ),
         );

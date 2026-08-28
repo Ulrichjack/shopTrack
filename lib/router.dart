@@ -50,6 +50,11 @@ import 'core/providers/current_shop_provider.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Le mode périodique possède son propre tableau de bord et ne doit jamais
+/// construire celui de la caisse continue, même brièvement.
+bool afficheDashboardCaisse(String saleCaptureMode) =>
+    saleCaptureMode != 'periodic';
+
 /// Les deux écrans qu'on peut ouvrir sans être connecté.
 const _routesAuth = {'/login', '/register'};
 
@@ -378,9 +383,9 @@ class _HomeForShopMode extends ConsumerWidget {
           // elle restait affichée par-dessus.
           data: (settings) => !settings.connu
               ? const _EcranNeutre()
-              : settings.saleCaptureMode == 'periodic'
-              ? const InventoryDashboardScreen()
-              : const DashboardScreen(),
+              : afficheDashboardCaisse(settings.saleCaptureMode)
+              ? const DashboardScreen()
+              : const InventoryDashboardScreen(),
         );
   }
 }

@@ -9,6 +9,11 @@
 -- ou remboursé. Le solde est calculé par la vue en fin de migration et n'est
 -- stocké dans aucune table.
 
+-- Activation explicite par boutique. Une boutique qui n'utilise pas les
+-- commandes ne reçoit ni onglet ni parcours supplémentaire.
+alter table public.shop_settings
+  add column if not exists commandes_enabled boolean not null default false;
+
 -- ---------------------------------------------------------------------------
 -- 1. Clients de la boutique
 -- ---------------------------------------------------------------------------
@@ -35,6 +40,10 @@ create index if not exists clients_shop_nom_idx
 create index if not exists clients_shop_telephone_idx
   on public.clients (shop_id, telephone)
   where telephone is not null;
+
+-- Volontairement NON UNIQUE : l'application recherche ce numéro et avertit
+-- (« Marie Ngo existe déjà, est-ce elle ? »), mais deux personnes peuvent
+-- partager un téléphone. La base ne doit donc jamais bloquer la création.
 
 alter table public.clients enable row level security;
 
@@ -171,8 +180,8 @@ create table if not exists public.paiements_commandes (
     type_mouvement in ('paiement', 'remboursement')
   ),
   montant bigint not null check (montant > 0),
-  mode_paiement text not null check (
-    mode_paiement in ('especes', 'mobile_money', 'virement', 'autre')
+  mode_paiement text not null default 'especes' check (
+    mode_paiement in ('especes', 'mtn_momo', 'orange_money', 'autre')
   ),
   reference_externe text,
   note text,
@@ -190,6 +199,9 @@ create index if not exists paiements_commandes_dossier_date_idx
   on public.paiements_commandes (dossier_id, effectue_at);
 create index if not exists paiements_commandes_shop_date_idx
   on public.paiements_commandes (shop_id, effectue_at);
+
+comment on column public.paiements_commandes.mode_paiement is
+  'Seules les espèces alimentent la caisse physique ; MTN MoMo et Orange Money restent des encaissements hors caisse.';
 
 alter table public.paiements_commandes enable row level security;
 
@@ -230,7 +242,161 @@ with check (
 );
 
 -- ---------------------------------------------------------------------------
--- 4. Solde calculé, jamais stocké
+-- 4. Garde-fous financiers et confirmation automatique
+-- ---------------------------------------------------------------------------
+-- Le verrou sur le dossier sérialise deux paiements simultanés (deux
+-- téléphones hors ligne qui se resynchronisent, par exemple). Sans lui, les
+-- deux insertions pourraient lire le même solde puis le dépasser ensemble.
+--
+-- Cette fonction est SECURITY DEFINER uniquement pour pouvoir faire passer le
+-- dossier de `demande`/`devis` à `confirmee` après un paiement saisi par une
+-- vendeuse : celle-ci a le droit d'ajouter le paiement, mais pas de modifier
+-- le dossier directement.
+create or replace function public.verifier_paiement_commande()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  montant_du_dossier bigint;
+  statut_du_dossier text;
+  total_paye bigint;
+  total_rembourse bigint;
+  nombre_paiements bigint;
+  net_encaisse bigint;
+begin
+  select montant_accepte, statut
+    into montant_du_dossier, statut_du_dossier
+  from public.dossiers_commandes
+  where id = new.dossier_id
+    and shop_id = new.shop_id
+  for update;
+
+  if not found then
+    raise exception using
+      errcode = '23503',
+      message = 'Dossier de commande introuvable pour cette boutique.';
+  end if;
+
+  if statut_du_dossier = 'annulee' then
+    raise exception using
+      errcode = '23514',
+      message = 'Impossible d''enregistrer un paiement sur une commande annulée.';
+  end if;
+
+  if montant_du_dossier is null then
+    raise exception using
+      errcode = '23514',
+      message = 'Le montant accepté doit être fixé avant d''enregistrer un paiement.';
+  end if;
+
+  select
+    coalesce(sum(montant) filter (where type_mouvement = 'paiement'), 0),
+    coalesce(sum(montant) filter (where type_mouvement = 'remboursement'), 0),
+    count(*) filter (where type_mouvement = 'paiement')
+  into total_paye, total_rembourse, nombre_paiements
+  from public.paiements_commandes
+  where dossier_id = new.dossier_id
+    and shop_id = new.shop_id;
+
+  net_encaisse := total_paye - total_rembourse;
+
+  if new.type_mouvement = 'paiement'
+     and net_encaisse + new.montant > montant_du_dossier then
+    raise exception using
+      errcode = '23514',
+      message = format(
+        'Paiement refusé : le montant dépasse le solde restant de %s FCFA.',
+        montant_du_dossier - net_encaisse
+      );
+  end if;
+
+  if new.type_mouvement = 'remboursement'
+     and new.montant > net_encaisse then
+    raise exception using
+      errcode = '23514',
+      message = format(
+        'Remboursement refusé : seulement %s FCFA ont été encaissés.',
+        net_encaisse
+      );
+  end if;
+
+  -- Ne jamais faire régresser un dossier déjà en cours, prêt ou terminé.
+  if new.type_mouvement = 'paiement'
+     and nombre_paiements = 0
+     and statut_du_dossier in ('demande', 'devis') then
+    update public.dossiers_commandes
+    set statut = 'confirmee', updated_at = now()
+    where id = new.dossier_id
+      and shop_id = new.shop_id;
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.verifier_paiement_commande() from public;
+revoke all on function public.verifier_paiement_commande() from anon;
+revoke all on function public.verifier_paiement_commande() from authenticated;
+
+drop trigger if exists verifier_paiement_commande_before_insert
+  on public.paiements_commandes;
+create trigger verifier_paiement_commande_before_insert
+before insert on public.paiements_commandes
+for each row execute function public.verifier_paiement_commande();
+
+-- Une renégociation reste possible après acompte, vers le haut comme vers le
+-- bas, mais jamais sous le montant net déjà encaissé. `updated_at` porte le
+-- dernier instant de modification ; l'application devra aussi publier
+-- l'ancien et le nouveau montant dans son journal d'activité existant.
+create or replace function public.verifier_montant_commande()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  net_encaisse bigint;
+begin
+  if new.montant_accepte is not distinct from old.montant_accepte then
+    return new;
+  end if;
+
+  select
+    coalesce(sum(montant) filter (where type_mouvement = 'paiement'), 0)
+      - coalesce(sum(montant) filter (where type_mouvement = 'remboursement'), 0)
+  into net_encaisse
+  from public.paiements_commandes
+  where dossier_id = old.id
+    and shop_id = old.shop_id;
+
+  if net_encaisse > 0
+     and (new.montant_accepte is null or new.montant_accepte < net_encaisse) then
+    raise exception using
+      errcode = '23514',
+      message = format(
+        'Montant refusé : %s FCFA ont déjà été encaissés.',
+        net_encaisse
+      );
+  end if;
+
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+revoke all on function public.verifier_montant_commande() from public;
+revoke all on function public.verifier_montant_commande() from anon;
+revoke all on function public.verifier_montant_commande() from authenticated;
+
+drop trigger if exists verifier_montant_commande_before_update
+  on public.dossiers_commandes;
+create trigger verifier_montant_commande_before_update
+before update of montant_accepte on public.dossiers_commandes
+for each row execute function public.verifier_montant_commande();
+
+-- ---------------------------------------------------------------------------
+-- 5. Solde calculé, jamais stocké
 -- ---------------------------------------------------------------------------
 -- Les montants de remboursement restent positifs dans la table :
 --   net encaissé = paiements - remboursements
