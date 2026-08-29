@@ -51,14 +51,17 @@ void main() {
       );
     });
 
-    test("un refus inconnu garde son texte plutôt que de devenir « erreur »", () {
-      // L'anglais exact reste exploitable — par nous quand le commerçant nous
-      // le lit au téléphone, et par lui s'il reconnaît un mot.
-      expect(
-        messageDErreurAuth(const AuthException('Signups not allowed')),
-        'Signups not allowed',
-      );
-    });
+    test(
+      "un refus inconnu garde son texte plutôt que de devenir « erreur »",
+      () {
+        // L'anglais exact reste exploitable — par nous quand le commerçant nous
+        // le lit au téléphone, et par lui s'il reconnaît un mot.
+        expect(
+          messageDErreurAuth(const AuthException('Signups not allowed')),
+          'Signups not allowed',
+        );
+      },
+    );
   });
 
   group('panne de réseau', () {

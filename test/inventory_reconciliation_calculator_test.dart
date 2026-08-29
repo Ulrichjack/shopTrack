@@ -30,8 +30,14 @@ void main() {
   group('Un produit', () {
     test('déduit les sorties de deux comptages', () {
       final r = InventoryReconciliationCalculator.calculateProduct(
-        _produit(debut: 5, achats: 10, sorties: 4, compte: 3, cout: 20000,
-            vente: 22000),
+        _produit(
+          debut: 5,
+          achats: 10,
+          sorties: 4,
+          compte: 3,
+          cout: 20000,
+          vente: 22000,
+        ),
       );
 
       // 5 + 10 − 4 transférés − 3 restants
@@ -77,7 +83,8 @@ void main() {
       expect(
         r.presumedSales,
         0,
-        reason: 'jamais de vente négative : un seul produit mal saisi '
+        reason:
+            'jamais de vente négative : un seul produit mal saisi '
             'fausserait sinon tout le total de la boutique',
       );
       expect(r.expectedRevenue, 0);
@@ -238,7 +245,6 @@ void main() {
     });
   });
 
-
   group('coût unitaire figé sur la ligne d\'achat', () {
     test('sans ligne d\'achat, on garde le prix du produit', () {
       // L'historique déjà saisi ne doit pas changer de valorisation le jour où
@@ -360,22 +366,18 @@ void main() {
       // 12 sacs achetés 22 000, 8 rachetés 24 000 pendant la période.
       // Sans historique des tarifs, les 12 se réévaluaient à 24 000 et toute
       // la période close bougeait avec le dernier arrivage.
-      final ouverture = buyPriceAt(
-        DateTime(2026, 8, 1),
-        [
-          PricePoint(
-            effectiveAt: DateTime(2026, 7, 1),
-            buyPrice: 22000,
-            sellPrice: 25000,
-          ),
-          PricePoint(
-            effectiveAt: DateTime(2026, 8, 15),
-            buyPrice: 24000,
-            sellPrice: 27000,
-          ),
-        ],
-        99999,
-      );
+      final ouverture = buyPriceAt(DateTime(2026, 8, 1), [
+        PricePoint(
+          effectiveAt: DateTime(2026, 7, 1),
+          buyPrice: 22000,
+          sellPrice: 25000,
+        ),
+        PricePoint(
+          effectiveAt: DateTime(2026, 8, 15),
+          buyPrice: 24000,
+          sellPrice: 27000,
+        ),
+      ], 99999);
       expect(ouverture, 22000);
 
       final cout = weightedUnitCost(
@@ -395,22 +397,18 @@ void main() {
       // Période ouverte à 15h35, hausse enregistrée à 15h41 avec l'arrivage.
       // Au jour près, les 12 sacs déjà en rayon passaient à 24 000.
       expect(
-        buyPriceAt(
-          DateTime(2026, 8, 14, 15, 35),
-          [
-            PricePoint(
-              effectiveAt: DateTime(2026, 8, 14, 15, 35),
-              buyPrice: 22000,
-              sellPrice: 25000,
-            ),
-            PricePoint(
-              effectiveAt: DateTime(2026, 8, 14, 15, 41),
-              buyPrice: 24000,
-              sellPrice: 27000,
-            ),
-          ],
-          99999,
-        ),
+        buyPriceAt(DateTime(2026, 8, 14, 15, 35), [
+          PricePoint(
+            effectiveAt: DateTime(2026, 8, 14, 15, 35),
+            buyPrice: 22000,
+            sellPrice: 25000,
+          ),
+          PricePoint(
+            effectiveAt: DateTime(2026, 8, 14, 15, 41),
+            buyPrice: 24000,
+            sellPrice: 27000,
+          ),
+        ], 99999),
         22000,
       );
     });

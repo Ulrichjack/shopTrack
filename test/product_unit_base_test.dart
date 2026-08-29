@@ -39,11 +39,13 @@ void main() {
 
   test('impossible de créer un plateau avant la base', () async {
     await expectLater(
-      container.read(productUnitActionsProvider).addUnit(
-        productId: 'product-1',
-        unitName: 'plateau',
-        ratioToBase: 30,
-      ),
+      container
+          .read(productUnitActionsProvider)
+          .addUnit(
+            productId: 'product-1',
+            unitName: 'plateau',
+            ratioToBase: 30,
+          ),
       throwsA(
         isA<Exception>().having(
           (e) => e.toString(),
@@ -61,11 +63,9 @@ void main() {
   });
 
   test('la base elle-même passe toujours, même en premier', () async {
-    await container.read(productUnitActionsProvider).addUnit(
-      productId: 'product-1',
-      unitName: 'œuf',
-      ratioToBase: 1,
-    );
+    await container
+        .read(productUnitActionsProvider)
+        .addUnit(productId: 'product-1', unitName: 'œuf', ratioToBase: 1);
 
     final unites = await db.select(db.localProductUnits).get();
     expect(unites, hasLength(1));
@@ -73,35 +73,31 @@ void main() {
   });
 
   test('une fois la base posée, les unités dérivées passent', () async {
-    await container.read(productUnitActionsProvider).addUnit(
-      productId: 'product-1',
-      unitName: 'œuf',
-      ratioToBase: 1,
-    );
+    await container
+        .read(productUnitActionsProvider)
+        .addUnit(productId: 'product-1', unitName: 'œuf', ratioToBase: 1);
 
-    await container.read(productUnitActionsProvider).addUnit(
-      productId: 'product-1',
-      unitName: 'plateau',
-      ratioToBase: 30,
-    );
+    await container
+        .read(productUnitActionsProvider)
+        .addUnit(productId: 'product-1', unitName: 'plateau', ratioToBase: 30);
 
     final unites = await db.select(db.localProductUnits).get();
     expect(unites.map((u) => u.unitName), containsAll(['œuf', 'plateau']));
   });
 
   test('la base d’un autre produit ne compte pas pour celui-ci', () async {
-    await container.read(productUnitActionsProvider).addUnit(
-      productId: 'product-2',
-      unitName: 'bouteille',
-      ratioToBase: 1,
-    );
+    await container
+        .read(productUnitActionsProvider)
+        .addUnit(productId: 'product-2', unitName: 'bouteille', ratioToBase: 1);
 
     await expectLater(
-      container.read(productUnitActionsProvider).addUnit(
-        productId: 'product-1',
-        unitName: 'plateau',
-        ratioToBase: 30,
-      ),
+      container
+          .read(productUnitActionsProvider)
+          .addUnit(
+            productId: 'product-1',
+            unitName: 'plateau',
+            ratioToBase: 30,
+          ),
       throwsA(isA<Exception>()),
       reason: 'chaque produit a sa propre base — celle du voisin ne compte pas',
     );

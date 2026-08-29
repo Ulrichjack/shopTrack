@@ -102,10 +102,21 @@ const sellerAllowedRoutes = {
   // masquent déjà eux-mêmes — `product_detail` retire aussi le bénéfice, parce
   // que prix de vente moins bénéfice redonne le prix d'achat.
   //
-  // Créer et modifier un produit restent fermés : c'est là qu'on saisit le
-  // prix d'achat.
   '/products',
   '/product-detail',
+
+  // Créer un article, oui. La marchandise arrive quand elle arrive, et
+  // attendre la propriétaire pour l'enregistrer, c'est vendre un produit qui
+  // n'existe pas dans l'application.
+  //
+  // L'écran masque le prix d'achat au vendeur et l'enregistre à zéro : la
+  // propriétaire le renseignera. Un zéro se remarque, et il vaut mieux qu'un
+  // prix inventé — c'est la règle qu'on avait déjà retenue pour l'import du
+  // catalogue d'un client.
+  //
+  // `/edit-product` reste fermé : modifier un prix existant, c'est autre
+  // chose que déclarer un article nouveau.
+  '/add-product',
 
   // Signaler une casse. Sans ça, la perte devient un manquant qu'on lui
   // reproche — exactement ce que le rapprochement d'inventaire existe pour

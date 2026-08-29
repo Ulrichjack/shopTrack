@@ -91,7 +91,11 @@ void main() {
 
   test('le registre ne déclare pas deux fois la même table', () {
     final noms = tablesTirees.map((table) => table.nom).toList();
-    expect(noms.toSet().length, noms.length, reason: 'doublon dans le registre');
+    expect(
+      noms.toSet().length,
+      noms.length,
+      reason: 'doublon dans le registre',
+    );
   });
 }
 

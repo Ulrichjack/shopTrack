@@ -39,39 +39,48 @@ void main() {
     return file.firstWhere((item) => item.action == action);
   }
 
-  test('une opération refusée sans fin finit mise de côté, sans être jetée', () async {
-    await db.addToQueue('ADD_PRODUCT', jsonEncode({'id': 'p1'}));
+  test(
+    'une opération refusée sans fin finit mise de côté, sans être jetée',
+    () async {
+      await db.addToQueue('ADD_PRODUCT', jsonEncode({'id': 'p1'}));
 
-    for (var i = 0; i < SyncService.maxRefusAvantMiseDeCote; i++) {
+      for (var i = 0; i < SyncService.maxRefusAvantMiseDeCote; i++) {
+        await sync.processQueue();
+      }
+
+      final item = await ligne('ADD_PRODUCT');
+      expect(item.attempts, SyncService.maxRefusAvantMiseDeCote);
+      expect(item.setAside, isTrue);
+      expect(item.lastError, isNotNull);
+
+      // Mise de côté, pas supprimée : le travail du commerçant reste là, et
+      // c'est lui qui décide de réessayer ou d'abandonner.
+      expect(await db.getPendingCount(), 1);
+      expect(await db.getSetAsideCount(), 1);
+    },
+  );
+
+  test(
+    'une opération mise de côté n’arrête pas ce qui n’a rien à voir',
+    () async {
+      await db.addToQueue('ADD_PRODUCT', jsonEncode({'id': 'riz'}));
+      for (var i = 0; i < SyncService.maxRefusAvantMiseDeCote; i++) {
+        await sync.processQueue();
+      }
+      expect((await ligne('ADD_PRODUCT')).setAside, isTrue);
+
+      // Un autre produit, aucune dépendance avec le riz.
+      await db.addToQueue(
+        'ADD_PRODUCT_PRICE',
+        jsonEncode({'product_id': 'sucre'}),
+      );
       await sync.processQueue();
-    }
 
-    final item = await ligne('ADD_PRODUCT');
-    expect(item.attempts, SyncService.maxRefusAvantMiseDeCote);
-    expect(item.setAside, isTrue);
-    expect(item.lastError, isNotNull);
-
-    // Mise de côté, pas supprimée : le travail du commerçant reste là, et
-    // c'est lui qui décide de réessayer ou d'abandonner.
-    expect(await db.getPendingCount(), 1);
-    expect(await db.getSetAsideCount(), 1);
-  });
-
-  test('une opération mise de côté n’arrête pas ce qui n’a rien à voir', () async {
-    await db.addToQueue('ADD_PRODUCT', jsonEncode({'id': 'riz'}));
-    for (var i = 0; i < SyncService.maxRefusAvantMiseDeCote; i++) {
-      await sync.processQueue();
-    }
-    expect((await ligne('ADD_PRODUCT')).setAside, isTrue);
-
-    // Un autre produit, aucune dépendance avec le riz.
-    await db.addToQueue('ADD_PRODUCT_PRICE', jsonEncode({'product_id': 'sucre'}));
-    await sync.processQueue();
-
-    // Il a bien été tenté : c'est ce qui distingue « la file avance » de
-    // « la file est gelée derrière le riz ».
-    expect((await ligne('ADD_PRODUCT_PRICE')).attempts, 1);
-  });
+      // Il a bien été tenté : c'est ce qui distingue « la file avance » de
+      // « la file est gelée derrière le riz ».
+      expect((await ligne('ADD_PRODUCT_PRICE')).attempts, 1);
+    },
+  );
 
   test('mais elle arrête bien ce qui dépend d’elle', () async {
     await db.addToQueue('ADD_PRODUCT', jsonEncode({'id': 'riz'}));
@@ -141,7 +150,10 @@ void main() {
 
   group('un réseau coupé n’est pas un refus', () {
     test('les pannes de transport ne comptent pas', () {
-      expect(sync.estUnRefusDuServeur(const SocketException('pas de route')), isFalse);
+      expect(
+        sync.estUnRefusDuServeur(const SocketException('pas de route')),
+        isFalse,
+      );
       expect(sync.estUnRefusDuServeur(TimeoutException('trop long')), isFalse);
       expect(
         sync.estUnRefusDuServeur(const AuthException('jeton expiré')),
@@ -163,20 +175,26 @@ void main() {
         isTrue,
       );
       expect(sync.estUnRefusDuServeur(StateError('action inconnue')), isTrue);
-      expect(sync.estUnRefusDuServeur(const FormatException('charge illisible')), isTrue);
+      expect(
+        sync.estUnRefusDuServeur(const FormatException('charge illisible')),
+        isTrue,
+      );
     });
   });
 
-  test('une charge illisible arrête tout : on ignore ce qu’elle touche', () async {
-    await db.addToQueue('ADD_PRODUCT', '{ceci n’est pas du json');
-    await db.addToQueue('ADD_PRODUCT', jsonEncode({'id': 'p2'}));
+  test(
+    'une charge illisible arrête tout : on ignore ce qu’elle touche',
+    () async {
+      await db.addToQueue('ADD_PRODUCT', '{ceci n’est pas du json');
+      await db.addToQueue('ADD_PRODUCT', jsonEncode({'id': 'p2'}));
 
-    await sync.processQueue();
+      await sync.processQueue();
 
-    final file = await db.getPendingItems();
-    expect(file.length, 2);
-    // La seconde n'a même pas été tentée : sans savoir ce que porte la
-    // première, la laisser passer casserait l'ordre à l'aveugle.
-    expect(file[1].attempts, 0);
-  });
+      final file = await db.getPendingItems();
+      expect(file.length, 2);
+      // La seconde n'a même pas été tentée : sans savoir ce que porte la
+      // première, la laisser passer casserait l'ordre à l'aveugle.
+      expect(file[1].attempts, 0);
+    },
+  );
 }

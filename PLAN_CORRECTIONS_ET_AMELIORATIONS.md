@@ -1397,3 +1397,39 @@ heure. À refaire avant chaque livraison.
 La boutique de test `TEST BILAN` (6 produits, premier comptage daté, recettes
 quotidiennes) est conservée sur Supabase : elle rejoue ce scénario en dix
 minutes.
+
+---
+
+### À élucider — relevés le 29/08/2026
+
+**Il faut parfois taper deux fois pour se connecter.** Signalé par le
+développeur. Les traces montrent deux `[AUTH] échec de la connexion :
+AuthApiException(invalid_credentials)` à six secondes d'intervalle, suivis
+d'une connexion réussie. Deux lectures possibles, et on ne sait pas laquelle :
+
+- le premier appui part avec un champ pas encore validé (le clavier garde la
+  dernière lettre tant qu'on n'a pas quitté le champ) — ce serait un problème
+  de saisie, pas d'authentification ;
+- ou le premier envoi utilise un état périmé après une déconnexion.
+
+À reproduire en traçant ce qui est réellement envoyé — sans jamais journaliser
+le mot de passe, seulement sa longueur.
+
+**Un vendeur s'est retrouvé avec une application vide.** Ses boutiques
+s'affichaient (`[SHOPS] réponse brute` les listait), mais aucun produit :
+0 ligne en base locale, file d'attente vide, boutique active bien renseignée.
+Aucun téléchargement n'était parti, et **aucune trace ne le disait**.
+
+Cause du silence, elle, identifiée et corrigée : `pullDataFromSupabase` attrape
+les erreurs de requête table par table, mais **pas celles du mapping** — celui-
+ci vit dans la transaction, hors du filet. L'exception remontait jusqu'aux deux
+`catch` muets de `session_handover` et du minuteur de `main.dart`, où elle
+disparaissait. Les deux tracent désormais l'erreur et sa pile.
+
+Non reproduit après réinstallation. La cause reste inconnue ; la prochaine
+occurrence sera lisible.
+
+**Piste à écarter en premier** : `if (_isPulling || await
+db.getPendingCount() > 0) return;` sort de `pullDataFromSupabase` **sans
+aucune trace**. C'est volontaire — une opération en attente rend le serveur
+périmé — mais indistinguable d'une panne pour qui lit les journaux.

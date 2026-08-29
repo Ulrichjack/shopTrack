@@ -100,7 +100,6 @@ void main() {
     // étaient atteignables par un vendeur, par simple lien direct.
     test('les écrans sensibles ne s\'ouvrent plus au vendeur', () {
       const sensibles = [
-        '/add-product',
         '/edit-product',
         '/manage-units',
         '/cash-out',
@@ -126,12 +125,18 @@ void main() {
       // se vide : il vend à l'aveugle.
       //
       // Ce qu'on cache n'est pas le NOMBRE mais l'ARGENT — prix d'achat,
-      // marge, valeur totale du stock. Les écrans s'en chargent eux-mêmes,
-      // et `/add-product` comme `/edit-product` restent fermés puisque c'est
-      // là qu'on saisit le prix d'achat.
+      // marge, valeur totale du stock. Les écrans s'en chargent eux-mêmes.
       expect(route(vers: '/products'), isNull);
       expect(route(vers: '/product-detail'), isNull);
-      expect(route(vers: '/add-product'), '/profile');
+
+      // Créer un article aussi : la marchandise arrive quand elle arrive, et
+      // attendre le patron pour l'enregistrer revient à vendre un produit que
+      // l'application ignore. L'écran masque le champ prix d'achat et
+      // l'enregistre à zéro — un zéro se remarque, un prix inventé non.
+      expect(route(vers: '/add-product'), isNull);
+
+      // Modifier un article reste fermé : changer un prix existant n'est pas
+      // la même chose que déclarer un article nouveau.
       expect(route(vers: '/edit-product'), '/profile');
     });
 
