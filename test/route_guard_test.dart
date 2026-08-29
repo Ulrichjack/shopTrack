@@ -100,10 +100,8 @@ void main() {
     // étaient atteignables par un vendeur, par simple lien direct.
     test('les écrans sensibles ne s\'ouvrent plus au vendeur', () {
       const sensibles = [
-        '/products',
         '/add-product',
         '/edit-product',
-        '/product-detail',
         '/manage-units',
         '/cash-out',
         '/closing',
@@ -120,6 +118,21 @@ void main() {
           reason: '$vers expose des chiffres réservés au patron',
         );
       }
+    });
+
+    test('mais consulter le stock reste ouvert au vendeur', () {
+      // Fermé le 28/08, rouvert le lendemain. Sans les quantités, un vendeur
+      // ne sait ni quoi répondre à un client, ni quand prévenir que l'étagère
+      // se vide : il vend à l'aveugle.
+      //
+      // Ce qu'on cache n'est pas le NOMBRE mais l'ARGENT — prix d'achat,
+      // marge, valeur totale du stock. Les écrans s'en chargent eux-mêmes,
+      // et `/add-product` comme `/edit-product` restent fermés puisque c'est
+      // là qu'on saisit le prix d'achat.
+      expect(route(vers: '/products'), isNull);
+      expect(route(vers: '/product-detail'), isNull);
+      expect(route(vers: '/add-product'), '/profile');
+      expect(route(vers: '/edit-product'), '/profile');
     });
 
     test('un écran ajouté demain est fermé sans qu\'on y pense', () {

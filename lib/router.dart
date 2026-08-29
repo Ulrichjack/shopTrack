@@ -93,6 +93,20 @@ const sellerAllowedRoutes = {
   // s'ouvre, les chiffres du patron non.
   '/sales-history',
 
+  // Consulter le stock. Fermé un moment le 28/08, rouvert le lendemain : sans
+  // les quantités, un vendeur ne sait plus quoi répondre à un client ni quand
+  // prévenir que l'étagère se vide. Il vend à l'aveugle.
+  //
+  // Ce qu'il ne faut pas montrer, ce n'est pas le NOMBRE, c'est l'ARGENT : le
+  // prix d'achat, la marge et la valeur totale du stock. Les deux écrans les
+  // masquent déjà eux-mêmes — `product_detail` retire aussi le bénéfice, parce
+  // que prix de vente moins bénéfice redonne le prix d'achat.
+  //
+  // Créer et modifier un produit restent fermés : c'est là qu'on saisit le
+  // prix d'achat.
+  '/products',
+  '/product-detail',
+
   // Signaler une casse. Sans ça, la perte devient un manquant qu'on lui
   // reproche — exactement ce que le rapprochement d'inventaire existe pour
   // éviter. Une déclaration porte son auteur et ne s'efface pas.

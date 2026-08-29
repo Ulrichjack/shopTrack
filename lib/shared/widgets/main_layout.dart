@@ -44,20 +44,17 @@ class MainLayout extends ConsumerWidget {
           icon: Icons.receipt_long_outlined,
           activeIcon: Icons.receipt_long,
         ),
-      // Le stock montre les quantités exactes et les prix d'achat : il est au
-      // patron. La barrière de `router.dart` renvoie déjà le vendeur vers son
-      // profil, mais lui laisser l'onglet reviendrait à lui proposer une porte
-      // fermée — il croirait à une panne.
-      //
-      // La vente n'en dépend pas : elle passe par le sélecteur de produits,
-      // pas par cet écran.
-      if (isBossMode)
-        const _NavDestination(
-          route: '/products',
-          label: 'Stock',
-          icon: Icons.inventory_2_outlined,
-          activeIcon: Icons.inventory_2,
-        ),
+      // Le stock reste ouvert au vendeur : sans les quantités il ne sait ni
+      // quoi répondre à un client, ni quand prévenir que l'étagère se vide.
+      // L'écran masque de lui-même la valeur totale du stock, et la fiche
+      // produit masque le prix d'achat et la marge — c'est l'argent qu'on
+      // cache, pas le nombre.
+      const _NavDestination(
+        route: '/products',
+        label: 'Stock',
+        icon: Icons.inventory_2_outlined,
+        activeIcon: Icons.inventory_2,
+      ),
       // Même raison : un cycle porte le coût de l'arrivage et la marge.
       if (isHierarchical && isBossMode)
         const _NavDestination(

@@ -631,40 +631,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
 
-                  // « Gérer mon stock » ouvre le catalogue avec ses quantités
-                  // exactes et ses prix d'achat : réservé au patron, comme
-                  // l'onglet Stock. La barrière de `router.dart` renverrait
-                  // déjà le vendeur vers son profil — mais lui laisser le
-                  // bouton reviendrait à lui montrer une porte fermée, et il
-                  // croirait à une panne.
-                  if (isBossMode) ...[
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: () => context.push('/products'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(
-                          color: AppColors.primary,
-                          width: 2,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      icon: const Icon(
-                        Icons.inventory_2,
+                  // « Gérer mon stock » reste ouvert au vendeur : le catalogue
+                  // masque déjà la valeur totale, et la fiche produit masque
+                  // le prix d'achat et la marge. Ce qu'on protège, c'est
+                  // l'argent de la boutique, pas le nombre d'articles sur
+                  // l'étagère — sans lui, il vend à l'aveugle.
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () => context.push('/products'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(
                         color: AppColors.primary,
+                        width: 2,
                       ),
-                      label: const Text(
-                        'Gérer mon stock',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                  ],
+                    icon: const Icon(
+                      Icons.inventory_2,
+                      color: AppColors.primary,
+                    ),
+                    label: const Text(
+                      'Gérer mon stock',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 40),
 
