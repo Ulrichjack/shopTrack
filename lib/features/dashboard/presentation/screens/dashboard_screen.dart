@@ -511,44 +511,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: data.isClosed
-                            ? null
-                            : () {
-                                setState(() => _isDialogOpen = true);
-                                _showMorningBalanceDialog(
-                                  currentBalance: data.morningBalance,
-                                  isEdit: true,
-                                );
-                              },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                'Matin : ${CurrencyFormatter.format(data.morningBalance)}',
-                                style: TextStyle(
-                                  color: Colors.grey.shade700,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              if (!data.isClosed) ...[
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.edit,
-                                  size: 14,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ],
-                            ],
+                      // « Solde reporté », et non « Matin » ni « Solde
+                      // d'hier ».
+                      //
+                      // « Matin » décrivait une caisse qui repartait de zéro
+                      // chaque jour et qu'il fallait ressaisir — c'est
+                      // exactement ce que le client refusait. « Hier » serait
+                      // faux dès que la boutique reste deux jours sans
+                      // activité : le solde vient de la dernière fois qu'il a
+                      // bougé, pas de la veille.
+                      //
+                      // Plus de crayon, plus de boîte de saisie : le montant
+                      // n'est plus une déclaration, c'est un report. Quand la
+                      // caisse réelle diffère, on l'explique par un ajustement
+                      // daté et motivé, qui laisse une trace — au lieu de
+                      // réécrire le chiffre en silence.
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Text(
+                          'Solde reporté : '
+                          '${CurrencyFormatter.format(data.morningBalance)}',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
