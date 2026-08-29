@@ -1020,6 +1020,15 @@ champ libre permet de taper 200 là où les boutons s'arrêtaient à 20, et une
 vente supérieure au stock passerait en négatif. Même famille de piège que le
 plafond des pertes en inventaire (cf. `docs/PIEGES_CONNUS.md`).
 
+**Redemandé le 29/08, en pleine simulation d'une semaine de ventes.** Vingt
+crédits téléphoniques, c'est vingt appuis sur « + » avant de pouvoir valider.
+Le développeur a arrêté sa saisie pour signaler le problème — c'est le meilleur
+indicateur possible qu'il faut le traiter : une gêne qui interrompt celui qui
+teste interrompra celui qui vend, tous les jours.
+
+Priorité relevée en conséquence : c'est le geste le plus répété de toute
+l'application.
+
 ### Inventaire — un produit compté seul sort du rang, en silence
 
 Trouvé le 21/08 en testant les arrivages. L'app accepte d'enregistrer le
