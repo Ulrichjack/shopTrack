@@ -95,6 +95,9 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
     final priceController = TextEditingController(
       text: product.sellPrice.toInt().toString(),
     );
+    // La quantité se tape aussi bien qu'elle se martèle : les deux gestes
+    // écrivent ici.
+    final qtyController = TextEditingController(text: '1');
 
     showModalBottomSheet(
       context: context,
@@ -170,12 +173,27 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
+                  // Le nombre se TAPE, il ne se martèle pas.
+                  //
+                  // Vingt crédits téléphoniques, c'était vingt appuis sur
+                  // « + » avant de pouvoir valider — signalé deux fois pendant
+                  // une simulation de vente, et la seconde fois la saisie s'est
+                  // arrêtée là. Ce qui interrompt celui qui teste interrompra
+                  // celui qui vend, tous les jours : c'est le geste le plus
+                  // répété de l'application.
+                  //
+                  // Les boutons restent : pour un ou deux articles ils sont
+                  // plus rapides que le clavier. Les deux gestes écrivent au
+                  // même endroit.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(
                         onPressed: tempQty > 1
-                            ? () => setModalState(() => tempQty--)
+                            ? () => setModalState(() {
+                                tempQty--;
+                                qtyController.text = '$tempQty';
+                              })
                             : null,
                         icon: Icon(
                           Icons.remove_circle_outline,
@@ -183,19 +201,45 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                           color: tempQty > 1 ? AppColors.primary : Colors.grey,
                         ),
                       ),
-                      const SizedBox(width: 20),
-                      Text(
-                        '$tempQty',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 88,
+                        child: TextField(
+                          controller: qtyController,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          // On ne CORRIGE pas pendant la frappe.
+                          //
+                          // Ramener la valeur dans les bornes à chaque touche
+                          // rend impossible de taper « 20 » quand le stock est
+                          // de 15 : le « 2 » passerait, le « 0 » serait refusé
+                          // sur un champ déjà remis à 15. On laisse écrire, on
+                          // signale, et on empêche seulement de valider.
+                          onChanged: (valeur) => setModalState(() {
+                            tempQty = int.tryParse(valeur.trim()) ?? 0;
+                          }),
                         ),
                       ),
-                      const SizedBox(width: 20),
-                      // 👇 4. On bloque le bouton "+" si on atteint le maxAvailable
+                      const SizedBox(width: 12),
                       IconButton(
                         onPressed: tempQty < maxAvailable
-                            ? () => setModalState(() => tempQty++)
+                            ? () => setModalState(() {
+                                tempQty++;
+                                qtyController.text = '$tempQty';
+                              })
                             : null,
                         icon: Icon(
                           Icons.add_circle_outline,
@@ -207,6 +251,20 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                       ),
                     ],
                   ),
+
+                  if (tempQty > maxAvailable)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Il n\'en reste que $maxAvailable.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 10),
 
                   // Le bénéfice se déduit du prix d'achat : l'afficher revient
@@ -232,20 +290,26 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                     const SizedBox(height: 12),
 
                   ElevatedButton(
-                    onPressed: () {
-                      final finalPrice =
-                          double.tryParse(priceController.text) ??
-                          product.sellPrice;
-                      for (int i = 0; i < tempQty; i++) {
-                        final modifiedProduct = product.copyWith(
-                          sellPrice: finalPrice,
-                        );
-                        ref
-                            .read(cartProvider.notifier)
-                            .addProduct(modifiedProduct);
-                      }
-                      Navigator.pop(context);
-                    },
+                    // Désactivé plutôt que corrigé en douce : le commerçant
+                    // voit ce qu'il a tapé, lit pourquoi ça ne passe pas, et
+                    // décide. Une valeur ramenée en silence l'aurait laissé
+                    // valider autre chose que ce qu'il croyait vendre.
+                    onPressed: (tempQty < 1 || tempQty > maxAvailable)
+                        ? null
+                        : () {
+                            final finalPrice =
+                                double.tryParse(priceController.text) ??
+                                product.sellPrice;
+                            for (int i = 0; i < tempQty; i++) {
+                              final modifiedProduct = product.copyWith(
+                                sellPrice: finalPrice,
+                              );
+                              ref
+                                  .read(cartProvider.notifier)
+                                  .addProduct(modifiedProduct);
+                            }
+                            Navigator.pop(context);
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 16),
