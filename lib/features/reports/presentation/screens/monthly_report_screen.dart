@@ -557,6 +557,56 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                             ),
                           ],
                         ),
+
+                        // Le mois inclut des journées dont le tiroir n'a
+                        // jamais été compté.
+                        //
+                        // Leurs ventes sont réelles et comptent dans les
+                        // totaux — l'argent est bien entré. Mais personne n'a
+                        // vérifié la caisse ce jour-là : le chiffre est exact
+                        // sur ce qui est entré, muet sur ce qui a pu sortir
+                        // sans trace. On le dit, plutôt que de laisser croire
+                        // à un mois vérifié.
+                        //
+                        // Même principe que le rapport d'inventaire : un
+                        // chiffre provisoire ne se présente jamais comme
+                        // définitif.
+                        if (report.journeesNonCloturees > 0) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.orange.shade300),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  size: 18,
+                                  color: Colors.orange.shade800,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    report.journeesNonCloturees == 1
+                                        ? 'Comprend 1 journée non clôturée : '
+                                              'sa caisse n\'a pas été comptée.'
+                                        : 'Comprend '
+                                              '${report.journeesNonCloturees} '
+                                              'journées non clôturées : leur '
+                                              'caisse n\'a pas été comptée.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.orange.shade900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 16),
 
                         Container(
