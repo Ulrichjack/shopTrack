@@ -752,3 +752,45 @@ et `type_mouvement`. Toutes portent une liste fermée côté serveur.
 **Ce qui l'a trahi** : l'écran « État de synchronisation ». Sans lui, l'opération
 serait restée invisible — le solde local aurait été juste, le serveur l'aurait
 ignoré, et l'écart ne serait apparu que sur un second téléphone.
+
+---
+
+## 31. L'erreur affichée n'est pas celle qui bloque
+
+**Symptôme** : « Synchronisation incomplète » avec un message qui désigne une
+opération parfaitement valide.
+
+```
+insert or update on table "sale_items" violates foreign key constraint
+"sale_items_product_id_fkey" — Key is not present in table "products"
+```
+
+La vente n'avait rien de faux. Son produit existait bien, en local. Le vrai
+problème était **trois opérations plus tôt** : un mouvement d'ajustement dont
+le type était refusé par la contrainte du serveur (piège n°30).
+
+**L'enchaînement** :
+
+1. l'ajustement est refusé cinq fois, il passe en quarantaine ;
+2. une opération mise de côté **retient celles de même portée** — c'est
+   voulu, sinon une vente partirait sans le produit qu'elle référence ;
+3. la création du 5ᵉ produit attend derrière ;
+4. les ventes qui pointent vers ce produit échouent sur une clé étrangère ;
+5. l'écran affiche **la dernière erreur**, donc la conséquence.
+
+Corriger la contrainte a suffi : l'ajustement est passé, puis le produit, puis
+les huit ventes et six clôtures d'une semaine de saisie hors ligne. Rien
+n'avait été perdu ni écrit à moitié.
+
+**Règle de diagnostic** : devant une file bloquée, lire **la plus ancienne
+opération en quarantaine**, jamais le dernier message affiché. Le dernier
+décrit un symptôme ; le premier porte la cause.
+
+```sql
+-- côté téléphone, la file dans l'ordre où elle partira
+select id, action, substr(payload, 1, 120) from sync_queue_items order by id;
+```
+
+**Ce qui l'a rendu trompeur** : le message parlait de `products` alors que les
+produits allaient parfaitement bien. Chercher du côté des produits aurait pu
+coûter une journée.
