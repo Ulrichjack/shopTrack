@@ -215,6 +215,30 @@ final journeesNonClotureesProvider = FutureProvider<List<DateTime>>((
   return liste;
 });
 
+/// Ce qui restait en caisse au SOIR d'une journée donnée.
+///
+/// L'historique affichait « Solde Matin » — un chiffre qui valait toujours 0 :
+/// il cherchait un mouvement intitulé « Solde Matin » alors qu'ils s'appellent
+/// « Solde initial ». Et depuis la caisse continue, il n'y a plus de solde du
+/// matin du tout : le montant se reporte, on ne le saisit plus.
+///
+/// Ce qu'un commerçant veut savoir en ouvrant une journée passée, c'est ce
+/// qu'il RESTAIT le soir — le chiffre qu'il aurait dû trouver dans son tiroir
+/// en fermant.
+final soldeCaisseAuSoirProvider = FutureProvider.family<double, DateTime>((
+  ref,
+  date,
+) async {
+  final db = ref.watch(localDbProvider);
+  final shopId = await ref.watch(currentShopIdProvider.future);
+  if (shopId == null || shopId.isEmpty) return 0;
+
+  // La borne est le début du lendemain : tout ce qui s'est passé CE jour-là
+  // est donc compté, et rien du suivant.
+  final lendemain = DateTime(date.year, date.month, date.day + 1);
+  return soldeCaisseAvant(db: db, shopId: shopId, boundary: lendemain);
+});
+
 // --- 3. LE PROVIDER PRINCIPAL (100% LOCAL avec cache SharedPreferences) ---
 final dashboardProvider =
     AsyncNotifierProvider<DashboardNotifier, DashboardState>(() {
@@ -416,28 +440,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     List<LocalSale> sales,
     List<LocalCashMovement> movements, {
     double openingBalance = 0,
-  }) {
-    return DailyCashCalculator.calculate(
-      openingBalance: openingBalance,
-      sales: sales.map(
-        (sale) => SaleValue(
-          amount: sale.totalAmount,
-          profit: sale.totalProfit,
-          createdAt: sale.createdAt,
-        ),
-      ),
-      movements: movements.map(
-        (movement) => CashMovementValue(
-          type: movement.type,
-          amount: movement.amount,
-          createdAt: movement.createdAt,
-          // Décide si la sortie ampute le bénéfice ou déplace seulement
-          // l'argent. Omise, un versement à la banque redevient une dépense.
-          category: movement.category,
-        ),
-      ),
-    );
-  }
+  }) => calculerTotauxCaisse(sales, movements, openingBalance: openingBalance);
 
   /// Solde théorique à l'instant [boundary], sans dépendre d'une clôture
   /// quotidienne. La dernière clôture physique antérieure est un point de
@@ -446,60 +449,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     required AppDatabase db,
     required String shopId,
     required DateTime boundary,
-  }) async {
-    final checkpoint =
-        await (db.select(db.localDailyClosings)
-              ..where(
-                (closing) =>
-                    closing.shopId.equals(shopId) &
-                    closing.isClosed.equals(true) &
-                    closing.closingDate.isSmallerThanValue(boundary),
-              )
-              ..orderBy([
-                (closing) => drift.OrderingTerm(
-                  expression: closing.closingDate,
-                  mode: drift.OrderingMode.desc,
-                ),
-              ])
-              ..limit(1))
-            .getSingleOrNull();
-
-    final checkpointBalance =
-        checkpoint?.physicalCash ?? checkpoint?.calculatedCash ?? 0;
-    final activityStart = checkpoint == null
-        ? null
-        : DateTime(
-            checkpoint.closingDate.year,
-            checkpoint.closingDate.month,
-            checkpoint.closingDate.day,
-          ).add(const Duration(days: 1));
-
-    final salesQuery = db.select(db.localSales)
-      ..where(
-        (sale) =>
-            sale.shopId.equals(shopId) &
-            sale.createdAt.isSmallerThanValue(boundary) &
-            (activityStart == null
-                ? const drift.Constant(true)
-                : sale.createdAt.isBiggerOrEqualValue(activityStart)),
-      );
-    final movementsQuery = db.select(db.localCashMovements)
-      ..where(
-        (movement) =>
-            movement.shopId.equals(shopId) &
-            movement.createdAt.isSmallerThanValue(boundary) &
-            (activityStart == null
-                ? const drift.Constant(true)
-                : movement.createdAt.isBiggerOrEqualValue(activityStart)),
-      );
-
-    final totals = _calculateTotals(
-      await salesQuery.get(),
-      await movementsQuery.get(),
-      openingBalance: checkpointBalance,
-    );
-    return totals.calculatedCash;
-  }
+  }) => soldeCaisseAvant(db: db, shopId: shopId, boundary: boundary);
 
   // --- ACTIONS DU DASHBOARD ---
 
@@ -891,4 +841,104 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       state = AsyncValue.error(e, StackTrace.current);
     }
   }
+}
+
+/// Ce qu'il y avait en caisse juste avant [boundary].
+///
+/// Part de la dernière clôture RÉELLEMENT comptée, puis rejoue tout ce qui
+/// s'est passé depuis. C'est ce qui permet à la caisse de traverser des
+/// journées non clôturées sans rien perdre : le solde du 28 contenait bien les
+/// ventes des 26 et 27, jamais comptés.
+///
+/// Sortie de la classe pour que l'historique des ventes puisse s'en servir
+/// aussi, au lieu d'en recopier une seconde version qui divergerait.
+Future<double> soldeCaisseAvant({
+  required AppDatabase db,
+  required String shopId,
+  required DateTime boundary,
+}) async {
+  final checkpoint =
+      await (db.select(db.localDailyClosings)
+            ..where(
+              (closing) =>
+                  closing.shopId.equals(shopId) &
+                  closing.isClosed.equals(true) &
+                  closing.closingDate.isSmallerThanValue(boundary),
+            )
+            ..orderBy([
+              (closing) => drift.OrderingTerm(
+                expression: closing.closingDate,
+                mode: drift.OrderingMode.desc,
+              ),
+            ])
+            ..limit(1))
+          .getSingleOrNull();
+
+  final checkpointBalance =
+      checkpoint?.physicalCash ?? checkpoint?.calculatedCash ?? 0;
+  final activityStart = checkpoint == null
+      ? null
+      : DateTime(
+          checkpoint.closingDate.year,
+          checkpoint.closingDate.month,
+          checkpoint.closingDate.day,
+        ).add(const Duration(days: 1));
+
+  final salesQuery = db.select(db.localSales)
+    ..where(
+      (sale) =>
+          sale.shopId.equals(shopId) &
+          sale.createdAt.isSmallerThanValue(boundary) &
+          (activityStart == null
+              ? const drift.Constant(true)
+              : sale.createdAt.isBiggerOrEqualValue(activityStart)),
+    );
+  final movementsQuery = db.select(db.localCashMovements)
+    ..where(
+      (movement) =>
+          movement.shopId.equals(shopId) &
+          movement.createdAt.isSmallerThanValue(boundary) &
+          (activityStart == null
+              ? const drift.Constant(true)
+              : movement.createdAt.isBiggerOrEqualValue(activityStart)),
+    );
+
+  final totals = calculerTotauxCaisse(
+    await salesQuery.get(),
+    await movementsQuery.get(),
+    openingBalance: checkpointBalance,
+  );
+  return totals.calculatedCash;
+}
+
+/// Traduit les lignes Drift en valeurs du calculateur de caisse.
+///
+/// Hors de la classe pour que l'historique des ventes s'en serve aussi : deux
+/// copies du même passage auraient fini par diverger, et c'est justement ce
+/// passage qui décide si une sortie ampute le bénéfice.
+DailyCashTotals calculerTotauxCaisse(
+  List<LocalSale> sales,
+  List<LocalCashMovement> movements, {
+  double openingBalance = 0,
+}) {
+  return DailyCashCalculator.calculate(
+    openingBalance: openingBalance,
+    sales: sales.map(
+      (sale) => SaleValue(
+        amount: sale.totalAmount,
+        profit: sale.totalProfit,
+        createdAt: sale.createdAt,
+      ),
+    ),
+    movements: movements.map(
+      (movement) => CashMovementValue(
+        type: movement.type,
+        amount: movement.amount,
+        createdAt: movement.createdAt,
+        // Décide si la sortie ampute le bénéfice ou déplace seulement
+        // l'argent. Omise, un versement à la banque redevient une dépense.
+        category: movement.category,
+      ),
+    ),
+  );
 }

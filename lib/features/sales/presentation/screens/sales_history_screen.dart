@@ -428,20 +428,27 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
               data: (transactions) {
                 if (transactions.isEmpty) return const SizedBox.shrink();
 
-                double soldeMatin = 0;
+                // Ce qui RESTAIT le soir, pas ce qu'il y avait le matin.
+                //
+                // L'ancien « Solde Matin » valait toujours 0 : il cherchait un
+                // mouvement intitulé « Solde Matin » alors qu'ils s'appellent
+                // « Solde initial ». Et depuis la caisse continue, il n'y a
+                // plus de solde du matin à saisir — le montant se reporte.
+                //
+                // Ce qu'on veut savoir en ouvrant une journée passée, c'est le
+                // chiffre qu'on aurait dû trouver dans le tiroir en fermant.
+                final soldeSoir =
+                    ref.watch(soldeCaisseAuSoirProvider(_selectedDate)).value ??
+                    0;
+
                 double totalVentes = 0;
                 double totalSorties = 0;
-                bool soldeMatinTrouve =
-                    false; // 👈 AJOUT : Pour ne prendre que le premier
 
                 for (var t in transactions) {
-                  if (t.title == 'Solde Matin') {
-                    // 👈 CORRECTION : On prend le premier (le plus récent) et on ignore les autres
-                    if (!soldeMatinTrouve) {
-                      soldeMatin = t.amount;
-                      soldeMatinTrouve = true;
-                    }
-                  } else if (t.isIncome) {
+                  // Le solde initial est un repère, pas une entrée d'argent :
+                  // le compter en recette gonflerait la journée.
+                  if (t.title == 'Solde initial') continue;
+                  if (t.isIncome) {
                     totalVentes += t.amount;
                   } else {
                     totalSorties += t.amount;
@@ -460,11 +467,11 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                       Column(
                         children: [
                           const Text(
-                            'Solde Matin',
+                            'Reste en caisse',
                             style: TextStyle(color: Colors.grey, fontSize: 12),
                           ),
                           Text(
-                            CurrencyFormatter.format(soldeMatin),
+                            CurrencyFormatter.format(soldeSoir),
                             style: const TextStyle(
                               color: Colors.black87,
                               fontWeight: FontWeight.bold,
