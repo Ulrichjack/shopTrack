@@ -361,6 +361,9 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
           type: movement.type,
           amount: movement.amount,
           createdAt: movement.createdAt,
+          // Décide si la sortie ampute le bénéfice ou déplace seulement
+          // l'argent. Omise, un versement à la banque redevient une dépense.
+          category: movement.category,
         ),
       ),
     );

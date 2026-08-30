@@ -70,12 +70,27 @@ class _CashScreenState extends ConsumerState<CashScreen> {
   String _selectedCategory = 'Repas';
   bool _isLoading = false;
 
+  /// Les cinq premières sont de vraies **dépenses** : elles sortent de la
+  /// caisse et du bénéfice.
+  ///
+  /// Les deux dernières ne sont que des **déplacements** — l'argent existe
+  /// toujours, il a changé de place. Elles vident le tiroir sans rien coûter,
+  /// et `categoriesSansImpactSurLeBenefice` les exclut du résultat. Sans
+  /// elles, un commerçant qui met sa recette à la banque chaque soir affichait
+  /// un bénéfice négatif tous les jours.
+  ///
+  /// ⚠️ Les libellés sont enregistrés tels quels et comparés tels quels dans
+  /// `daily_cash_calculator.dart`. En renommer un ici sans le faire là-bas
+  /// referait un déplacement en dépense, en silence — d'où le test qui fige
+  /// les deux listes ensemble.
   final List<String> _categories = [
     'Repas',
     'Transport',
     'Fournisseur',
     'Personnel',
     'Autre',
+    'Versement banque',
+    'Retrait patron',
   ];
 
   @override

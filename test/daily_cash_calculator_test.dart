@@ -128,5 +128,60 @@ void main() {
         expect(totals.netProfit, -500);
       },
     );
+    test(
+      'un versement à la banque vide la caisse sans amputer le bénéfice',
+      () {
+        // Sortir de l'argent n'est pas le dépenser : verser sa recette à la
+        // banque ou se payer soi-même déplace l'argent, ne le consomme pas.
+        // Retranché du bénéfice, un commerçant qui met sa caisse en sécurité
+        // chaque soir affichait un résultat négatif — vu le 29/08/2026 :
+        // 4 000 F de marge, 20 000 F versés, « bénéfice −16 000 F ».
+        final totals = DailyCashCalculator.calculate(
+          openingBalance: 30000,
+          sales: [
+            SaleValue(
+              amount: 25000,
+              profit: 4000,
+              createdAt: DateTime(2026, 8, 24, 10),
+            ),
+          ],
+          movements: [
+            CashMovementValue(
+              type: 'withdrawal',
+              amount: 20000,
+              category: 'Versement banque',
+              createdAt: DateTime(2026, 8, 24, 18),
+            ),
+            CashMovementValue(
+              type: 'withdrawal',
+              amount: 1500,
+              category: 'Transport',
+              createdAt: DateTime(2026, 8, 24, 12),
+            ),
+          ],
+        );
+
+        // La caisse perd TOUT ce qui sort : 30 000 + 25 000 − 21 500.
+        expect(totals.calculatedCash, 33500);
+        expect(totals.totalWithdrawals, 21500);
+
+        // Le bénéfice ne perd que la vraie dépense : 4 000 − 1 500.
+        expect(
+          totals.netProfit,
+          2500,
+          reason: 'le versement bancaire ne coûte rien, il déplace',
+        );
+      },
+    );
+
+    test('les catégories sans impact sont les mêmes des deux côtés', () {
+      // Ce test existe pour un renommage : changer « Versement banque » dans
+      // l'écran de saisie sans le changer ici referait des déplacements de
+      // simples dépenses, sans qu'aucun test n'échoue.
+      expect(categoriesSansImpactSurLeBenefice, {
+        'Versement banque',
+        'Retrait patron',
+      });
+    });
   });
 }
