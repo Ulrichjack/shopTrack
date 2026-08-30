@@ -500,6 +500,80 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ),
 
+                  // Le rappel des journées non comptées, SUR L'ACCUEIL.
+                  //
+                  // Il n'existait que dans l'historique des ventes — donc
+                  // seulement pour qui pensait déjà à aller voir. Le
+                  // commerçant, lui, arrive ici le matin : c'est le seul
+                  // endroit où le rappel a une chance d'être lu.
+                  //
+                  // Il n'empêche rien. La caisse continue a rendu la clôture
+                  // facultative, et c'est ce que le client demandait : on
+                  // signale, on ne bloque pas l'ouverture de la boutique.
+                  ...(() {
+                    final jours =
+                        ref.watch(journeesNonClotureesProvider).value ??
+                        const <DateTime>[];
+                    if (jours.isEmpty) return const <Widget>[];
+                    final format = DateFormat('dd/MM');
+                    return <Widget>[
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade300),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.history_toggle_off,
+                              color: Colors.orange.shade800,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    jours.length == 1
+                                        ? 'Caisse non comptée le '
+                                              '${format.format(jours.first)}'
+                                        : '${jours.length} journées sans '
+                                              'comptage de caisse',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange.shade900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    jours.length == 1
+                                        ? 'Tu as vendu ce jour-là sans '
+                                              'clôturer. Ton argent est bien '
+                                              'reporté — seul le comptage '
+                                              'manque.'
+                                        : '${jours.map(format.format).join(' · ')}'
+                                              ' — ton argent est bien reporté, '
+                                              'seul le comptage manque.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      height: 1.35,
+                                      color: Colors.orange.shade900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ];
+                  })(),
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

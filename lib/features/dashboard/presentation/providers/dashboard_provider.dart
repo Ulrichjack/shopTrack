@@ -145,6 +145,76 @@ final pendingClosingProvider = FutureProvider.family<PendingClosing?, DateTime>(
   },
 );
 
+/// Les journées passées où l'on a vendu sans jamais compter la caisse.
+///
+/// `pendingClosingProvider` ne répond que sur UNE date : il servait au bandeau
+/// de l'historique, où le commerçant navigue jour par jour. L'accueil, lui, ne
+/// sait pas quelle date regarder — et c'est justement là qu'il arrive le
+/// matin.
+///
+/// La clôture reste **facultative** : le client a demandé une caisse continue,
+/// pas une caisse qui exige un rituel quotidien. On rappelle, on n'empêche
+/// rien — et sûrement pas d'ouvrir la boutique.
+///
+/// Trente jours en arrière suffisent : au-delà, un rappel n'aide plus, il
+/// accuse.
+final journeesNonClotureesProvider = FutureProvider<List<DateTime>>((
+  ref,
+) async {
+  final db = ref.watch(localDbProvider);
+  final shopId = await ref.watch(currentShopIdProvider.future);
+  if (shopId == null || shopId.isEmpty) return const [];
+
+  final maintenant = DateTime.now();
+  final aujourdhui = DateTime(
+    maintenant.year,
+    maintenant.month,
+    maintenant.day,
+  );
+  final debut = aujourdhui.subtract(const Duration(days: 30));
+
+  final ventes =
+      await (db.select(db.localSales)..where(
+            (t) =>
+                t.shopId.equals(shopId) &
+                t.createdAt.isBetweenValues(debut, aujourdhui),
+          ))
+          .get();
+  final clotures =
+      await (db.select(db.localDailyClosings)..where(
+            (t) =>
+                t.shopId.equals(shopId) &
+                t.closingDate.isBetweenValues(debut, aujourdhui),
+          ))
+          .get();
+
+  final jourClos = clotures
+      .map(
+        (c) => DateTime(
+          c.closingDate.year,
+          c.closingDate.month,
+          c.closingDate.day,
+        ),
+      )
+      .toSet();
+
+  final manquants = <DateTime>{};
+  for (final vente in ventes) {
+    final jour = DateTime(
+      vente.createdAt.year,
+      vente.createdAt.month,
+      vente.createdAt.day,
+    );
+    // Le jour en cours n'est pas en retard : il n'est pas fini.
+    if (!jour.isBefore(aujourdhui)) continue;
+    if (jourClos.contains(jour)) continue;
+    manquants.add(jour);
+  }
+
+  final liste = manquants.toList()..sort();
+  return liste;
+});
+
 // --- 3. LE PROVIDER PRINCIPAL (100% LOCAL avec cache SharedPreferences) ---
 final dashboardProvider =
     AsyncNotifierProvider<DashboardNotifier, DashboardState>(() {
