@@ -38,6 +38,7 @@ supabase/migrations/202608210002_mouvement_stock_supprimer_ancienne_signature.sq
 supabase/migrations/202608240001_abonnement_boutique.sql
 supabase/migrations/202608270001_owner_seller_rls.sql
 supabase/migrations/202608270002_commandes_acompte.sql
+supabase/migrations/202608300001_mouvements_ajustement.sql
 ```
 
 ### Fonctions serveur

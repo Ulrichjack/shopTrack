@@ -709,3 +709,46 @@ valide jusqu'à son expiration. Seul l'avance pose problème.
 clair par `[SYNC]`, alors que l'écran ne montre qu'un cercle qui tourne. Un
 écran qui tourne sans fin après un test de dates : chercher PGRST303 avant
 toute chose.
+
+---
+
+## 30. Un type ajouté côté Dart que le serveur ne connaît pas
+
+**Symptôme** : bandeau rouge « Synchronisation incomplète — 1 opération refusée
+par le serveur », avec un message technique illisible pour un commerçant :
+
+```
+new row for relation "cash_movements" violates check constraint
+"cash_movements_type_check", code: 23514
+```
+
+**Cause** : la caisse continue enregistre un `adjustment_in` ou
+`adjustment_out` chaque fois que le montant réellement compté diffère du
+calcul. Le code Dart les produisait, la contrainte `CHECK` de la table ne
+connaissait que `morning_balance`, `withdrawal` et `incoming`. Chaque
+ajustement partait, se faisait refuser cinq fois, puis était mis de côté.
+
+**Ce qui rend le cas instructif** : tout a fonctionné comme prévu. La file a
+retenu l'opération, le compteur de refus l'a mise en quarantaine, le bandeau
+l'a signalée, rien n'a été perdu ni écrit de travers. Le seul défaut est que le
+commerçant voit une erreur qu'il ne peut ni comprendre ni résoudre.
+
+**Règle** : un type, un statut ou une catégorie ajoutés côté Dart **n'existent
+pas** tant que la contrainte du serveur ne les connaît pas. Les deux
+vocabulaires bougent dans la même livraison.
+
+Le contrôle avant de livrer un nouveau type :
+
+```sql
+select conname, pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid = 'public.<table>'::regclass and contype = 'c';
+```
+
+**Familles concernées** : `cash_movements.type`, `inventory_losses.reason`,
+`dossiers_commandes.statut` et `categorie`, `paiements_commandes.mode_paiement`
+et `type_mouvement`. Toutes portent une liste fermée côté serveur.
+
+**Ce qui l'a trahi** : l'écran « État de synchronisation ». Sans lui, l'opération
+serait restée invisible — le solde local aurait été juste, le serveur l'aurait
+ignoré, et l'écart ne serait apparu que sur un second téléphone.
