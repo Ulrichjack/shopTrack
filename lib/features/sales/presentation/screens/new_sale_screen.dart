@@ -99,6 +99,21 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
     // écrivent ici.
     final qtyController = TextEditingController(text: '1');
 
+    // Le mode est lu ICI, une seule fois, et jamais dans la feuille.
+    //
+    // Une feuille modale est une ROUTE : elle vit dans un autre morceau de
+    // l'arbre et survit au widget qui l'ouvre. Un `ref.watch` posé dedans
+    // enregistre une dépendance qui ne se démonte pas proprement à la
+    // fermeture — Flutter lève alors « '_dependents.isEmpty': is not true »
+    // et l'écran devient rouge. Vu le 30/08/2026, en ajoutant l'affichage du
+    // bénéfice et de l'étiquette de stock.
+    //
+    // Le mode Patron ne change pas pendant qu'on choisit une quantité : une
+    // valeur capturée suffit, et c'est le même geste que
+    // `ProviderScope.containerOf(context, listen: false)` employé ailleurs
+    // pour survivre à une boîte de dialogue.
+    final estPatron = ref.read(appModeProvider).value ?? false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -140,8 +155,7 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                   // `value ?? (false || drapeau)` et le drapeau ne sert plus à
                   // rien dès que `value` a une valeur.
                   Text(
-                    ((ref.watch(appModeProvider).value ?? false) ||
-                            stockChiffreVisibleParLeVendeur)
+                    (estPatron || stockChiffreVisibleParLeVendeur)
                         ? 'Disponible pour ajout : $maxAvailable'
                         : 'En stock',
                     style: TextStyle(color: Colors.grey.shade600),
@@ -274,7 +288,7 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                   //
                   // Le calcul, lui, reste : la ligne de vente doit porter son
                   // bénéfice figé pour que le bilan du patron soit juste.
-                  if (ref.watch(appModeProvider).value ?? false) ...[
+                  if (estPatron) ...[
                     Center(
                       child: Text(
                         'Bénéfice estimé : '
