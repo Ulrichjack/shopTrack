@@ -530,17 +530,33 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Détail produit'),
+        // Modifier, supprimer, archiver : trois décisions de catalogue, toutes
+        // au patron.
+        //
+        // Le vendeur pouvait archiver sans pouvoir réactiver : l'icône
+        // Supprimer n'était pas réservée, et devant un produit qui a une
+        // histoire elle propose l'archivage — tandis que la liste des
+        // archivés, elle, était bien derrière le mode Patron. Un produit
+        // rangé par erreur devenait donc irrécupérable pour celui qui l'avait
+        // rangé.
+        //
+        // La règle qui départage les gestes du vendeur : il peut faire ce qui
+        // NE PEUT PAS ATTENDRE. Créer un article, encaisser, sortir de
+        // l'argent, clôturer — oui, la marchandise et le tiroir n'attendent
+        // pas. Ranger un produit qu'on ne vend plus attend très bien.
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () =>
-                context.push('/edit-product', extra: currentProduct),
-          ),
-          IconButton(
-            tooltip: 'Supprimer',
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _supprimer(context, ref, currentProduct),
-          ),
+          if (estPatron) ...[
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () =>
+                  context.push('/edit-product', extra: currentProduct),
+            ),
+            IconButton(
+              tooltip: 'Supprimer',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _supprimer(context, ref, currentProduct),
+            ),
+          ],
         ],
       ),
       body: SingleChildScrollView(

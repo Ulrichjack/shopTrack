@@ -124,6 +124,20 @@ const sellerAllowedRoutes = {
   '/declare-loss',
   '/loss-entry',
 
+  // Enregistrer une sortie de caisse, et clôturer la journée.
+  //
+  // Ouverts le 31/08, après avoir constaté que fermer trop large revient à
+  // empêcher de travailler. S'il paie le transport avec l'argent du tiroir
+  // sans pouvoir l'enregistrer, la caisse ne tombe plus juste le soir — et le
+  // manquant LUI est attribué. Et c'est lui qui compte le tiroir en fermant :
+  // la patronne n'est pas là.
+  //
+  // Il CONSTATE, il ne consulte pas : `/bilan` et `/inventory-report` restent
+  // fermés. Le serveur borne en plus la modification d'une clôture au jour
+  // même, pour qu'un écart déjà constaté ne puisse pas être réécrit.
+  '/cash-out',
+  '/closing',
+
   // Noter la recette du jour, en mode inventaire. Le hub lui-même n'ouvre
   // rien de sensible : compter et lire le rapport sont fermés plus bas.
   '/inventory',

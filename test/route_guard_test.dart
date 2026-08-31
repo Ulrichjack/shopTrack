@@ -102,8 +102,6 @@ void main() {
       const sensibles = [
         '/edit-product',
         '/manage-units',
-        '/cash-out',
-        '/closing',
         '/cycles',
         '/create-cycle',
         '/cycle-report',
@@ -138,6 +136,20 @@ void main() {
       // Modifier un article reste fermé : changer un prix existant n'est pas
       // la même chose que déclarer un article nouveau.
       expect(route(vers: '/edit-product'), '/profile');
+    });
+
+    test('et il peut tenir la caisse de sa journée', () {
+      // Ouverts le 31/08. S'il paie le transport avec l'argent du tiroir sans
+      // pouvoir l'enregistrer, la caisse ne tombe plus juste le soir — et le
+      // manquant LUI est attribué. Et c'est lui qui compte le tiroir en
+      // fermant : la patronne n'est pas là.
+      expect(route(vers: '/cash-out'), isNull);
+      expect(route(vers: '/closing'), isNull);
+
+      // Mais il CONSTATE, il ne consulte pas : le résultat de la boutique
+      // reste au patron.
+      expect(route(vers: '/bilan'), '/profile');
+      expect(route(vers: '/inventory-report'), '/profile');
     });
 
     test('un écran ajouté demain est fermé sans qu\'on y pense', () {

@@ -583,6 +583,9 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
       await (db.update(db.localProducts)
             ..where((row) => row.id.equals(productId)))
           .write(LocalProductsCompanion(archivedAt: drift.Value(moment)));
+      // Réservé au patron, donc un `UPDATE_PRODUCT` ordinaire suffit : ranger
+      // un produit est une décision de catalogue, pas un geste urgent. Le
+      // vendeur n'en a pas le bouton — voir `product_detail_screen`.
       await db.addToQueue(
         'UPDATE_PRODUCT',
         jsonEncode({

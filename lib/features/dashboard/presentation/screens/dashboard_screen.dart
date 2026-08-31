@@ -632,17 +632,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // « Sorties » ouvre `/cash-out`, désormais fermé au vendeur :
-                  // la lui laisser reviendrait à l'envoyer sur une porte qui
-                  // le renvoie à son profil, et il croirait à une panne. Le
-                  // montant des retraits est de toute façon une information de
-                  // patron — c'est l'argent qu'il a pris dans sa caisse.
+                  // « Sorties » revient au vendeur : il peut de nouveau
+                  // enregistrer une dépense payée avec l'argent du tiroir, et
+                  // sans ça sa caisse ne tombait plus juste le soir — le
+                  // manquant lui étant alors attribué.
                   //
-                  // Les deux cartes sont réservées, donc la ligne entière
-                  // disparaît plutôt que de laisser un vide.
-                  if (isBossMode)
-                    Row(
-                      children: [
+                  // « Bénéfice Net » reste au patron : c'est ce que gagne la
+                  // boutique, et rien dans le métier du vendeur n'en dépend.
+                  Row(
+                    children: [
+                      if (isBossMode) ...[
                         Expanded(
                           child: _buildStatCard(
                             'Bénéfice Net',
@@ -652,21 +651,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: data.isClosed
-                                ? null
-                                : () => context.push('/cash-out'),
-                            child: _buildStatCard(
-                              'Sorties',
-                              CurrencyFormatter.format(data.totalWithdrawals),
-                              Icons.money_off,
-                              Colors.red.shade400,
-                            ),
+                      ],
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: data.isClosed
+                              ? null
+                              : () => context.push('/cash-out'),
+                          child: _buildStatCard(
+                            'Sorties',
+                            CurrencyFormatter.format(data.totalWithdrawals),
+                            Icons.money_off,
+                            Colors.red.shade400,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
 
                   const SizedBox(height: 40),
 

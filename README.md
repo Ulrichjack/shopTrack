@@ -39,6 +39,8 @@ supabase/migrations/202608240001_abonnement_boutique.sql
 supabase/migrations/202608270001_owner_seller_rls.sql
 supabase/migrations/202608270002_commandes_acompte.sql
 supabase/migrations/202608300001_mouvements_ajustement.sql
+supabase/migrations/202608310001_vendeur_gestes_du_metier.sql
+supabase/migrations/202608310002_retirer_archivage_vendeur.sql
 ```
 
 ### Fonctions serveur
