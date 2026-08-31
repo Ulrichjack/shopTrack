@@ -398,6 +398,15 @@ class SyncService {
         return {'cycle:${payload['id']}'};
       case 'ADD_CASH_MOVEMENT':
         return {'caisse:${payload['id']}'};
+      // Un paiement dépend de son dossier, qui dépend de son client : la même
+      // portée pour les trois, sinon un paiement partirait avant le dossier
+      // qu'il référence et se ferait refuser sur une clé étrangère.
+      case 'ADD_CLIENT':
+        return {'client:${payload['id']}'};
+      case 'ADD_DOSSIER_COMMANDE':
+        return {'client:${payload['client_id']}', 'dossier:${payload['id']}'};
+      case 'ADD_PAIEMENT_COMMANDE':
+        return {'dossier:${payload['dossier_id']}'};
       case 'ADD_CLOSING':
         return {'cloture:${payload['shop_id']}:${payload['closing_date']}'};
       case 'SET_SHOP_SETTINGS':
@@ -434,6 +443,12 @@ class SyncService {
         await _syncSale(payload);
       case 'ADD_CASH_MOVEMENT':
         await supabase.from('cash_movements').upsert(payload);
+      case 'ADD_CLIENT':
+        await supabase.from('clients').upsert(payload);
+      case 'ADD_DOSSIER_COMMANDE':
+        await supabase.from('dossiers_commandes').upsert(payload);
+      case 'ADD_PAIEMENT_COMMANDE':
+        await supabase.from('paiements_commandes').upsert(payload);
       case 'ADD_PRODUCT':
         await supabase.from('products').upsert(payload);
       case 'UPDATE_PRODUCT':
