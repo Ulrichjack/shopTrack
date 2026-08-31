@@ -91,33 +91,36 @@ void main() {
       expect(totals.netProfit, closeTo(4400, 0.001));
     });
 
-    test('le gain de référence du client ne fausse jamais le bénéfice réel', () {
-      // Le client annonce un "gain théorique" de 6 000 F par carton, mais il
-      // a dû brader : le rapport doit montrer la réalité, pas la théorie.
-      final vente = UnitSaleConversion.convert(
-        quantityInUnit: 12,
-        pricePerUnit: 1500,
-        ratioToBase: 30,
-      );
+    test(
+      'le gain de référence du client ne fausse jamais le bénéfice réel',
+      () {
+        // Le client annonce un "gain théorique" de 6 000 F par carton, mais il
+        // a dû brader : le rapport doit montrer la réalité, pas la théorie.
+        final vente = UnitSaleConversion.convert(
+          quantityInUnit: 12,
+          pricePerUnit: 1500,
+          ratioToBase: 30,
+        );
 
-      final totals = CycleResultCalculator.calculate(
-        quantityReceived: 360,
-        purchaseCost: 18000,
-        sales: [
-          CycleSaleValue(
-            quantityInBase: vente.quantityInBase,
-            unitSellPrice: vente.pricePerBaseUnit,
-          ),
-        ],
-        losses: const [],
-      );
+        final totals = CycleResultCalculator.calculate(
+          quantityReceived: 360,
+          purchaseCost: 18000,
+          sales: [
+            CycleSaleValue(
+              quantityInBase: vente.quantityInBase,
+              unitSellPrice: vente.pricePerBaseUnit,
+            ),
+          ],
+          losses: const [],
+        );
 
-      // 360 œufs vendus 18 000 F au total, achetés 18 000 F : marge nulle,
-      // très loin des 6 000 F "théoriques".
-      expect(totals.revenue, closeTo(18000, 0.001));
-      expect(totals.netProfit, closeTo(0, 0.001));
-      expect(totals.remainingStock, 0);
-    });
+        // 360 œufs vendus 18 000 F au total, achetés 18 000 F : marge nulle,
+        // très loin des 6 000 F "théoriques".
+        expect(totals.revenue, closeTo(18000, 0.001));
+        expect(totals.netProfit, closeTo(0, 0.001));
+        expect(totals.remainingStock, 0);
+      },
+    );
 
     test('une perte totale donne une perte sèche égale au coût d’achat', () {
       final totals = CycleResultCalculator.calculate(
@@ -134,24 +137,25 @@ void main() {
   });
 
   group('CycleResultCalculator', () {
-    test('calcule le bénéfice net à partir du coût réel, pas du prix théorique', () {
-      // Cycle de 360 œufs (1 carton) acheté 18000 FCFA, vendu au détail.
-      final totals = CycleResultCalculator.calculate(
-        quantityReceived: 360,
-        purchaseCost: 18000,
-        sales: const [
-          CycleSaleValue(quantityInBase: 300, unitSellPrice: 75),
-        ],
-        losses: const [CycleLossValue(quantity: 10)],
-      );
+    test(
+      'calcule le bénéfice net à partir du coût réel, pas du prix théorique',
+      () {
+        // Cycle de 360 œufs (1 carton) acheté 18000 FCFA, vendu au détail.
+        final totals = CycleResultCalculator.calculate(
+          quantityReceived: 360,
+          purchaseCost: 18000,
+          sales: const [CycleSaleValue(quantityInBase: 300, unitSellPrice: 75)],
+          losses: const [CycleLossValue(quantity: 10)],
+        );
 
-      expect(totals.unitCost, 50);
-      expect(totals.revenue, 22500);
-      expect(totals.soldStockCost, 15000);
-      expect(totals.lossValue, 500);
-      expect(totals.remainingStock, 50);
-      expect(totals.netProfit, 7000);
-    });
+        expect(totals.unitCost, 50);
+        expect(totals.revenue, 22500);
+        expect(totals.soldStockCost, 15000);
+        expect(totals.lossValue, 500);
+        expect(totals.remainingStock, 50);
+        expect(totals.netProfit, 7000);
+      },
+    );
 
     test('ne divise jamais par zéro si rien n’a encore été reçu', () {
       final totals = CycleResultCalculator.calculate(
@@ -187,40 +191,43 @@ void main() {
       expect(totals.netProfit, 150);
     });
 
-    test('rapporte les quantités vendues et perdues, pas seulement l’argent', () {
-      // Ces deux nombres étaient calculés puis jetés : le rapport ne pouvait
-      // afficher que des montants. Un vendeur d'œufs lit d'abord « 3 050
-      // vendus, 50 cassés », et devait jusqu'ici le déduire lui-même du reçu
-      // moins le restant moins les pertes.
-      final totals = CycleResultCalculator.calculate(
-        quantityReceived: 3600,
-        purchaseCost: 288000,
-        sales: const [
-          CycleSaleValue(quantityInBase: 1800, unitSellPrice: 90),
-          CycleSaleValue(quantityInBase: 600, unitSellPrice: 95),
-          CycleSaleValue(quantityInBase: 450, unitSellPrice: 100),
-          CycleSaleValue(quantityInBase: 200, unitSellPrice: 80),
-        ],
-        losses: const [CycleLossValue(quantity: 50)],
-      );
+    test(
+      'rapporte les quantités vendues et perdues, pas seulement l’argent',
+      () {
+        // Ces deux nombres étaient calculés puis jetés : le rapport ne pouvait
+        // afficher que des montants. Un vendeur d'œufs lit d'abord « 3 050
+        // vendus, 50 cassés », et devait jusqu'ici le déduire lui-même du reçu
+        // moins le restant moins les pertes.
+        final totals = CycleResultCalculator.calculate(
+          quantityReceived: 3600,
+          purchaseCost: 288000,
+          sales: const [
+            CycleSaleValue(quantityInBase: 1800, unitSellPrice: 90),
+            CycleSaleValue(quantityInBase: 600, unitSellPrice: 95),
+            CycleSaleValue(quantityInBase: 450, unitSellPrice: 100),
+            CycleSaleValue(quantityInBase: 200, unitSellPrice: 80),
+          ],
+          losses: const [CycleLossValue(quantity: 50)],
+        );
 
-      expect(totals.soldQuantity, 3050);
-      expect(totals.lostQuantity, 50);
+        expect(totals.soldQuantity, 3050);
+        expect(totals.lostQuantity, 50);
 
-      // Les trois nombres doivent rester d'accord entre eux : ce qui reste,
-      // c'est ce qu'on a reçu moins ce qu'on a vendu et perdu. Un écart ici
-      // voudrait dire qu'une des trois lignes du rapport ment.
-      expect(
-        totals.remainingStock,
-        3600 - totals.soldQuantity - totals.lostQuantity,
-      );
+        // Les trois nombres doivent rester d'accord entre eux : ce qui reste,
+        // c'est ce qu'on a reçu moins ce qu'on a vendu et perdu. Un écart ici
+        // voudrait dire qu'une des trois lignes du rapport ment.
+        expect(
+          totals.remainingStock,
+          3600 - totals.soldQuantity - totals.lostQuantity,
+        );
 
-      // Journée réellement jouée sur téléphone le 18/08/2026 : la dernière
-      // ligne, vendue à 80 F soit le coût exact, dégage un profit nul — c'est
-      // ce qui prouve que le coût vient de l'arrivage (288 000 / 3 600) et non
-      // du prix d'achat inscrit sur le produit.
-      expect(totals.unitCost, 80);
-      expect(totals.netProfit, 32000);
-    });
+        // Journée réellement jouée sur téléphone le 18/08/2026 : la dernière
+        // ligne, vendue à 80 F soit le coût exact, dégage un profit nul — c'est
+        // ce qui prouve que le coût vient de l'arrivage (288 000 / 3 600) et non
+        // du prix d'achat inscrit sur le produit.
+        expect(totals.unitCost, 80);
+        expect(totals.netProfit, 32000);
+      },
+    );
   });
 }

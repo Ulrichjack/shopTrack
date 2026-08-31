@@ -15,58 +15,68 @@ void main() {
   tearDown(() => db.close());
 
   test('clearAllData ne laisse aucune table derrière elle', () async {
-    await db.into(db.localProducts).insert(
-      const LocalProduct(
-        id: 'p1',
-        shopId: 'shop-1',
-        name: 'Riz',
-        buyPrice: 100,
-        sellPrice: 150,
-        quantity: 10,
-        minQuantity: 2,
-      ),
-    );
+    await db
+        .into(db.localProducts)
+        .insert(
+          const LocalProduct(
+            id: 'p1',
+            shopId: 'shop-1',
+            name: 'Riz',
+            buyPrice: 100,
+            sellPrice: 150,
+            quantity: 10,
+            minQuantity: 2,
+          ),
+        );
     // Les quatre oubliées de l'ancienne liste, nommément.
-    await db.into(db.localProductPrices).insert(
-      LocalProductPrice(
-        id: 'tarif-1',
-        shopId: 'shop-1',
-        productId: 'p1',
-        buyPrice: 100,
-        sellPrice: 150,
-        effectiveAt: DateTime(2026, 8, 1),
-      ),
-    );
-    await db.into(db.localStockPurchases).insert(
-      LocalStockPurchase(
-        id: 'achat-1',
-        shopId: 'shop-1',
-        productId: 'p1',
-        quantity: 5,
-        unitCost: 100,
-        purchasedAt: DateTime(2026, 8, 2),
-      ),
-    );
-    await db.into(db.localInventoryLosses).insert(
-      LocalInventoryLoss(
-        id: 'perte-1',
-        shopId: 'shop-1',
-        productId: 'p1',
-        quantity: 1,
-        reason: 'casse',
-        occurredAt: DateTime(2026, 8, 3),
-      ),
-    );
-    await db.into(db.localStockTransfers).insert(
-      LocalStockTransfer(
-        id: 'transfert-1',
-        fromShopId: 'shop-1',
-        toShopId: 'shop-2',
-        productId: 'p1',
-        quantity: 3,
-        transferredAt: DateTime(2026, 8, 4),
-      ),
-    );
+    await db
+        .into(db.localProductPrices)
+        .insert(
+          LocalProductPrice(
+            id: 'tarif-1',
+            shopId: 'shop-1',
+            productId: 'p1',
+            buyPrice: 100,
+            sellPrice: 150,
+            effectiveAt: DateTime(2026, 8, 1),
+          ),
+        );
+    await db
+        .into(db.localStockPurchases)
+        .insert(
+          LocalStockPurchase(
+            id: 'achat-1',
+            shopId: 'shop-1',
+            productId: 'p1',
+            quantity: 5,
+            unitCost: 100,
+            purchasedAt: DateTime(2026, 8, 2),
+          ),
+        );
+    await db
+        .into(db.localInventoryLosses)
+        .insert(
+          LocalInventoryLoss(
+            id: 'perte-1',
+            shopId: 'shop-1',
+            productId: 'p1',
+            quantity: 1,
+            reason: 'casse',
+            occurredAt: DateTime(2026, 8, 3),
+          ),
+        );
+    await db
+        .into(db.localStockTransfers)
+        .insert(
+          LocalStockTransfer(
+            id: 'transfert-1',
+            fromShopId: 'shop-1',
+            toShopId: 'shop-2',
+            productId: 'p1',
+            quantity: 3,
+            transferredAt: DateTime(2026, 8, 4),
+          ),
+        );
     await db.addToQueue('ADD_PRODUCT', '{}');
 
     await db.clearAllData();

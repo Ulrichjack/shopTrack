@@ -100,7 +100,10 @@ class _ClosingScreenState extends ConsumerState<ClosingScreen> {
                   ),
                   child: Column(
                     children: [
-                      _buildRow('Solde matin', dashboardState.morningBalance),
+                      _buildRow(
+                        'Solde au début du jour',
+                        dashboardState.morningBalance,
+                      ),
                       const Divider(),
                       _buildRow('Ventes (+)', dashboardState.totalSales),
                       const Divider(),

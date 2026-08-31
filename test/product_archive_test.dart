@@ -62,16 +62,21 @@ void main() {
     expect(enBase.quantity, 10, reason: 'archiver ne touche pas au stock');
   });
 
-  test('l’archivage part au serveur, sinon l’autre téléphone le vend', () async {
-    await container.read(productProvider.notifier).archiveProduct('product-1');
+  test(
+    'l’archivage part au serveur, sinon l’autre téléphone le vend',
+    () async {
+      await container
+          .read(productProvider.notifier)
+          .archiveProduct('product-1');
 
-    final file = await db.getPendingItems();
-    expect(file.map((item) => item.action), ['UPDATE_PRODUCT']);
+      final file = await db.getPendingItems();
+      expect(file.map((item) => item.action), ['UPDATE_PRODUCT']);
 
-    final charge = jsonDecode(file.single.payload) as Map<String, dynamic>;
-    expect(charge['id'], 'product-1');
-    expect(charge['archived_at'], isNotNull);
-  });
+      final charge = jsonDecode(file.single.payload) as Map<String, dynamic>;
+      expect(charge['id'], 'product-1');
+      expect(charge['archived_at'], isNotNull);
+    },
+  );
 
   test('on peut le ressortir du placard', () async {
     await container.read(productProvider.notifier).archiveProduct('product-1');
@@ -104,34 +109,37 @@ void main() {
     expect(archives.single.estArchive, isTrue);
   });
 
-  test('supprimer un produit qui a une histoire est refusé, pas fait à moitié', () async {
-    await db
-        .into(db.localSaleItems)
-        .insert(
-          const LocalSaleItem(
-            id: 'ligne-1',
-            saleId: 'vente-1',
-            productId: 'product-1',
-            productName: 'Riz',
-            quantity: 2,
-            sellPrice: 150,
-            buyPrice: 100,
-            profit: 100,
-          ),
-        );
+  test(
+    'supprimer un produit qui a une histoire est refusé, pas fait à moitié',
+    () async {
+      await db
+          .into(db.localSaleItems)
+          .insert(
+            const LocalSaleItem(
+              id: 'ligne-1',
+              saleId: 'vente-1',
+              productId: 'product-1',
+              productName: 'Riz',
+              quantity: 2,
+              sellPrice: 150,
+              buyPrice: 100,
+              profit: 100,
+            ),
+          );
 
-    await expectLater(
-      container.read(productProvider.notifier).deleteProduct('product-1'),
-      throwsA(isA<ProduitAvecHistoireException>()),
-    );
+      await expectLater(
+        container.read(productProvider.notifier).deleteProduct('product-1'),
+        throwsA(isA<ProduitAvecHistoireException>()),
+      );
 
-    expect(
-      await db.select(db.localProducts).get(),
-      hasLength(1),
-      reason: 'le refus doit être total : rien de supprimé, rien en file',
-    );
-    expect(await db.getPendingItems(), isEmpty);
-  });
+      expect(
+        await db.select(db.localProducts).get(),
+        hasLength(1),
+        reason: 'le refus doit être total : rien de supprimé, rien en file',
+      );
+      expect(await db.getPendingItems(), isEmpty);
+    },
+  );
 }
 
 LocalProduct _produit() => const LocalProduct(

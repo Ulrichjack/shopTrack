@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -107,9 +108,17 @@ Future<void> prendreEnMainLaSession(
   if (autreCompte || premierCompteDeCetAppareil) {
     try {
       await ref.read(syncServiceProvider).synchronize();
-    } catch (_) {
+    } catch (erreur, pile) {
       // Hors ligne : on entre quand même. La synchro repartira au retour du
       // réseau — bloquer la connexion serait pire.
+      //
+      // Mais on TRACE. Ce `catch` muet a caché un téléchargement qui mourait
+      // au premier mapping : la boucle attrape les erreurs de requête table
+      // par table, pas celles du mapping, et l'échec remontait jusqu'ici pour
+      // y disparaître. Résultat vu le 29/08 : un vendeur se connecte, ses
+      // boutiques s'affichent, et l'application reste vide sans un mot.
+      debugPrint('[AUTH] la synchro d\'ouverture a échoué : $erreur');
+      debugPrint('$pile');
     }
   }
 }

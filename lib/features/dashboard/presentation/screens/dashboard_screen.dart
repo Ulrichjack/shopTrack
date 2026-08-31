@@ -500,6 +500,80 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ),
 
+                  // Le rappel des journées non comptées, SUR L'ACCUEIL.
+                  //
+                  // Il n'existait que dans l'historique des ventes — donc
+                  // seulement pour qui pensait déjà à aller voir. Le
+                  // commerçant, lui, arrive ici le matin : c'est le seul
+                  // endroit où le rappel a une chance d'être lu.
+                  //
+                  // Il n'empêche rien. La caisse continue a rendu la clôture
+                  // facultative, et c'est ce que le client demandait : on
+                  // signale, on ne bloque pas l'ouverture de la boutique.
+                  ...(() {
+                    final jours =
+                        ref.watch(journeesNonClotureesProvider).value ??
+                        const <DateTime>[];
+                    if (jours.isEmpty) return const <Widget>[];
+                    final format = DateFormat('dd/MM');
+                    return <Widget>[
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade300),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.history_toggle_off,
+                              color: Colors.orange.shade800,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    jours.length == 1
+                                        ? 'Caisse non comptée le '
+                                              '${format.format(jours.first)}'
+                                        : '${jours.length} journées sans '
+                                              'comptage de caisse',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange.shade900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    jours.length == 1
+                                        ? 'Tu as vendu ce jour-là sans '
+                                              'clôturer. Ton argent est bien '
+                                              'reporté — seul le comptage '
+                                              'manque.'
+                                        : '${jours.map(format.format).join(' · ')}'
+                                              ' — ton argent est bien reporté, '
+                                              'seul le comptage manque.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      height: 1.35,
+                                      color: Colors.orange.shade900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ];
+                  })(),
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -511,44 +585,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: data.isClosed
-                            ? null
-                            : () {
-                                setState(() => _isDialogOpen = true);
-                                _showMorningBalanceDialog(
-                                  currentBalance: data.morningBalance,
-                                  isEdit: true,
-                                );
-                              },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                'Matin : ${CurrencyFormatter.format(data.morningBalance)}',
-                                style: TextStyle(
-                                  color: Colors.grey.shade700,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              if (!data.isClosed) ...[
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.edit,
-                                  size: 14,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ],
-                            ],
+                      // « Solde reporté », et non « Matin » ni « Solde
+                      // d'hier ».
+                      //
+                      // « Matin » décrivait une caisse qui repartait de zéro
+                      // chaque jour et qu'il fallait ressaisir — c'est
+                      // exactement ce que le client refusait. « Hier » serait
+                      // faux dès que la boutique reste deux jours sans
+                      // activité : le solde vient de la dernière fois qu'il a
+                      // bougé, pas de la veille.
+                      //
+                      // Plus de crayon, plus de boîte de saisie : le montant
+                      // n'est plus une déclaration, c'est un report. Quand la
+                      // caisse réelle diffère, on l'explique par un ajustement
+                      // daté et motivé, qui laisse une trace — au lieu de
+                      // réécrire le chiffre en silence.
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Text(
+                          'Solde reporté : '
+                          '${CurrencyFormatter.format(data.morningBalance)}',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
@@ -565,9 +632,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  Row(
-                    children: [
-                      if (isBossMode)
+                  // « Sorties » ouvre `/cash-out`, désormais fermé au vendeur :
+                  // la lui laisser reviendrait à l'envoyer sur une porte qui
+                  // le renvoie à son profil, et il croirait à une panne. Le
+                  // montant des retraits est de toute façon une information de
+                  // patron — c'est l'argent qu'il a pris dans sa caisse.
+                  //
+                  // Les deux cartes sont réservées, donc la ligne entière
+                  // disparaît plutôt que de laisser un vide.
+                  if (isBossMode)
+                    Row(
+                      children: [
                         Expanded(
                           child: _buildStatCard(
                             'Bénéfice Net',
@@ -576,23 +651,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             AppColors.primaryDark,
                           ),
                         ),
-                      if (isBossMode) const SizedBox(width: 16),
-
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: data.isClosed
-                              ? null
-                              : () => context.push('/cash-out'),
-                          child: _buildStatCard(
-                            'Sorties',
-                            CurrencyFormatter.format(data.totalWithdrawals),
-                            Icons.money_off,
-                            Colors.red.shade400,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: data.isClosed
+                                ? null
+                                : () => context.push('/cash-out'),
+                            child: _buildStatCard(
+                              'Sorties',
+                              CurrencyFormatter.format(data.totalWithdrawals),
+                              Icons.money_off,
+                              Colors.red.shade400,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
 
                   const SizedBox(height: 40),
 
@@ -624,8 +698,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
 
+                  // « Gérer mon stock » reste ouvert au vendeur : le catalogue
+                  // masque déjà la valeur totale, et la fiche produit masque
+                  // le prix d'achat et la marge. Ce qu'on protège, c'est
+                  // l'argent de la boutique, pas le nombre d'articles sur
+                  // l'étagère — sans lui, il vend à l'aveugle.
                   const SizedBox(height: 16),
-
                   OutlinedButton.icon(
                     onPressed: () => context.push('/products'),
                     style: OutlinedButton.styleFrom(

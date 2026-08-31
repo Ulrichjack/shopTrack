@@ -13,35 +13,38 @@ void main() {
 
   tearDown(() async => db.close());
 
-  test('une ligne de vente de cycle conserve cycle_id et quantity_in_base', () async {
-    await db
-        .into(db.localSaleItems)
-        .insert(
-          LocalSaleItem(
-            id: 'item-1',
-            saleId: 'sale-1',
-            productId: 'prod-1',
-            productName: 'oeuf (plateau)',
-            quantity: 60,
-            sellPrice: 66.67,
-            buyPrice: 50,
-            profit: 1000,
-            cycleId: 'cycle-1',
-            unitId: 'unit-1',
-            quantityInBase: 60,
-            unitSellPrice: 66.67,
-          ),
-        );
+  test(
+    'une ligne de vente de cycle conserve cycle_id et quantity_in_base',
+    () async {
+      await db
+          .into(db.localSaleItems)
+          .insert(
+            LocalSaleItem(
+              id: 'item-1',
+              saleId: 'sale-1',
+              productId: 'prod-1',
+              productName: 'oeuf (plateau)',
+              quantity: 60,
+              sellPrice: 66.67,
+              buyPrice: 50,
+              profit: 1000,
+              cycleId: 'cycle-1',
+              unitId: 'unit-1',
+              quantityInBase: 60,
+              unitSellPrice: 66.67,
+            ),
+          );
 
-    final row = await (db.select(
-      db.localSaleItems,
-    )..where((t) => t.id.equals('item-1'))).getSingle();
+      final row = await (db.select(
+        db.localSaleItems,
+      )..where((t) => t.id.equals('item-1'))).getSingle();
 
-    expect(row.cycleId, 'cycle-1');
-    expect(row.unitId, 'unit-1');
-    expect(row.quantityInBase, 60);
-    expect(row.unitSellPrice, 66.67);
-  });
+      expect(row.cycleId, 'cycle-1');
+      expect(row.unitId, 'unit-1');
+      expect(row.quantityInBase, 60);
+      expect(row.unitSellPrice, 66.67);
+    },
+  );
 
   test('une vente simple laisse les colonnes Module A vides', () async {
     await db

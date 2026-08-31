@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/current_shop_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/network_error_widget.dart';
 import '../../../../core/sync/sync_service.dart'; // Pour accéder à localDbProvider
@@ -36,6 +37,21 @@ class TransactionItem {
 final dailyTransactionsProvider =
     FutureProvider.family<List<TransactionItem>, DateTime>((ref, date) async {
       final db = ref.read(localDbProvider);
+
+      // La boutique active, sinon ce journal mélange TOUTES celles que ce
+      // téléphone a visitées.
+      //
+      // Le téléchargement fusionne sans jamais vider : la base locale garde
+      // les données de chaque boutique ouverte sur cet appareil. Les deux
+      // requêtes ci-dessous ne filtraient que par DATE — sur un téléphone qui
+      // gère onze boutiques, le journal du 24 août affichait les ventes et les
+      // sorties des onze, additionnées. Repéré le 30/08/2026.
+      //
+      // C'est la règle du projet, écrite dans CLAUDE.md : toute lecture locale
+      // filtre par `shop_id`. Elle existe précisément parce que l'oubli ne
+      // casse rien de visible — il montre juste des chiffres faux.
+      final shopId = await watchShopId(ref);
+
       final List<TransactionItem> list = [];
 
       // On définit le début et la fin de la journée sélectionnée
@@ -43,9 +59,13 @@ final dailyTransactionsProvider =
       final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
       // 1. Récupérer les VENTES locales de la journée
-      final localSales = await (db.select(
-        db.localSales,
-      )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+      final localSales =
+          await (db.select(db.localSales)..where(
+                (t) =>
+                    t.shopId.equals(shopId) &
+                    t.createdAt.isBetweenValues(startOfDay, endOfDay),
+              ))
+              .get();
 
       for (var sale in localSales) {
         // Récupérer les articles de cette vente spécifique
@@ -72,25 +92,35 @@ final dailyTransactionsProvider =
       }
 
       // 2. Récupérer les SORTIES DE CAISSE locales de la journée
-      final localCashMovements = await (db.select(
-        db.localCashMovements,
-      )..where((t) => t.createdAt.isBetweenValues(startOfDay, endOfDay))).get();
+      final localCashMovements =
+          await (db.select(db.localCashMovements)..where(
+                (t) =>
+                    t.shopId.equals(shopId) &
+                    t.createdAt.isBetweenValues(startOfDay, endOfDay),
+              ))
+              .get();
 
       for (var movement in localCashMovements) {
+        final isIncome = {
+          'morning_balance',
+          'incoming',
+          'adjustment_in',
+        }.contains(movement.type);
         list.add(
           TransactionItem(
             id: movement.id,
-            title: movement.type == 'morning_balance'
-                ? 'Solde Matin' // 👈 On gère le titre
-                : (movement.type == 'withdrawal'
-                      ? 'Sortie : ${movement.category}'
-                      : 'Entrée caisse'),
+            title: switch (movement.type) {
+              'morning_balance' => 'Solde initial',
+              'withdrawal' => 'Sortie : ${movement.category ?? 'Autre'}',
+              'incoming' => 'Entrée caisse',
+              'adjustment_in' => 'Ajustement positif',
+              'adjustment_out' => 'Ajustement négatif',
+              _ => 'Mouvement de caisse',
+            },
             subtitle: movement.note ?? 'Aucun détail',
             amount: movement.amount,
             time: movement.createdAt,
-            isIncome:
-                movement.type ==
-                'morning_balance', // 👈 Le solde matin est une entrée
+            isIncome: isIncome,
             note: movement.note,
           ),
         );
@@ -398,20 +428,27 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
               data: (transactions) {
                 if (transactions.isEmpty) return const SizedBox.shrink();
 
-                double soldeMatin = 0;
+                // Ce qui RESTAIT le soir, pas ce qu'il y avait le matin.
+                //
+                // L'ancien « Solde Matin » valait toujours 0 : il cherchait un
+                // mouvement intitulé « Solde Matin » alors qu'ils s'appellent
+                // « Solde initial ». Et depuis la caisse continue, il n'y a
+                // plus de solde du matin à saisir — le montant se reporte.
+                //
+                // Ce qu'on veut savoir en ouvrant une journée passée, c'est le
+                // chiffre qu'on aurait dû trouver dans le tiroir en fermant.
+                final soldeSoir =
+                    ref.watch(soldeCaisseAuSoirProvider(_selectedDate)).value ??
+                    0;
+
                 double totalVentes = 0;
                 double totalSorties = 0;
-                bool soldeMatinTrouve =
-                    false; // 👈 AJOUT : Pour ne prendre que le premier
 
                 for (var t in transactions) {
-                  if (t.title == 'Solde Matin') {
-                    // 👈 CORRECTION : On prend le premier (le plus récent) et on ignore les autres
-                    if (!soldeMatinTrouve) {
-                      soldeMatin = t.amount;
-                      soldeMatinTrouve = true;
-                    }
-                  } else if (t.isIncome) {
+                  // Le solde initial est un repère, pas une entrée d'argent :
+                  // le compter en recette gonflerait la journée.
+                  if (t.title == 'Solde initial') continue;
+                  if (t.isIncome) {
                     totalVentes += t.amount;
                   } else {
                     totalSorties += t.amount;
@@ -430,11 +467,11 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                       Column(
                         children: [
                           const Text(
-                            'Solde Matin',
+                            'Reste en caisse',
                             style: TextStyle(color: Colors.grey, fontSize: 12),
                           ),
                           Text(
-                            CurrencyFormatter.format(soldeMatin),
+                            CurrencyFormatter.format(soldeSoir),
                             style: const TextStyle(
                               color: Colors.black87,
                               fontWeight: FontWeight.bold,

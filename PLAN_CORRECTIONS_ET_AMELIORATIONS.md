@@ -984,6 +984,12 @@ create policy "shoptrack_shops_owner_update" on shops
   with check (auth.uid() = owner_id);
 ```
 
+> ✅ **Cette politique arrive avec `202608270001_owner_seller_rls.sql`** (la
+> séparation propriétaire/vendeur), qui en avait besoin pour d'autres raisons.
+> Une fois cette migration appliquée, le renommage n'est plus bloqué par la
+> base : il ne reste que l'écran à refaire. Attention à la contrepartie notée
+> dans « Abonnement » — le même UPDATE ouvre aussi les colonnes `abonnement_*`.
+
 Sans elle, aucun code client ne peut fonctionner. Le reste était prêt : la
 méthode `renommer()` (mise à jour distante, rafraîchissement de
 `cached_shop_name`, invalidation de `userShopsProvider`) et sa boîte de
@@ -1013,6 +1019,15 @@ attendu est d'appuyer sur le nombre et de le taper.
 champ libre permet de taper 200 là où les boutons s'arrêtaient à 20, et une
 vente supérieure au stock passerait en négatif. Même famille de piège que le
 plafond des pertes en inventaire (cf. `docs/PIEGES_CONNUS.md`).
+
+**Redemandé le 29/08, en pleine simulation d'une semaine de ventes.** Vingt
+crédits téléphoniques, c'est vingt appuis sur « + » avant de pouvoir valider.
+Le développeur a arrêté sa saisie pour signaler le problème — c'est le meilleur
+indicateur possible qu'il faut le traiter : une gêne qui interrompt celui qui
+teste interrompra celui qui vend, tous les jours.
+
+Priorité relevée en conséquence : c'est le geste le plus répété de toute
+l'application.
 
 ### Inventaire — un produit compté seul sort du rang, en silence
 
@@ -1120,6 +1135,20 @@ Trois colonnes sur `shops` : `abonnement_actif`, `abonnement_jusqu_au`,
 `abonnement_note`. Elles se remplissent **à la main depuis la console
 Supabase** — la table n'a aucune politique UPDATE, donc aucun client ne peut y
 toucher.
+
+> ⚠️ **Ceci cesse d'être vrai avec `202608270001_owner_seller_rls.sql`.** Cette
+> migration ajoute l'UPDATE propriétaire sur `shops` — nécessaire par ailleurs,
+> voir « Renommer une boutique » — et **elle couvre toutes les colonnes de la
+> ligne, `abonnement_*` comprises**. Un propriétaire pourra donc remettre son
+> propre abonnement à `true` depuis n'importe quel navigateur, avec son mot de
+> passe.
+>
+> Sans effet aujourd'hui : rien ne lit ces colonnes. Mais **c'est la première
+> chose à fermer le jour où le blocage sera branché**, sinon il se contourne en
+> une requête. Deux façons : des privilèges de colonne (`revoke update
+> (abonnement_actif, ...) on shops from authenticated`), ou une RPC dédiée qui
+> soit la seule à pouvoir les écrire. La seconde est plus lisible et laisse une
+> trace de qui a changé quoi.
 
 **Rien n'est branché dessus.** L'app ne les lit pas, personne ne peut être coupé
 par accident. C'était l'intention : poser le registre pendant qu'il n'y a qu'un
@@ -1377,3 +1406,39 @@ heure. À refaire avant chaque livraison.
 La boutique de test `TEST BILAN` (6 produits, premier comptage daté, recettes
 quotidiennes) est conservée sur Supabase : elle rejoue ce scénario en dix
 minutes.
+
+---
+
+### À élucider — relevés le 29/08/2026
+
+**Il faut parfois taper deux fois pour se connecter.** Signalé par le
+développeur. Les traces montrent deux `[AUTH] échec de la connexion :
+AuthApiException(invalid_credentials)` à six secondes d'intervalle, suivis
+d'une connexion réussie. Deux lectures possibles, et on ne sait pas laquelle :
+
+- le premier appui part avec un champ pas encore validé (le clavier garde la
+  dernière lettre tant qu'on n'a pas quitté le champ) — ce serait un problème
+  de saisie, pas d'authentification ;
+- ou le premier envoi utilise un état périmé après une déconnexion.
+
+À reproduire en traçant ce qui est réellement envoyé — sans jamais journaliser
+le mot de passe, seulement sa longueur.
+
+**Un vendeur s'est retrouvé avec une application vide.** Ses boutiques
+s'affichaient (`[SHOPS] réponse brute` les listait), mais aucun produit :
+0 ligne en base locale, file d'attente vide, boutique active bien renseignée.
+Aucun téléchargement n'était parti, et **aucune trace ne le disait**.
+
+Cause du silence, elle, identifiée et corrigée : `pullDataFromSupabase` attrape
+les erreurs de requête table par table, mais **pas celles du mapping** — celui-
+ci vit dans la transaction, hors du filet. L'exception remontait jusqu'aux deux
+`catch` muets de `session_handover` et du minuteur de `main.dart`, où elle
+disparaissait. Les deux tracent désormais l'erreur et sa pile.
+
+Non reproduit après réinstallation. La cause reste inconnue ; la prochaine
+occurrence sera lisible.
+
+**Piste à écarter en premier** : `if (_isPulling || await
+db.getPendingCount() > 0) return;` sort de `pullDataFromSupabase` **sans
+aucune trace**. C'est volontaire — une opération en attente rend le serveur
+périmé — mais indistinguable d'une panne pour qui lit les journaux.

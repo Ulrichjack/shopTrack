@@ -23,14 +23,25 @@ class ActivityLogScreen extends ConsumerWidget {
       );
     }
     for (final movement in await db.select(db.localCashMovements).get()) {
+      final isIncome = {
+        'morning_balance',
+        'incoming',
+        'adjustment_in',
+      }.contains(movement.type);
+      final title = switch (movement.type) {
+        'morning_balance' => 'Initialisation de la caisse',
+        'incoming' => 'Entrée de caisse',
+        'withdrawal' => 'Sortie de caisse',
+        'adjustment_in' => 'Ajustement positif de caisse',
+        'adjustment_out' => 'Ajustement négatif de caisse',
+        _ => 'Mouvement de caisse',
+      };
       activities.add(
         _Activity(
           date: movement.createdAt,
-          title: movement.type == 'morning_balance'
-              ? 'Solde du matin'
-              : 'Mouvement de caisse',
+          title: title,
           detail:
-              '${movement.amount.toStringAsFixed(0)} FCFA${movement.note == null ? '' : ' — ${movement.note}'}',
+              '${isIncome ? '+' : '-'}${movement.amount.toStringAsFixed(0)} FCFA${movement.note == null ? '' : ' — ${movement.note}'}',
           userId: movement.userId,
           icon: Icons.account_balance_wallet_outlined,
         ),

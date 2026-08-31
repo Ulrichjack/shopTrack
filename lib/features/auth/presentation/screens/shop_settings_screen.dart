@@ -119,24 +119,42 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: SwitchListTile(
-                  value: isHierarchical,
-                  onChanged: _saving ? null : _toggleUnitMode,
-                  activeThumbColor: AppColors.primary,
-                  title: const Text(
-                    'Vente par unités',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: const Text(
-                    'Vendre au plateau, au carton, au casier… avec suivi du '
-                    'coût réel de chaque arrivage.',
+            // La vente par unités reste PROPOSÉE aux seules boutiques qui s'en
+            // servent déjà — c'est-à-dire aucune aujourd'hui.
+            //
+            // Le module a été écrit pour un vendeur d'œufs qui n'a jamais
+            // donné suite après réception de son APK. Relevé le 28/08/2026 sur
+            // les 22 boutiques : zéro en `hierarchical`, zéro cycle créé.
+            // L'interrupteur ne servait donc qu'à égarer les autres clients
+            // dans un mode qui change leur accueil et leur écran de vente.
+            //
+            // On MASQUE, on ne supprime pas : le code, les tables, les routes
+            // et les unités restent entiers. Le besoin est réel, il attend son
+            // client. Le jour où il revient, on retire cette condition — ou on
+            // bascule sa ligne `shop_settings` directement.
+            //
+            // La condition porte sur `isHierarchical` exprès : une boutique
+            // déjà dans ce mode garde son interrupteur et peut en sortir. Le
+            // masquer pour elle l'y enfermerait.
+            if (isHierarchical)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: SwitchListTile(
+                    value: isHierarchical,
+                    onChanged: _saving ? null : _toggleUnitMode,
+                    activeThumbColor: AppColors.primary,
+                    title: const Text(
+                      'Vente par unités',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: const Text(
+                      'Vendre au plateau, au carton, au casier… avec suivi du '
+                      'coût réel de chaque arrivage.',
+                    ),
                   ),
                 ),
               ),
-            ),
 
             if (isHierarchical)
               Padding(

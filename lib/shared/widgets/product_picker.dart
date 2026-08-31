@@ -2,9 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/providers/app_mode_provider.dart';
 import '../../core/sync/sync_service.dart';
 import '../../features/products/domain/entities/product_entity.dart';
 import '../../features/products/presentation/providers/product_provider.dart';
+
+/// Le vendeur voit-il la quantité exacte, ou seulement « Disponible » ?
+///
+/// **Décidé le 27/08/2026 : il la voit.** On livre l'option la plus utilisable
+/// et on restreindra si la cliente le demande après usage — pas l'inverse.
+///
+/// Les deux arguments, pour que la décision se reprenne en connaissance :
+///
+/// - **Cacher le nombre gêne la vente.** Un client demande vingt pièces, il en
+///   reste trois : la vendeuse commence, le bouton « + » se bloque, et elle
+///   découvre la limite au milieu de la vente, devant le client. Elle ne peut
+///   pas non plus signaler « il ne reste que trois savons, commande ».
+/// - **Cacher le nombre n'empêche pas de se servir.** Ce qui attrape un
+///   manquant, c'est le comptage — il l'attrape que le nombre ait été vu ou
+///   non. Le gain réel est mince : sans le chiffre, on ne sait pas calibrer un
+///   prélèvement pour qu'il passe inaperçu. C'est un frein, pas une barrière.
+///
+/// Le prix d'achat et la marge, eux, restent masqués sans discussion : aucune
+/// utilité pour vendre, et ils révèlent ce que gagne le patron.
+///
+/// Basculer se fait ici, en un mot — `etiquetteStock` est le seul endroit qui
+/// met le stock en forme.
+const bool stockChiffreVisibleParLeVendeur = true;
+
+/// Ce qu'on montre du stock, selon qui regarde.
+String etiquetteStock(int quantite, {required bool modePatron}) {
+  if (modePatron || stockChiffreVisibleParLeVendeur) {
+    return 'Stock : $quantite';
+  }
+  return quantite > 0 ? 'Disponible' : 'Rupture';
+}
 
 /// Nombre de ventes par produit, pour remonter en tête ceux qui servent le
 /// plus. Un vendeur d'œufs ne doit pas faire défiler 20 articles pour
@@ -55,10 +87,7 @@ class ProductPicker extends ConsumerWidget {
                 ? null
                 : () => _openSheet(context, ref, products),
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
@@ -104,7 +133,11 @@ class ProductPicker extends ConsumerWidget {
                         ),
                         if (selected != null)
                           Text(
-                            'Stock : ${selected.quantity}',
+                            etiquetteStock(
+                              selected.quantity,
+                              modePatron:
+                                  ref.watch(appModeProvider).value ?? false,
+                            ),
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey.shade600,
@@ -148,6 +181,7 @@ class ProductPicker extends ConsumerWidget {
         products: ordered,
         counts: counts,
         selectedProductId: selectedProductId,
+        modePatron: ref.read(appModeProvider).value ?? false,
       ),
     );
 
@@ -161,12 +195,17 @@ class _ProductSheet extends StatefulWidget {
     required this.products,
     required this.counts,
     required this.selectedProductId,
+    required this.modePatron,
   });
 
   final String label;
   final List<ProductEntity> products;
   final Map<String, int> counts;
   final String? selectedProductId;
+
+  /// Passé depuis le sélecteur : cette feuille est un `StatefulWidget` simple,
+  /// elle n'a pas de `ref` pour lire le mode elle-même.
+  final bool modePatron;
 
   @override
   State<_ProductSheet> createState() => _ProductSheetState();
@@ -266,11 +305,17 @@ class _ProductSheetState extends State<_ProductSheet> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            subtitle: Text(
-                              sold > 0
-                                  ? 'Stock : ${product.quantity} · vendu $sold fois'
-                                  : 'Stock : ${product.quantity}',
-                            ),
+                            subtitle: Text(() {
+                              final stock = etiquetteStock(
+                                product.quantity,
+                                modePatron: widget.modePatron,
+                              );
+                              // Le nombre de ventes n'est pas sensible : il
+                              // dit ce qui part, pas ce que ça coûte.
+                              return sold > 0
+                                  ? '$stock · vendu $sold fois'
+                                  : stock;
+                            }()),
                             trailing: isSelected
                                 ? const Icon(
                                     Icons.check,

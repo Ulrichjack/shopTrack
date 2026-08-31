@@ -28,10 +28,9 @@ void main() {
 
     // Les vraies colonnes seulement : `primaryKey` est un getter de Drift,
     // pas une donnée à recopier.
-    final colonnes = RegExp(r'(?:Text|Int|Real|DateTime|Bool)Column get (\w+)')
-        .allMatches(corpsTable)
-        .map((m) => m.group(1)!)
-        .toSet();
+    final colonnes = RegExp(
+      r'(?:Text|Int|Real|DateTime|Bool)Column get (\w+)',
+    ).allMatches(corpsTable).map((m) => m.group(1)!).toSet();
 
     final debutMapping = provider.indexOf('ProductEntity _toEntity(');
     expect(debutMapping, isNot(-1), reason: '_toEntity introuvable');

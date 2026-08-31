@@ -153,7 +153,9 @@ class TransferDetailScreen extends ConsumerWidget {
 
   Future<void> _confirmer(BuildContext context, WidgetRef ref) async {
     final conteneur = ProviderScope.containerOf(context, listen: false);
-    final controleur = TextEditingController(text: '${entree.transfer.quantity}');
+    final controleur = TextEditingController(
+      text: '${entree.transfer.quantity}',
+    );
     final quantite = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
@@ -198,9 +200,9 @@ class TransferDetailScreen extends ConsumerWidget {
       if (context.mounted) context.pop();
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(humanSyncError(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(humanSyncError(e))));
       }
     }
   }
@@ -235,9 +237,9 @@ class TransferDetailScreen extends ConsumerWidget {
       if (context.mounted) context.pop();
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(humanSyncError(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(humanSyncError(e))));
       }
     }
   }
@@ -292,8 +294,7 @@ class _Carte extends StatelessWidget {
   const _Carte({required this.titre, required this.lignes});
 
   final String titre;
-  final List<({String? label, String valeur, Color? accent, bool gras})>
-  lignes;
+  final List<({String? label, String valeur, Color? accent, bool gras})> lignes;
 
   @override
   Widget build(BuildContext context) {

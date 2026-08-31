@@ -191,10 +191,7 @@ Future<void> changerMotDePasse({
   }
 
   try {
-    await client.auth.signInWithPassword(
-      email: email,
-      password: actuel.trim(),
-    );
+    await client.auth.signInWithPassword(email: email, password: actuel.trim());
   } on AuthException {
     throw ArgumentError('Mot de passe actuel incorrect.');
   }

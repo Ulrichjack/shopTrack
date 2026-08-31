@@ -83,11 +83,85 @@ void main() {
       }
     });
 
-    test('les écrans ordinaires restent ouverts au vendeur', () {
-      expect(route(vers: '/home'), isNull);
+    test('les écrans de son métier restent ouverts au vendeur', () {
+      for (final vers in sellerAllowedRoutes) {
+        expect(
+          route(vers: vers),
+          isNull,
+          reason: '$vers fait partie du travail du vendeur',
+        );
+      }
+    });
+  });
+
+  group('liste blanche', () {
+    // Ce que douze routes oubliées ont coûté : le catalogue et ses prix
+    // d'achat, les arrivages et leur coût, la clôture et son écart de caisse
+    // étaient atteignables par un vendeur, par simple lien direct.
+    test('les écrans sensibles ne s\'ouvrent plus au vendeur', () {
+      const sensibles = [
+        '/edit-product',
+        '/manage-units',
+        '/cash-out',
+        '/closing',
+        '/cycles',
+        '/create-cycle',
+        '/cycle-report',
+        '/transfers',
+        '/transfer-detail',
+      ];
+      for (final vers in sensibles) {
+        expect(
+          route(vers: vers),
+          '/profile',
+          reason: '$vers expose des chiffres réservés au patron',
+        );
+      }
+    });
+
+    test('mais consulter le stock reste ouvert au vendeur', () {
+      // Fermé le 28/08, rouvert le lendemain. Sans les quantités, un vendeur
+      // ne sait ni quoi répondre à un client, ni quand prévenir que l'étagère
+      // se vide : il vend à l'aveugle.
+      //
+      // Ce qu'on cache n'est pas le NOMBRE mais l'ARGENT — prix d'achat,
+      // marge, valeur totale du stock. Les écrans s'en chargent eux-mêmes.
       expect(route(vers: '/products'), isNull);
-      expect(route(vers: '/sales/new'), isNull);
-      expect(route(vers: '/profile'), isNull);
+      expect(route(vers: '/product-detail'), isNull);
+
+      // Créer un article aussi : la marchandise arrive quand elle arrive, et
+      // attendre le patron pour l'enregistrer revient à vendre un produit que
+      // l'application ignore. L'écran masque le champ prix d'achat et
+      // l'enregistre à zéro — un zéro se remarque, un prix inventé non.
+      expect(route(vers: '/add-product'), isNull);
+
+      // Modifier un article reste fermé : changer un prix existant n'est pas
+      // la même chose que déclarer un article nouveau.
+      expect(route(vers: '/edit-product'), '/profile');
+    });
+
+    test('un écran ajouté demain est fermé sans qu\'on y pense', () {
+      // LA propriété qui justifie la liste blanche. Avec une liste noire, ce
+      // test passait aussi — en laissant l'écran grand ouvert.
+      expect(route(vers: '/un-ecran-ajoute-plus-tard'), '/profile');
+      expect(
+        route(accesPatron: true, vers: '/un-ecran-ajoute-plus-tard'),
+        isNull,
+      );
+    });
+
+    test('aucun écran n\'est à la fois ouvert au vendeur et réservé', () {
+      expect(
+        sellerAllowedRoutes.intersection(bossOnlyRoutes),
+        isEmpty,
+        reason: 'les deux listes se contrediraient',
+      );
+    });
+
+    test('le patron atteint tout ce que le vendeur atteint', () {
+      for (final vers in sellerAllowedRoutes) {
+        expect(route(accesPatron: true, vers: vers), isNull);
+      }
     });
   });
 

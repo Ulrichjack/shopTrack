@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -83,9 +85,7 @@ class _TableTireeImpl<T extends Table, D> implements TableTiree {
   void appliquer(AppDatabase db, Batch batch, List<dynamic> lignes) {
     batch.insertAll(
       cibleFn(db),
-      lignes
-          .map((ligne) => versLigne(ligne as Map<String, dynamic>))
-          .toList(),
+      lignes.map((ligne) => versLigne(ligne as Map<String, dynamic>)).toList(),
       mode: InsertMode.insertOrReplace,
     );
   }
@@ -322,6 +322,71 @@ final List<TableTiree> tablesTirees = [
       reason: l['reason'],
       note: l['note'] as String?,
       occurredAt: _date(l['occurred_at']),
+    ),
+  ),
+  // Module C — commandes avec acompte.
+  //
+  // La propriétaire pilote à distance ce que la vendeuse enregistre en
+  // boutique : ces trois tables doivent descendre sur les deux téléphones,
+  // sinon chacun ne voit que ce qu'il a saisi lui-même.
+  _tableTiree(
+    nom: 'clients',
+    cible: (db) => db.localClients,
+    requete: (supabase, shopId) =>
+        supabase.from('clients').select().eq('shop_id', shopId),
+    versLigne: (c) => LocalClient(
+      id: c['id'],
+      shopId: c['shop_id'],
+      nom: c['nom'],
+      telephone: c['telephone'] as String?,
+      whatsapp: c['whatsapp'] as String?,
+      adresse: c['adresse'] as String?,
+      note: c['note'] as String?,
+      createdAt: _date(c['created_at']),
+    ),
+  ),
+  _tableTiree(
+    nom: 'dossiers_commandes',
+    cible: (db) => db.localDossiersCommandes,
+    requete: (supabase, shopId) =>
+        supabase.from('dossiers_commandes').select().eq('shop_id', shopId),
+    versLigne: (d) => LocalDossiersCommande(
+      id: d['id'],
+      shopId: d['shop_id'],
+      clientId: d['client_id'],
+      categorie: d['categorie'],
+      description: d['description'],
+      // Le serveur rend du JSON déjà décodé ; la colonne locale est du texte.
+      details: d['details'] == null ? '{}' : jsonEncode(d['details']),
+      // Null tant que la propriétaire n'a pas fixé le prix : c'est l'état
+      // normal d'une demande enregistrée par la vendeuse.
+      montantAccepte: d['montant_accepte'] as int?,
+      datePrevue: _dateOuNulle(d['date_prevue']),
+      statut: d['statut'],
+      motifAnnulation: d['motif_annulation'] as String?,
+      annuleAt: _dateOuNulle(d['annule_at']),
+      createdAt: _date(d['created_at']),
+    ),
+  ),
+  _tableTiree(
+    nom: 'paiements_commandes',
+    cible: (db) => db.localPaiementsCommandes,
+    requete: (supabase, shopId) =>
+        supabase.from('paiements_commandes').select().eq('shop_id', shopId),
+    versLigne: (p) => LocalPaiementsCommande(
+      id: p['id'],
+      shopId: p['shop_id'],
+      dossierId: p['dossier_id'],
+      typeMouvement: p['type_mouvement'],
+      montant: p['montant'] as int,
+      // Décide si l'argent est dans le tiroir. Oublié ici, un acompte Mobile
+      // Money redescendrait en « espèces » et créerait un manquant à la
+      // clôture — l'app accuserait quelqu'un.
+      modePaiement: p['mode_paiement'],
+      referenceExterne: p['reference_externe'] as String?,
+      note: p['note'] as String?,
+      effectueAt: _date(p['effectue_at']),
+      createdAt: _date(p['created_at']),
     ),
   ),
   // Le prix payé voyage avec l'achat : sans ce téléchargement, un second

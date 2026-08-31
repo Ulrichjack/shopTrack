@@ -35,11 +35,21 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     super.initState();
     // On pré-remplit les champs avec les données actuelles du produit
     _nameController = TextEditingController(text: widget.product.name);
-    _buyPriceController = TextEditingController(text: widget.product.buyPrice.toInt().toString());
-    _sellPriceController = TextEditingController(text: widget.product.sellPrice.toInt().toString());
-    _quantityController = TextEditingController(text: widget.product.quantity.toString());
-    _minQuantityController = TextEditingController(text: widget.product.minQuantity.toString());
-    _barcodeController = TextEditingController(text: widget.product.barcode ?? '');
+    _buyPriceController = TextEditingController(
+      text: widget.product.buyPrice.toInt().toString(),
+    );
+    _sellPriceController = TextEditingController(
+      text: widget.product.sellPrice.toInt().toString(),
+    );
+    _quantityController = TextEditingController(
+      text: widget.product.quantity.toString(),
+    );
+    _minQuantityController = TextEditingController(
+      text: widget.product.minQuantity.toString(),
+    );
+    _barcodeController = TextEditingController(
+      text: widget.product.barcode ?? '',
+    );
     _unitController = TextEditingController(text: widget.product.unit ?? '');
   }
 
@@ -87,17 +97,36 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       fillColor: Colors.white,
       filled: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.error)),
-      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.error, width: 2)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.error, width: 2),
+      ),
     );
   }
 
   Widget _buildFieldLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, top: 16.0),
-      child: Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 
@@ -129,8 +158,16 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                 _buildFieldLabel("Nom de l'article"),
                 TextFormField(
                   controller: _nameController,
-                  decoration: _buildInputDecoration('Ex: Casque P47', prefixIcon: const Icon(Icons.shopping_bag_outlined, color: Colors.grey)),
-                  validator: (value) => value == null || value.trim().isEmpty ? 'Obligatoire' : null,
+                  decoration: _buildInputDecoration(
+                    'Ex: Casque P47',
+                    prefixIcon: const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Obligatoire'
+                      : null,
                 ),
 
                 // Masqué au vendeur, comme à la création et sur la fiche.
@@ -168,10 +205,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                             keyboardType: TextInputType.number,
                             decoration: _buildInputDecoration('Ex: 50000'),
                             validator: (value) {
-                              if (value == null || value.isEmpty) return 'Obligatoire';
+                              if (value == null || value.isEmpty)
+                                return 'Obligatoire';
                               final sell = double.tryParse(value);
-                              final buy = double.tryParse(_buyPriceController.text);
-                              if (buy != null && sell != null && sell < buy) return 'Vente < Achat !';
+                              final buy = double.tryParse(
+                                _buyPriceController.text,
+                              );
+                              if (buy != null && sell != null && sell < buy)
+                                return 'Vente < Achat !';
                               return null;
                             },
                           ),
@@ -193,7 +234,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                               controller: _quantityController,
                               keyboardType: TextInputType.number,
                               decoration: _buildInputDecoration('Ex: 3'),
-                              validator: (value) => value == null || value.isEmpty ? 'Obligatoire' : null,
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Obligatoire'
+                                  : null,
                             ),
                           ],
                         ),
@@ -209,7 +253,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                             controller: _minQuantityController,
                             keyboardType: TextInputType.number,
                             decoration: _buildInputDecoration('Ex: 2'),
-                            validator: (value) => value == null || value.isEmpty ? 'Obligatoire' : null,
+                            validator: (value) => value == null || value.isEmpty
+                                ? 'Obligatoire'
+                                : null,
                           ),
                         ],
                       ),
@@ -264,19 +310,32 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       Expanded(
                         child: TextFormField(
                           controller: _barcodeController,
-                          decoration: _buildInputDecoration('Aucun code scanné'),
+                          decoration: _buildInputDecoration(
+                            'Aucun code scanné',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryDark,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         onPressed: _scanBarcode,
-                        icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-                        label: const Text('Scanner', style: TextStyle(color: Colors.white)),
+                        icon: const Icon(
+                          Icons.qr_code_scanner,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          'Scanner',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -294,17 +353,39 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       border: Border.all(color: Colors.grey.shade300, width: 1),
                     ),
                     child: _newImageFile != null
-                        ? ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.file(_newImageFile!, fit: BoxFit.cover))
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.file(
+                              _newImageFile!,
+                              fit: BoxFit.cover,
+                            ),
+                          )
                         : (widget.product.photoUrl != null
-                        ? ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.network(widget.product.photoUrl!, fit: BoxFit.cover))
-                        : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_a_photo, color: Colors.grey.shade400, size: 40),
-                        const SizedBox(height: 8),
-                        Text('Changer la photo', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
-                      ],
-                    )),
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    widget.product.photoUrl!,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.add_a_photo,
+                                      color: Colors.grey.shade400,
+                                      size: 40,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Changer la photo',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade500,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                )),
                   ),
                 ),
                 const SizedBox(height: 40),
@@ -313,49 +394,79 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   onPressed: isLoading
                       ? null
                       : () async {
-                    if (_formKey.currentState!.validate()) {
-                      try {
-                        await ref.read(productProvider.notifier).updateProduct(
-                          id: widget.product.id,
-                          name: _nameController.text.trim(),
-                          buyPrice:
-                              double.tryParse(_buyPriceController.text) ?? 0,
-                          sellPrice: double.parse(_sellPriceController.text),
-                          // Le stock reste celui géré par le module : on ne
-                          // le réécrit pas depuis cet écran.
-                          quantity: stockGereParModule
-                              ? widget.product.quantity
-                              : int.parse(_quantityController.text),
-                          minQuantity: int.parse(_minQuantityController.text),
-                          barcode: _barcodeController.text.trim().isEmpty ? null : _barcodeController.text.trim(),
-                          unit: _unitController.text.trim().isEmpty
-                              ? null
-                              : _unitController.text.trim(),
-                          existingPhotoUrl: widget.product.photoUrl,
-                          newImageFile: _newImageFile,
-                        );
+                          if (_formKey.currentState!.validate()) {
+                            try {
+                              await ref
+                                  .read(productProvider.notifier)
+                                  .updateProduct(
+                                    id: widget.product.id,
+                                    name: _nameController.text.trim(),
+                                    buyPrice:
+                                        double.tryParse(
+                                          _buyPriceController.text,
+                                        ) ??
+                                        0,
+                                    sellPrice: double.parse(
+                                      _sellPriceController.text,
+                                    ),
+                                    // Le stock reste celui géré par le module : on ne
+                                    // le réécrit pas depuis cet écran.
+                                    quantity: stockGereParModule
+                                        ? widget.product.quantity
+                                        : int.parse(_quantityController.text),
+                                    minQuantity: int.parse(
+                                      _minQuantityController.text,
+                                    ),
+                                    barcode:
+                                        _barcodeController.text.trim().isEmpty
+                                        ? null
+                                        : _barcodeController.text.trim(),
+                                    unit: _unitController.text.trim().isEmpty
+                                        ? null
+                                        : _unitController.text.trim(),
+                                    existingPhotoUrl: widget.product.photoUrl,
+                                    newImageFile: _newImageFile,
+                                  );
 
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Produit modifié avec succès !'), backgroundColor: AppColors.primary),
-                          );
-                          context.pop();                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
-                          );
-                        }
-                      }
-                    }
-                  },
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Produit modifié avec succès !',
+                                    ),
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                );
+                                context.pop();
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Erreur: $e'),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   icon: const Icon(Icons.save, color: Colors.white),
-                  label: const Text('Enregistrer les modifications', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  label: const Text(
+                    'Enregistrer les modifications',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 20),
               ],

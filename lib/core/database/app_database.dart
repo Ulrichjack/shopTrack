@@ -19,6 +19,7 @@ class LocalProducts extends Table {
   IntColumn get minQuantity => integer()();
   TextColumn get barcode => text().nullable()();
   TextColumn get photoUrl => text().nullable()();
+
   /// Étiquette d'affichage (sac, bouteille, casier, g, l…). N'entre dans
   /// aucun calcul : le commerçant compte dans une seule unité par produit.
   TextColumn get unit => text().nullable()();
@@ -127,6 +128,12 @@ class LocalShopSettings extends Table {
       text().withDefault(const Constant('realtime'))();
   BoolColumn get multiPointEnabled =>
       boolean().withDefault(const Constant(false))();
+
+  /// Module C — commandes avec acompte. Éteint par défaut : sans ça, les onze
+  /// boutiques d'un client qui ne prend aucune commande hériteraient d'un
+  /// onglet inutile.
+  BoolColumn get commandesEnabled =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -182,6 +189,107 @@ class LocalShopTakings extends Table {
 
   @override
   Set<Column> get primaryKey => {shopId, date};
+}
+
+// Module C — Commandes avec acompte.
+//
+// Gâteau d'événement, objet décoratif sur mesure, formation, décoration :
+// quatre métiers, un seul geste — un client commande, verse une avance,
+// récupère plus tard. D'où un modèle unique et non quatre modules, ce qui le
+// rend utilisable par un tailleur ou un traiteur aussi bien que par la
+// pâtissière qui l'a demandé.
+
+/// Les gens qui commandent. Alimentée par ce module SEULEMENT.
+///
+/// Une vente en boutique reste anonyme : demander un nom pour un savon
+/// ralentirait chaque passage sans rien apporter. Une commande, c'est
+/// l'inverse — on détient l'argent de quelqu'un et il reviendra. Sans son nom
+/// et son numéro, impossible de l'appeler quand c'est prêt.
+class LocalClients extends Table {
+  TextColumn get id => text()();
+  TextColumn get shopId => text()();
+  TextColumn get nom => text()();
+  TextColumn get telephone => text().nullable()();
+  TextColumn get whatsapp => text().nullable()();
+  TextColumn get adresse => text().nullable()();
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Un dossier de commande.
+///
+/// `montantAccepte` est NULLABLE, et c'est le cœur du fonctionnement demandé :
+/// la vendeuse n'enregistre que la demande, la propriétaire fixe le prix à
+/// distance. Un dossier sans montant est donc normal tant qu'il est en
+/// « demande ».
+///
+/// Les particularités de chaque métier — parfum et taille d'un gâteau, lieu et
+/// thème d'une décoration, module d'une formation — vivent dans `details`, en
+/// JSON. Quatre tables auraient figé quatre métiers ; un champ souple accueille
+/// le cinquième sans migration.
+class LocalDossiersCommandes extends Table {
+  TextColumn get id => text()();
+  TextColumn get shopId => text()();
+  TextColumn get clientId => text()();
+
+  /// gateau · objet_decoratif · formation · decoration_evenementielle
+  TextColumn get categorie => text()();
+  TextColumn get description => text()();
+
+  /// JSON. Ce que ce métier-là a de particulier.
+  TextColumn get details => text().withDefault(const Constant('{}'))();
+
+  /// Null tant que la propriétaire n'a pas fixé le prix.
+  IntColumn get montantAccepte => integer().nullable()();
+  DateTimeColumn get datePrevue => dateTime().nullable()();
+
+  /// demande · devis · confirmee · en_cours · prete · terminee · annulee
+  TextColumn get statut => text().withDefault(const Constant('demande'))();
+  TextColumn get motifAnnulation => text().nullable()();
+  DateTimeColumn get annuleAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Chaque mouvement d'argent d'un dossier — jamais le solde.
+///
+/// Un devis de 150 000 F n'est PAS une recette de 150 000 F : si le client
+/// verse 40 000 F, seuls 40 000 F entrent en caisse. Le solde se recalcule
+/// toujours, il ne se stocke jamais — c'est le même bénéfice fantôme qu'on a
+/// retiré du module inventaire le 27/08, et qui reviendrait par la porte d'un
+/// module neuf.
+///
+/// Un remboursement est une LIGNE de plus, jamais une suppression : la
+/// vendeuse ne peut pas effacer un paiement qu'elle a enregistré.
+///
+/// `modePaiement` décide si l'argent est dans le tiroir. Un acompte payé par
+/// Mobile Money compté comme espèces produirait un manquant à chaque clôture —
+/// et l'app accuserait quelqu'un.
+class LocalPaiementsCommandes extends Table {
+  TextColumn get id => text()();
+  TextColumn get shopId => text()();
+  TextColumn get dossierId => text()();
+
+  /// paiement · remboursement
+  TextColumn get typeMouvement =>
+      text().withDefault(const Constant('paiement'))();
+  IntColumn get montant => integer()();
+
+  /// especes · mtn_momo · orange_money · autre
+  TextColumn get modePaiement =>
+      text().withDefault(const Constant('especes'))();
+  TextColumn get referenceExterne => text().nullable()();
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get effectueAt => dateTime()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
 
 // Module B — Repères physiques posés produit par produit.
@@ -362,6 +470,9 @@ class SyncQueueItems extends Table {
     LocalStockPurchases,
     LocalProductPrices,
     LocalStockTransfers,
+    LocalClients,
+    LocalDossiersCommandes,
+    LocalPaiementsCommandes,
     SyncQueueItems,
   ],
 )
@@ -372,7 +483,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -427,19 +538,25 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(localStockTransfers, localStockTransfers.unit);
       }
       if (from < 14) {
-        await m.addColumn(
-          localStockTransfers,
-          localStockTransfers.cancelledAt,
-        );
+        await m.addColumn(localStockTransfers, localStockTransfers.cancelledAt);
       }
       if (from < 15) {
         await m.addColumn(
           localStockTransfers,
           localStockTransfers.fromShopName,
         );
+        await m.addColumn(localStockTransfers, localStockTransfers.toShopName);
+      }
+      // Module C — commandes avec acompte.
+      if (from < 16) {
+        await m.createTable(localClients);
+        await m.createTable(localDossiersCommandes);
+        await m.createTable(localPaiementsCommandes);
+      }
+      if (from < 17) {
         await m.addColumn(
-          localStockTransfers,
-          localStockTransfers.toShopName,
+          localShopSettings,
+          localShopSettings.commandesEnabled,
         );
       }
     },
@@ -517,14 +634,15 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> requeueAllSetAside() {
-    return (update(syncQueueItems)..where((t) => t.setAside.equals(true)))
-        .write(
-          const SyncQueueItemsCompanion(
-            setAside: Value(false),
-            attempts: Value(0),
-            lastError: Value(null),
-          ),
-        );
+    return (update(
+      syncQueueItems,
+    )..where((t) => t.setAside.equals(true))).write(
+      const SyncQueueItemsCompanion(
+        setAside: Value(false),
+        attempts: Value(0),
+        lastError: Value(null),
+      ),
+    );
   }
 
   Future<void> removeFromQueue(int id) {

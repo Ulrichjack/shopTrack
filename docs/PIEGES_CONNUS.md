@@ -670,3 +670,127 @@ final premierJourAVerifier = ouvertureIncluse
 automatiques ne l'ont pas vu — ils ne construisaient jamais deux périodes
 successives avec des recettes complètes. Vérifié désormais par
 `test/inventory_bilan_partiel_test.dart`.
+
+---
+
+## 29. Avancer la date de l'appareil casse toutes les requêtes serveur
+
+**Symptôme** : un écran tourne en rond indéfiniment, sans message d'erreur.
+Vu le 27/08/2026 sur « Employés », mais n'importe quel écran qui interroge le
+serveur fait pareil.
+
+**Cause** : l'émulateur avait été avancé de trois jours pour tester les
+périodes d'inventaire. Les jetons d'authentification portent alors une date
+d'émission **dans le futur** par rapport au serveur, et PostgREST les refuse :
+
+```
+PostgrestException: JWT issued at future — code PGRST303, Unauthorized
+```
+
+Le piège est que **la connexion elle-même continue de fonctionner** :
+`supabase.auth` rafraîchit sa session sans se plaindre, l'app se croit
+connectée, la boutique et le rôle s'affichent — et seules les requêtes de
+données échouent. Rien à l'écran ne dit « le serveur me refuse ».
+
+**Règle** : après avoir décalé la date d'un appareil pour tester, la remettre
+à l'automatique **et redémarrer l'application** — le jeton en mémoire porte
+encore l'ancienne date et le premier téléchargement échoue même après la
+remise à l'heure.
+
+```bash
+adb shell settings put global auto_time 1
+adb shell am force-stop cm.shoptrack.shoptrack
+```
+
+**Le décalage inverse est sans danger** : un jeton émis dans le passé reste
+valide jusqu'à son expiration. Seul l'avance pose problème.
+
+**Ce qui l'a trahi** : `adb logcat | grep flutter` — l'échec est écrit en
+clair par `[SYNC]`, alors que l'écran ne montre qu'un cercle qui tourne. Un
+écran qui tourne sans fin après un test de dates : chercher PGRST303 avant
+toute chose.
+
+---
+
+## 30. Un type ajouté côté Dart que le serveur ne connaît pas
+
+**Symptôme** : bandeau rouge « Synchronisation incomplète — 1 opération refusée
+par le serveur », avec un message technique illisible pour un commerçant :
+
+```
+new row for relation "cash_movements" violates check constraint
+"cash_movements_type_check", code: 23514
+```
+
+**Cause** : la caisse continue enregistre un `adjustment_in` ou
+`adjustment_out` chaque fois que le montant réellement compté diffère du
+calcul. Le code Dart les produisait, la contrainte `CHECK` de la table ne
+connaissait que `morning_balance`, `withdrawal` et `incoming`. Chaque
+ajustement partait, se faisait refuser cinq fois, puis était mis de côté.
+
+**Ce qui rend le cas instructif** : tout a fonctionné comme prévu. La file a
+retenu l'opération, le compteur de refus l'a mise en quarantaine, le bandeau
+l'a signalée, rien n'a été perdu ni écrit de travers. Le seul défaut est que le
+commerçant voit une erreur qu'il ne peut ni comprendre ni résoudre.
+
+**Règle** : un type, un statut ou une catégorie ajoutés côté Dart **n'existent
+pas** tant que la contrainte du serveur ne les connaît pas. Les deux
+vocabulaires bougent dans la même livraison.
+
+Le contrôle avant de livrer un nouveau type :
+
+```sql
+select conname, pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid = 'public.<table>'::regclass and contype = 'c';
+```
+
+**Familles concernées** : `cash_movements.type`, `inventory_losses.reason`,
+`dossiers_commandes.statut` et `categorie`, `paiements_commandes.mode_paiement`
+et `type_mouvement`. Toutes portent une liste fermée côté serveur.
+
+**Ce qui l'a trahi** : l'écran « État de synchronisation ». Sans lui, l'opération
+serait restée invisible — le solde local aurait été juste, le serveur l'aurait
+ignoré, et l'écart ne serait apparu que sur un second téléphone.
+
+---
+
+## 31. L'erreur affichée n'est pas celle qui bloque
+
+**Symptôme** : « Synchronisation incomplète » avec un message qui désigne une
+opération parfaitement valide.
+
+```
+insert or update on table "sale_items" violates foreign key constraint
+"sale_items_product_id_fkey" — Key is not present in table "products"
+```
+
+La vente n'avait rien de faux. Son produit existait bien, en local. Le vrai
+problème était **trois opérations plus tôt** : un mouvement d'ajustement dont
+le type était refusé par la contrainte du serveur (piège n°30).
+
+**L'enchaînement** :
+
+1. l'ajustement est refusé cinq fois, il passe en quarantaine ;
+2. une opération mise de côté **retient celles de même portée** — c'est
+   voulu, sinon une vente partirait sans le produit qu'elle référence ;
+3. la création du 5ᵉ produit attend derrière ;
+4. les ventes qui pointent vers ce produit échouent sur une clé étrangère ;
+5. l'écran affiche **la dernière erreur**, donc la conséquence.
+
+Corriger la contrainte a suffi : l'ajustement est passé, puis le produit, puis
+les huit ventes et six clôtures d'une semaine de saisie hors ligne. Rien
+n'avait été perdu ni écrit à moitié.
+
+**Règle de diagnostic** : devant une file bloquée, lire **la plus ancienne
+opération en quarantaine**, jamais le dernier message affiché. Le dernier
+décrit un symptôme ; le premier porte la cause.
+
+```sql
+-- côté téléphone, la file dans l'ordre où elle partira
+select id, action, substr(payload, 1, 120) from sync_queue_items order by id;
+```
+
+**Ce qui l'a rendu trompeur** : le message parlait de `products` alors que les
+produits allaient parfaitement bien. Chercher du côté des produits aurait pu
+coûter une journée.

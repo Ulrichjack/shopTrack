@@ -48,32 +48,35 @@ void main() {
     expect(product.quantity, 44);
   });
 
-  test('la perte part en synchro avec la raison attendue par Supabase', () async {
-    await db.addToQueue(
-      'ADD_INVENTORY_LOSS',
-      jsonEncode({
-        'id': 'loss-1',
-        'shop_id': 'shop-1',
-        'product_id': 'product-1',
-        'quantity': 3,
-        'reason': 'casse',
-        'note': null,
-        'occurred_at': DateTime.utc(2026, 8, 14).toIso8601String(),
-      }),
-    );
+  test(
+    'la perte part en synchro avec la raison attendue par Supabase',
+    () async {
+      await db.addToQueue(
+        'ADD_INVENTORY_LOSS',
+        jsonEncode({
+          'id': 'loss-1',
+          'shop_id': 'shop-1',
+          'product_id': 'product-1',
+          'quantity': 3,
+          'reason': 'casse',
+          'note': null,
+          'occurred_at': DateTime.utc(2026, 8, 14).toIso8601String(),
+        }),
+      );
 
-    final queued = await db.select(db.syncQueueItems).getSingle();
-    expect(queued.action, 'ADD_INVENTORY_LOSS');
+      final queued = await db.select(db.syncQueueItems).getSingle();
+      expect(queued.action, 'ADD_INVENTORY_LOSS');
 
-    final payload = jsonDecode(queued.payload) as Map<String, dynamic>;
-    // La contrainte SQL n'accepte que ces cinq valeurs : une faute de frappe
-    // ici bloquerait la file entière, pas seulement cette perte.
-    expect(
-      payload['reason'],
-      isIn(['casse', 'peremption', 'invendu', 'vol', 'autre']),
-    );
-    expect(payload['quantity'], greaterThan(0));
-  });
+      final payload = jsonDecode(queued.payload) as Map<String, dynamic>;
+      // La contrainte SQL n'accepte que ces cinq valeurs : une faute de frappe
+      // ici bloquerait la file entière, pas seulement cette perte.
+      expect(
+        payload['reason'],
+        isIn(['casse', 'peremption', 'invendu', 'vol', 'autre']),
+      );
+      expect(payload['quantity'], greaterThan(0));
+    },
+  );
 
   test('on ne peut pas perdre plus que ce qui a pu exister', () {
     // Le calculateur borne déjà les pertes au moment du rapport, mais une

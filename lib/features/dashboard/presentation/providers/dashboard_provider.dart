@@ -145,6 +145,100 @@ final pendingClosingProvider = FutureProvider.family<PendingClosing?, DateTime>(
   },
 );
 
+/// Les journées passées où l'on a vendu sans jamais compter la caisse.
+///
+/// `pendingClosingProvider` ne répond que sur UNE date : il servait au bandeau
+/// de l'historique, où le commerçant navigue jour par jour. L'accueil, lui, ne
+/// sait pas quelle date regarder — et c'est justement là qu'il arrive le
+/// matin.
+///
+/// La clôture reste **facultative** : le client a demandé une caisse continue,
+/// pas une caisse qui exige un rituel quotidien. On rappelle, on n'empêche
+/// rien — et sûrement pas d'ouvrir la boutique.
+///
+/// Trente jours en arrière suffisent : au-delà, un rappel n'aide plus, il
+/// accuse.
+final journeesNonClotureesProvider = FutureProvider<List<DateTime>>((
+  ref,
+) async {
+  final db = ref.watch(localDbProvider);
+  final shopId = await ref.watch(currentShopIdProvider.future);
+  if (shopId == null || shopId.isEmpty) return const [];
+
+  final maintenant = DateTime.now();
+  final aujourdhui = DateTime(
+    maintenant.year,
+    maintenant.month,
+    maintenant.day,
+  );
+  final debut = aujourdhui.subtract(const Duration(days: 30));
+
+  final ventes =
+      await (db.select(db.localSales)..where(
+            (t) =>
+                t.shopId.equals(shopId) &
+                t.createdAt.isBetweenValues(debut, aujourdhui),
+          ))
+          .get();
+  final clotures =
+      await (db.select(db.localDailyClosings)..where(
+            (t) =>
+                t.shopId.equals(shopId) &
+                t.closingDate.isBetweenValues(debut, aujourdhui),
+          ))
+          .get();
+
+  final jourClos = clotures
+      .map(
+        (c) => DateTime(
+          c.closingDate.year,
+          c.closingDate.month,
+          c.closingDate.day,
+        ),
+      )
+      .toSet();
+
+  final manquants = <DateTime>{};
+  for (final vente in ventes) {
+    final jour = DateTime(
+      vente.createdAt.year,
+      vente.createdAt.month,
+      vente.createdAt.day,
+    );
+    // Le jour en cours n'est pas en retard : il n'est pas fini.
+    if (!jour.isBefore(aujourdhui)) continue;
+    if (jourClos.contains(jour)) continue;
+    manquants.add(jour);
+  }
+
+  final liste = manquants.toList()..sort();
+  return liste;
+});
+
+/// Ce qui restait en caisse au SOIR d'une journée donnée.
+///
+/// L'historique affichait « Solde Matin » — un chiffre qui valait toujours 0 :
+/// il cherchait un mouvement intitulé « Solde Matin » alors qu'ils s'appellent
+/// « Solde initial ». Et depuis la caisse continue, il n'y a plus de solde du
+/// matin du tout : le montant se reporte, on ne le saisit plus.
+///
+/// Ce qu'un commerçant veut savoir en ouvrant une journée passée, c'est ce
+/// qu'il RESTAIT le soir — le chiffre qu'il aurait dû trouver dans son tiroir
+/// en fermant.
+final soldeCaisseAuSoirProvider = FutureProvider.family<double, DateTime>((
+  ref,
+  date,
+) async {
+  final db = ref.watch(localDbProvider);
+  final shopId = await ref.watch(currentShopIdProvider.future);
+  if (shopId == null || shopId.isEmpty) return 0;
+
+  // La borne est le début du lendemain : tout ce qui s'est passé CE jour-là
+  // est donc compté, et rien du suivant.
+  final lendemain = DateTime(date.year, date.month, date.day + 1);
+  return soldeCaisseAvant(db: db, shopId: shopId, boundary: lendemain);
+});
+
 // --- 3. LE PROVIDER PRINCIPAL (100% LOCAL avec cache SharedPreferences) ---
 final dashboardProvider =
     AsyncNotifierProvider<DashboardNotifier, DashboardState>(() {
@@ -243,74 +337,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     final endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59);
 
     // ==========================================
-    // 2. VÉRIFICATION DE LA CLÔTURE DE LA VEILLE
-    // ==========================================
-    // On prend la journée non clôturée la PLUS ANCIENNE, pas la dernière :
-    // après plusieurs jours d'oubli, il faut clôturer dans l'ordre
-    // chronologique, sinon les journées intermédiaires resteraient trouées.
-    final pastSales =
-        await (db.select(db.localSales)
-              ..where(
-                (t) =>
-                    t.shopId.equals(shopId) &
-                    t.createdAt.isSmallerThanValue(startOfDay),
-              )
-              ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt)]))
-            .get();
-    final lastSale = pastSales.isEmpty ? null : pastSales.first;
-
-    if (lastSale != null) {
-      final lastSaleDate = DateTime(
-        lastSale.createdAt.year,
-        lastSale.createdAt.month,
-        lastSale.createdAt.day,
-      );
-
-      if (lastSaleDate.isBefore(startOfDay)) {
-        final startOfSaleDay = DateTime(
-          lastSaleDate.year,
-          lastSaleDate.month,
-          lastSaleDate.day,
-        );
-        final endOfSaleDay = DateTime(
-          lastSaleDate.year,
-          lastSaleDate.month,
-          lastSaleDate.day,
-          23,
-          59,
-          59,
-        );
-
-        final existingClosing =
-            await (db.select(db.localDailyClosings)..where(
-                  (t) =>
-                      t.shopId.equals(shopId) &
-                      t.closingDate.isBetweenValues(
-                        startOfSaleDay,
-                        endOfSaleDay,
-                      ),
-                ))
-                .getSingleOrNull();
-
-        if (existingClosing == null) {
-          return DashboardState(
-            morningBalance: 0,
-            totalSales: 0,
-            totalWithdrawals: 0,
-            calculatedCash: 0,
-            grossProfit: 0,
-            netProfit: 0,
-            salesCount: 0,
-            isClosed: false,
-            needsPreviousDayClosing: true,
-            dateToClose: lastSaleDate,
-          );
-        }
-      }
-    }
-
-    // ==========================================
-    // 3. LECTURE LOCALE DE LA JOURNÉE ACTUELLE
+    // 2. LECTURE LOCALE DE LA JOURNÉE ACTUELLE
     // ==========================================
     // ✅ FIX : Utilisation de isBetweenValues au lieu de .year.equals()
     final todayClosing =
@@ -358,9 +385,18 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
               ]))
             .get();
 
-    final totals = _calculateTotals(localSales, localCashMovements);
-    final hasMorningBalance = localCashMovements.any(
-      (movement) => movement.type == 'morning_balance',
+    // La journée est une fenêtre de rapport, pas une remise à zéro. Son solde
+    // d'ouverture est le solde continu juste avant minuit, même si aucune
+    // clôture n'a été faite la veille.
+    final openingBalance = await _cashBalanceBefore(
+      db: db,
+      shopId: shopId,
+      boundary: startOfDay,
+    );
+    final totals = _calculateTotals(
+      localSales,
+      localCashMovements,
+      openingBalance: openingBalance,
     );
 
     // Ce qui restait en caisse à la dernière clôture, pour le proposer au lieu
@@ -385,7 +421,10 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     return DashboardState(
       soldeDeLaVeille: derniereCloture?.physicalCash,
       dateDerniereCloture: derniereCloture?.closingDate,
-      hasMorningBalance: hasMorningBalance,
+      // Nom historique du champ : `true` empêche l'ancienne boîte de saisie
+      // matinale de s'ouvrir. Une boutique neuve démarre proprement à zéro ;
+      // un montant réel différent passe par un ajustement daté et motivé.
+      hasMorningBalance: true,
       morningBalance: totals.morningBalance,
       totalSales: totals.totalSales,
       totalWithdrawals: totals.totalWithdrawals,
@@ -399,21 +438,18 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
 
   DailyCashTotals _calculateTotals(
     List<LocalSale> sales,
-    List<LocalCashMovement> movements,
-  ) {
-    return DailyCashCalculator.calculate(
-      sales: sales.map(
-        (sale) => SaleValue(amount: sale.totalAmount, profit: sale.totalProfit),
-      ),
-      movements: movements.map(
-        (movement) => CashMovementValue(
-          type: movement.type,
-          amount: movement.amount,
-          createdAt: movement.createdAt,
-        ),
-      ),
-    );
-  }
+    List<LocalCashMovement> movements, {
+    double openingBalance = 0,
+  }) => calculerTotauxCaisse(sales, movements, openingBalance: openingBalance);
+
+  /// Solde théorique à l'instant [boundary], sans dépendre d'une clôture
+  /// quotidienne. La dernière clôture physique antérieure est un point de
+  /// contrôle ; à défaut, on repart du premier solde initial ou de zéro.
+  Future<double> _cashBalanceBefore({
+    required AppDatabase db,
+    required String shopId,
+    required DateTime boundary,
+  }) => soldeCaisseAvant(db: db, shopId: shopId, boundary: boundary);
 
   // --- ACTIONS DU DASHBOARD ---
 
@@ -435,6 +471,48 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     }
   }
 
+  Future<void> _recordCashMovement({
+    required AppDatabase db,
+    required String shopId,
+    required String userId,
+    required double amount,
+    required String type,
+    String? category,
+    String? note,
+    DateTime? createdAt,
+  }) async {
+    final movementId = const Uuid().v4();
+    final when = createdAt ?? DateTime.now();
+
+    await db
+        .into(db.localCashMovements)
+        .insert(
+          LocalCashMovement(
+            id: movementId,
+            shopId: shopId,
+            userId: userId,
+            amount: amount,
+            type: type,
+            category: category,
+            note: note,
+            createdAt: when,
+          ),
+        );
+    await db.addToQueue(
+      'ADD_CASH_MOVEMENT',
+      jsonEncode({
+        'id': movementId,
+        'shop_id': shopId,
+        'user_id': userId,
+        'amount': amount,
+        'type': type,
+        'category': category,
+        'note': note,
+        'created_at': when.toUtc().toIso8601String(),
+      }),
+    );
+  }
+
   Future<void> saveMorningBalance(double amount) async {
     state = const AsyncValue.loading();
     try {
@@ -445,52 +523,64 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final userId = prefs.getString('cached_user_id') ?? 'offline_user';
 
       final now = DateTime.now();
-      final debutDuJour = DateTime(now.year, now.month, now.day);
-      final finDuJour = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
-      // SAISIR DEUX FOIS CORRIGE, ça n'ajoute pas un second fonds.
-      //
-      // Le calcul ne retient que le plus récent, donc un doublon était sans
-      // effet sur le total — mais il laissait deux lignes dans le journal de
-      // caisse, et le commerçant qui doute retape. Vu chez un client en vrai :
-      // 23 500 saisis deux fois à une minute d'intervalle, et deux retraits
-      // identiques dans la foulée.
-      //
-      // On réutilise la ligne du jour au lieu d'en créer une seconde : même
-      // identifiant, donc l'envoi met à jour au lieu d'insérer.
+      // Une seule ligne initialise la caisse pour toute sa vie. Les saisies
+      // suivantes ne réécrivent jamais cette origine : elles deviennent un
+      // ajustement daté, donc visible dans l'historique.
       final existant =
-          await (db.select(db.localCashMovements)..where(
-                (row) =>
-                    row.shopId.equals(shopId) &
-                    row.type.equals('morning_balance') &
-                    row.createdAt.isBetweenValues(debutDuJour, finDuJour),
-              ))
+          await (db.select(db.localCashMovements)
+                ..where(
+                  (row) =>
+                      row.shopId.equals(shopId) &
+                      row.type.equals('morning_balance'),
+                )
+                ..orderBy([
+                  (row) => drift.OrderingTerm(
+                    expression: row.createdAt,
+                    mode: drift.OrderingMode.desc,
+                  ),
+                ])
+                ..limit(1))
               .getSingleOrNull();
 
-      final movementId = existant?.id ?? const Uuid().v4();
-
-      await db
-          .into(db.localCashMovements)
-          .insertOnConflictUpdate(
-            LocalCashMovement(
-              id: movementId,
-              shopId: shopId,
-              userId: userId,
-              amount: amount,
-              type: 'morning_balance',
-              createdAt: existant?.createdAt ?? now,
-            ),
+      if (existant == null) {
+        await _recordCashMovement(
+          db: db,
+          shopId: shopId,
+          userId: userId,
+          amount: amount,
+          type: 'morning_balance',
+          note: 'Initialisation de la caisse continue',
+          createdAt: now,
+        );
+      } else {
+        final startOfDay = DateTime(now.year, now.month, now.day);
+        final balanceBeforeToday = await _cashBalanceBefore(
+          db: db,
+          shopId: shopId,
+          boundary: startOfDay,
+        );
+        // Si l'initialisation vient d'être faite aujourd'hui, elle est le
+        // solde affiché « au début du jour ». Sinon, c'est le report continu
+        // calculé à minuit. On ne dépend pas de l'état Riverpod, qui peut être
+        // encore en reconstruction pendant un double appui.
+        final currentOpening = existant.createdAt.isBefore(startOfDay)
+            ? balanceBeforeToday
+            : existant.amount;
+        final difference = amount - currentOpening;
+        if (difference.abs() >= 0.01) {
+          await _recordCashMovement(
+            db: db,
+            shopId: shopId,
+            userId: userId,
+            amount: difference.abs(),
+            type: difference > 0 ? 'adjustment_in' : 'adjustment_out',
+            category: 'Ajustement',
+            note: 'Correction du solde d’ouverture depuis l’accueil',
+            createdAt: now,
           );
-
-      final payload = {
-        'id': movementId,
-        'shop_id': shopId,
-        'user_id': userId,
-        'amount': amount,
-        'type': 'morning_balance',
-        'created_at': (existant?.createdAt ?? now).toUtc().toIso8601String(),
-      };
-      await db.addToQueue('ADD_CASH_MOVEMENT', jsonEncode(payload));
+        }
+      }
 
       // L'affichage se rafraîchit AVANT l'envoi : le solde est déjà en base
       // locale, il doit apparaître tout de suite, réseau ou pas.
@@ -498,6 +588,57 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       await _envoyerSansBloquer();
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
+    }
+  }
+
+  /// Aligne la caisse théorique sur un comptage réel sans modifier le passé.
+  /// Le montant de l'écart est une nouvelle ligne positive ou négative ; le
+  /// motif est obligatoire pour que l'historique explique la différence.
+  Future<double> adjustCashBalance({
+    required double physicalCash,
+    required String reason,
+  }) async {
+    if (physicalCash < 0) {
+      throw ArgumentError.value(physicalCash, 'physicalCash');
+    }
+    final cleanReason = reason.trim();
+    if (cleanReason.isEmpty) {
+      throw ArgumentError.value(reason, 'reason', 'Le motif est obligatoire.');
+    }
+
+    final currentState = state.valueOrNull ?? await _fetchDashboardData();
+    if (currentState.isClosed) {
+      throw StateError(
+        'Rouvre la journée avant d’ajuster une caisse déjà clôturée.',
+      );
+    }
+
+    final difference = physicalCash - currentState.calculatedCash;
+    if (difference.abs() < 0.01) return 0;
+
+    state = const AsyncValue.loading();
+    try {
+      final db = ref.read(localDbProvider);
+      final prefs = await SharedPreferences.getInstance();
+      final shopId = await requireShopId(ref);
+      final userId = prefs.getString('cached_user_id') ?? 'offline_user';
+
+      await _recordCashMovement(
+        db: db,
+        shopId: shopId,
+        userId: userId,
+        amount: difference.abs(),
+        type: difference > 0 ? 'adjustment_in' : 'adjustment_out',
+        category: 'Ajustement',
+        note: cleanReason,
+      );
+
+      state = AsyncValue.data(await _fetchDashboardData());
+      await _envoyerSansBloquer();
+      return difference;
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -613,7 +754,16 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
                     t.createdAt.isBetweenValues(startOfDay, endOfDay),
               ))
               .get();
-      final totals = _calculateTotals(localSales, localCashMovements);
+      final openingBalance = await _cashBalanceBefore(
+        db: db,
+        shopId: shopId,
+        boundary: startOfDay,
+      );
+      final totals = _calculateTotals(
+        localSales,
+        localCashMovements,
+        openingBalance: openingBalance,
+      );
       final cashGap = physicalCash - totals.calculatedCash;
 
       final existingClosing =
@@ -691,4 +841,104 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       state = AsyncValue.error(e, StackTrace.current);
     }
   }
+}
+
+/// Ce qu'il y avait en caisse juste avant [boundary].
+///
+/// Part de la dernière clôture RÉELLEMENT comptée, puis rejoue tout ce qui
+/// s'est passé depuis. C'est ce qui permet à la caisse de traverser des
+/// journées non clôturées sans rien perdre : le solde du 28 contenait bien les
+/// ventes des 26 et 27, jamais comptés.
+///
+/// Sortie de la classe pour que l'historique des ventes puisse s'en servir
+/// aussi, au lieu d'en recopier une seconde version qui divergerait.
+Future<double> soldeCaisseAvant({
+  required AppDatabase db,
+  required String shopId,
+  required DateTime boundary,
+}) async {
+  final checkpoint =
+      await (db.select(db.localDailyClosings)
+            ..where(
+              (closing) =>
+                  closing.shopId.equals(shopId) &
+                  closing.isClosed.equals(true) &
+                  closing.closingDate.isSmallerThanValue(boundary),
+            )
+            ..orderBy([
+              (closing) => drift.OrderingTerm(
+                expression: closing.closingDate,
+                mode: drift.OrderingMode.desc,
+              ),
+            ])
+            ..limit(1))
+          .getSingleOrNull();
+
+  final checkpointBalance =
+      checkpoint?.physicalCash ?? checkpoint?.calculatedCash ?? 0;
+  final activityStart = checkpoint == null
+      ? null
+      : DateTime(
+          checkpoint.closingDate.year,
+          checkpoint.closingDate.month,
+          checkpoint.closingDate.day,
+        ).add(const Duration(days: 1));
+
+  final salesQuery = db.select(db.localSales)
+    ..where(
+      (sale) =>
+          sale.shopId.equals(shopId) &
+          sale.createdAt.isSmallerThanValue(boundary) &
+          (activityStart == null
+              ? const drift.Constant(true)
+              : sale.createdAt.isBiggerOrEqualValue(activityStart)),
+    );
+  final movementsQuery = db.select(db.localCashMovements)
+    ..where(
+      (movement) =>
+          movement.shopId.equals(shopId) &
+          movement.createdAt.isSmallerThanValue(boundary) &
+          (activityStart == null
+              ? const drift.Constant(true)
+              : movement.createdAt.isBiggerOrEqualValue(activityStart)),
+    );
+
+  final totals = calculerTotauxCaisse(
+    await salesQuery.get(),
+    await movementsQuery.get(),
+    openingBalance: checkpointBalance,
+  );
+  return totals.calculatedCash;
+}
+
+/// Traduit les lignes Drift en valeurs du calculateur de caisse.
+///
+/// Hors de la classe pour que l'historique des ventes s'en serve aussi : deux
+/// copies du même passage auraient fini par diverger, et c'est justement ce
+/// passage qui décide si une sortie ampute le bénéfice.
+DailyCashTotals calculerTotauxCaisse(
+  List<LocalSale> sales,
+  List<LocalCashMovement> movements, {
+  double openingBalance = 0,
+}) {
+  return DailyCashCalculator.calculate(
+    openingBalance: openingBalance,
+    sales: sales.map(
+      (sale) => SaleValue(
+        amount: sale.totalAmount,
+        profit: sale.totalProfit,
+        createdAt: sale.createdAt,
+      ),
+    ),
+    movements: movements.map(
+      (movement) => CashMovementValue(
+        type: movement.type,
+        amount: movement.amount,
+        createdAt: movement.createdAt,
+        // Décide si la sortie ampute le bénéfice ou déplace seulement
+        // l'argent. Omise, un versement à la banque redevient une dépense.
+        category: movement.category,
+      ),
+    ),
+  );
 }

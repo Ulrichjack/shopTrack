@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../../products/domain/entities/product_entity.dart';
+import '../../../../shared/widgets/product_picker.dart';
 import '../providers/cart_provider.dart';
 
 class NewSaleScreen extends ConsumerStatefulWidget {
@@ -93,6 +95,24 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
     final priceController = TextEditingController(
       text: product.sellPrice.toInt().toString(),
     );
+    // La quantité se tape aussi bien qu'elle se martèle : les deux gestes
+    // écrivent ici.
+    final qtyController = TextEditingController(text: '1');
+
+    // Le mode est lu ICI, une seule fois, et jamais dans la feuille.
+    //
+    // Une feuille modale est une ROUTE : elle vit dans un autre morceau de
+    // l'arbre et survit au widget qui l'ouvre. Un `ref.watch` posé dedans
+    // enregistre une dépendance qui ne se démonte pas proprement à la
+    // fermeture — Flutter lève alors « '_dependents.isEmpty': is not true »
+    // et l'écran devient rouge. Vu le 30/08/2026, en ajoutant l'affichage du
+    // bénéfice et de l'étiquette de stock.
+    //
+    // Le mode Patron ne change pas pendant qu'on choisit une quantité : une
+    // valeur capturée suffit, et c'est le même geste que
+    // `ProviderScope.containerOf(context, listen: false)` employé ailleurs
+    // pour survivre à une boîte de dialogue.
+    final estPatron = ref.read(appModeProvider).value ?? false;
 
     showModalBottomSheet(
       context: context,
@@ -126,9 +146,18 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  // 👇 On affiche le stock restant disponible
+                  // Le stock restant. Chiffré pour tout le monde tant que
+                  // `stockChiffreVisibleParLeVendeur` vaut vrai — voir la
+                  // décision commentée sur cette constante.
+                  //
+                  // Les parenthèses comptent : `??` lie moins fort que `||`,
+                  // donc `value ?? false || drapeau` s'évalue en
+                  // `value ?? (false || drapeau)` et le drapeau ne sert plus à
+                  // rien dès que `value` a une valeur.
                   Text(
-                    'Disponible pour ajout : $maxAvailable',
+                    (estPatron || stockChiffreVisibleParLeVendeur)
+                        ? 'Disponible pour ajout : $maxAvailable'
+                        : 'En stock',
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 20),
@@ -158,12 +187,27 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
+                  // Le nombre se TAPE, il ne se martèle pas.
+                  //
+                  // Vingt crédits téléphoniques, c'était vingt appuis sur
+                  // « + » avant de pouvoir valider — signalé deux fois pendant
+                  // une simulation de vente, et la seconde fois la saisie s'est
+                  // arrêtée là. Ce qui interrompt celui qui teste interrompra
+                  // celui qui vend, tous les jours : c'est le geste le plus
+                  // répété de l'application.
+                  //
+                  // Les boutons restent : pour un ou deux articles ils sont
+                  // plus rapides que le clavier. Les deux gestes écrivent au
+                  // même endroit.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(
                         onPressed: tempQty > 1
-                            ? () => setModalState(() => tempQty--)
+                            ? () => setModalState(() {
+                                tempQty--;
+                                qtyController.text = '$tempQty';
+                              })
                             : null,
                         icon: Icon(
                           Icons.remove_circle_outline,
@@ -171,19 +215,45 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                           color: tempQty > 1 ? AppColors.primary : Colors.grey,
                         ),
                       ),
-                      const SizedBox(width: 20),
-                      Text(
-                        '$tempQty',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 88,
+                        child: TextField(
+                          controller: qtyController,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          // On ne CORRIGE pas pendant la frappe.
+                          //
+                          // Ramener la valeur dans les bornes à chaque touche
+                          // rend impossible de taper « 20 » quand le stock est
+                          // de 15 : le « 2 » passerait, le « 0 » serait refusé
+                          // sur un champ déjà remis à 15. On laisse écrire, on
+                          // signale, et on empêche seulement de valider.
+                          onChanged: (valeur) => setModalState(() {
+                            tempQty = int.tryParse(valeur.trim()) ?? 0;
+                          }),
                         ),
                       ),
-                      const SizedBox(width: 20),
-                      // 👇 4. On bloque le bouton "+" si on atteint le maxAvailable
+                      const SizedBox(width: 12),
                       IconButton(
                         onPressed: tempQty < maxAvailable
-                            ? () => setModalState(() => tempQty++)
+                            ? () => setModalState(() {
+                                tempQty++;
+                                qtyController.text = '$tempQty';
+                              })
                             : null,
                         icon: Icon(
                           Icons.add_circle_outline,
@@ -195,32 +265,65 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                       ),
                     ],
                   ),
+
+                  if (tempQty > maxAvailable)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Il n\'en reste que $maxAvailable.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 10),
 
-                  // Affichage du bénéfice en petit
-                  Center(
-                    child: Text(
-                      'Bénéfice estimé : ${CurrencyFormatter.format(currentProfit)}',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  // Le bénéfice se déduit du prix d'achat : l'afficher revient
+                  // à le donner. Un vendeur qui lit « bénéfice estimé : 500 »
+                  // sur un article vendu 3 500 connaît la marge de la boutique
+                  // en une soustraction, produit par produit.
+                  //
+                  // Le calcul, lui, reste : la ligne de vente doit porter son
+                  // bénéfice figé pour que le bilan du patron soit juste.
+                  if (estPatron) ...[
+                    Center(
+                      child: Text(
+                        'Bénéfice estimé : '
+                        '${CurrencyFormatter.format(currentProfit)}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
+                  ] else
+                    const SizedBox(height: 12),
 
                   ElevatedButton(
-                    onPressed: () {
-                      final finalPrice =
-                          double.tryParse(priceController.text) ??
-                          product.sellPrice;
-                      for (int i = 0; i < tempQty; i++) {
-                        final modifiedProduct = product.copyWith(
-                          sellPrice: finalPrice,
-                        );
-                        ref
-                            .read(cartProvider.notifier)
-                            .addProduct(modifiedProduct);
-                      }
-                      Navigator.pop(context);
-                    },
+                    // Désactivé plutôt que corrigé en douce : le commerçant
+                    // voit ce qu'il a tapé, lit pourquoi ça ne passe pas, et
+                    // décide. Une valeur ramenée en silence l'aurait laissé
+                    // valider autre chose que ce qu'il croyait vendre.
+                    onPressed: (tempQty < 1 || tempQty > maxAvailable)
+                        ? null
+                        : () {
+                            final finalPrice =
+                                double.tryParse(priceController.text) ??
+                                product.sellPrice;
+                            for (int i = 0; i < tempQty; i++) {
+                              final modifiedProduct = product.copyWith(
+                                sellPrice: finalPrice,
+                              );
+                              ref
+                                  .read(cartProvider.notifier)
+                                  .addProduct(modifiedProduct);
+                            }
+                            Navigator.pop(context);
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 16),

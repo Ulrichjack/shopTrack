@@ -70,12 +70,27 @@ class _CashScreenState extends ConsumerState<CashScreen> {
   String _selectedCategory = 'Repas';
   bool _isLoading = false;
 
+  /// Les cinq premières sont de vraies **dépenses** : elles sortent de la
+  /// caisse et du bénéfice.
+  ///
+  /// Les deux dernières ne sont que des **déplacements** — l'argent existe
+  /// toujours, il a changé de place. Elles vident le tiroir sans rien coûter,
+  /// et `categoriesSansImpactSurLeBenefice` les exclut du résultat. Sans
+  /// elles, un commerçant qui met sa recette à la banque chaque soir affichait
+  /// un bénéfice négatif tous les jours.
+  ///
+  /// ⚠️ Les libellés sont enregistrés tels quels et comparés tels quels dans
+  /// `daily_cash_calculator.dart`. En renommer un ici sans le faire là-bas
+  /// referait un déplacement en dépense, en silence — d'où le test qui fige
+  /// les deux listes ensemble.
   final List<String> _categories = [
     'Repas',
     'Transport',
     'Fournisseur',
     'Personnel',
     'Autre',
+    'Versement banque',
+    'Retrait patron',
   ];
 
   @override
@@ -181,6 +196,17 @@ class _CashScreenState extends ConsumerState<CashScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // « Ajuster après un comptage réel » a été retiré le 30/08/2026.
+            //
+            // Il faisait double emploi avec la clôture, qui demande déjà le
+            // montant réellement compté et enregistre l'écart. Deux chemins
+            // pour le même geste, c'est deux fois plus d'occasions de se
+            // tromper — et le second ouvrait une boîte de dialogue qui plantait
+            // à l'ouverture du clavier.
+            //
+            // Les types `adjustment_in` / `adjustment_out` restent compris par
+            // le calculateur : les mouvements déjà enregistrés continuent
+            // d'être pris en compte. On retire la porte, pas l'historique.
             Form(
               key: _formKey,
               child: Column(

@@ -78,7 +78,16 @@ class _ShopTrackAppState extends ConsumerState<ShopTrackApp>
     if (Supabase.instance.client.auth.currentSession == null) return;
     // Best-effort : hors ligne, `connectivityProvider` rattrapera au vrai
     // retour du réseau.
-    unawaited(ref.read(syncServiceProvider).synchronize().catchError((_) {}));
+    unawaited(
+      ref
+          .read(syncServiceProvider)
+          .synchronize()
+          .catchError(
+            // Même raison qu'à l'ouverture de session : un échec silencieux
+            // toutes les deux minutes est indiscernable d'une app qui marche.
+            (Object erreur) => debugPrint('[SYNC] échec du minuteur : $erreur'),
+          ),
+    );
   }
 
   @override
