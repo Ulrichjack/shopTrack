@@ -544,22 +544,24 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         // NE PEUT PAS ATTENDRE. Créer un article, encaisser, sortir de
         // l'argent, clôturer — oui, la marchandise et le tiroir n'attendent
         // pas. Ranger un produit qu'on ne vend plus attend très bien.
+        // Modifier, supprimer, archiver : le catalogue appartient au patron.
+        //
+        // Le vendeur consulte cette fiche pour savoir ce qu'il peut vendre et
+        // à quel prix — il n'y voit ni prix d'achat, ni marge. Rien de plus ne
+        // lui est utile : son rôle tient dans « elle vend ».
         actions: [
-          // Corriger, oui : le nom, l'unité, le seuil d'alerte, le prix de
-          // vente. L'écran masque le prix d'achat et le conserve tel quel.
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () =>
-                context.push('/edit-product', extra: currentProduct),
-          ),
-          // Supprimer, non — et avec elle l'archivage, qu'elle propose devant
-          // un produit qui a une histoire.
-          if (estPatron)
+          if (estPatron) ...[
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () =>
+                  context.push('/edit-product', extra: currentProduct),
+            ),
             IconButton(
               tooltip: 'Supprimer',
               icon: const Icon(Icons.delete_outline),
               onPressed: () => _supprimer(context, ref, currentProduct),
             ),
+          ],
         ],
       ),
       body: SingleChildScrollView(

@@ -105,28 +105,22 @@ const sellerAllowedRoutes = {
   '/products',
   '/product-detail',
 
-  // Créer un article, oui. La marchandise arrive quand elle arrive, et
-  // attendre la propriétaire pour l'enregistrer, c'est vendre un produit qui
-  // n'existe pas dans l'application.
+  // CRÉER ou MODIFIER un article : réservé au patron.
   //
-  // L'écran masque le prix d'achat au vendeur et l'enregistre à zéro : la
-  // propriétaire le renseignera. Un zéro se remarque, et il vaut mieux qu'un
-  // prix inventé — c'est la règle qu'on avait déjà retenue pour l'import du
-  // catalogue d'un client.
+  // Ouverts un moment le 31/08, puis refermés le même jour — et la raison
+  // mérite d'être gardée, parce qu'elle a l'air de se contredire.
   //
-  // `/edit-product` reste fermé : modifier un prix existant, c'est autre
-  // chose que déclarer un article nouveau.
-  '/add-product',
-
-  // Corriger une fiche, aussi. Il peut créer un article mais pas en réparer
-  // le nom : une faute de frappe restait définitive jusqu'au passage de la
-  // propriétaire, et ce genre de blocage pousse à contourner l'application.
+  // On les avait ouverts pour que la marchandise arrivée le matin soit
+  // vendable tout de suite. Mais la cliente a tranché : le stock reste au
+  // patron. Créer un article que la vendeuse ne peut pas approvisionner ne lui
+  // sert donc à rien — elle obtient une fiche à zéro, invendable, et le geste
+  // ne fait qu'ajouter des lignes incomplètes au catalogue.
   //
-  // L'écran masque le prix d'ACHAT et conserve sa valeur à l'enregistrement.
-  // Le prix de VENTE, lui, reste modifiable : il peut déjà négocier n'importe
-  // quel montant au moment de la vente, et tout changement de tarif laisse une
-  // trace datée. Le lui interdire ici n'empêcherait rien.
-  '/edit-product',
+  // Et sans création, il n'y a plus de faute de frappe à réparer : l'argument
+  // qui justifiait la modification tombe avec.
+  //
+  // Le rôle tient dans la phrase de la cliente : « elle vend ». Tout ce qui
+  // n'est ni vendre, ni faire tomber la caisse juste, appartient au patron.
 
   // Signaler une casse. Sans ça, la perte devient un manquant qu'on lui
   // reproche — exactement ce que le rapprochement d'inventaire existe pour

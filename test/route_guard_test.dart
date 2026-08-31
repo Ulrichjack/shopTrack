@@ -100,6 +100,8 @@ void main() {
     // étaient atteignables par un vendeur, par simple lien direct.
     test('les écrans sensibles ne s\'ouvrent plus au vendeur', () {
       const sensibles = [
+        '/add-product',
+        '/edit-product',
         '/manage-units',
         '/cycles',
         '/create-cycle',
@@ -124,16 +126,11 @@ void main() {
       expect(route(vers: '/products'), isNull);
       expect(route(vers: '/product-detail'), isNull);
 
-      // Créer un article aussi : la marchandise arrive quand elle arrive, et
-      // attendre le patron pour l'enregistrer revient à vendre un produit que
-      // l'application ignore. L'écran masque le champ prix d'achat et
-      // l'enregistre à zéro — un zéro se remarque, un prix inventé non.
-      expect(route(vers: '/add-product'), isNull);
-
-      // Et le corriger : sans ça, une faute de frappe faite à la création
-      // restait définitive jusqu'au passage du patron. L'écran masque le prix
-      // d'achat et le conserve à l'enregistrement.
-      expect(route(vers: '/edit-product'), isNull);
+      // Mais le catalogue lui-même appartient au patron : créer un article
+      // que le vendeur ne peut pas approvisionner ne lui sert à rien, et sans
+      // création il n'y a plus de faute de frappe à corriger.
+      expect(route(vers: '/add-product'), '/profile');
+      expect(route(vers: '/edit-product'), '/profile');
     });
 
     test('et il peut tenir la caisse de sa journée', () {
