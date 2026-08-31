@@ -91,6 +91,7 @@ class _CashScreenState extends ConsumerState<CashScreen> {
     'Autre',
     'Versement banque',
     'Retrait patron',
+    'Remise à la patronne',
   ];
 
   @override

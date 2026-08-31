@@ -827,7 +827,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                   const SizedBox(height: 40),
 
-                  if (!data.isClosed && isBossMode)
+                  // Clôturer n'est plus réservé au patron.
+                  //
+                  // C'est le vendeur qui compte le tiroir en fermant : dans
+                  // cette boutique la propriétaire ne passe qu'une fois toutes
+                  // les quelques semaines. Réservé, le tiroir n'était jamais
+                  // compté et l'écart réel n'apparaissait jamais — le contrôle
+                  // qu'on croyait protéger n'existait déjà plus.
+                  //
+                  // Il CONSTATE, il ne consulte pas : le bilan reste fermé.
+                  if (!data.isClosed)
                     ElevatedButton.icon(
                       onPressed: () => context.push('/closing'),
                       style: ElevatedButton.styleFrom(

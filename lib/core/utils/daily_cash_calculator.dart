@@ -15,6 +15,11 @@
 const categoriesSansImpactSurLeBenefice = {
   'Versement banque',
   'Retrait patron',
+  // Le geste du soir dans une boutique tenue par quelqu'un d'autre : la
+  // recette part chez la propriétaire, souvent par Mobile Money. L'argent
+  // change de mains, il n'est pas dépensé — le compter comme une dépense
+  // afficherait un bénéfice négatif tous les soirs.
+  'Remise à la patronne',
 };
 
 class CashMovementValue {

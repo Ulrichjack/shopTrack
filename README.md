@@ -43,6 +43,7 @@ supabase/migrations/202608310001_vendeur_gestes_du_metier.sql
 supabase/migrations/202608310002_retirer_archivage_vendeur.sql
 supabase/migrations/202608310003_vendeur_corriger_article.sql
 supabase/migrations/202608310004_upsert_caisse_et_cloture.sql
+supabase/migrations/202608310005_vendeur_lire_sa_caisse.sql
 ```
 
 ### Fonctions serveur

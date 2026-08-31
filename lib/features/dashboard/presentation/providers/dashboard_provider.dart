@@ -96,54 +96,63 @@ class PendingClosing {
   bool get isUnreliable => daysLate > 3;
 }
 
-final pendingClosingProvider = FutureProvider.family<PendingClosing?, DateTime>(
-  (ref, date) async {
-    final db = ref.watch(localDbProvider);
-    // La boutique active. Les trois lectures qui suivent l'ignoraient : sur un
-    // téléphone qui gère plusieurs boutiques, une journée déjà clôturée
-    // ailleurs masquait celle qui restait à faire, et les ventes d'une
-    // épicerie réclamaient la clôture d'une autre.
-    final shopId = await ref.watch(currentShopIdProvider.future);
-    if (shopId == null || shopId.isEmpty) return null;
+final pendingClosingProvider = FutureProvider.family<PendingClosing?, DateTime>((
+  ref,
+  date,
+) async {
+  final db = ref.watch(localDbProvider);
+  // La boutique active. Les trois lectures qui suivent l'ignoraient : sur un
+  // téléphone qui gère plusieurs boutiques, une journée déjà clôturée
+  // ailleurs masquait celle qui restait à faire, et les ventes d'une
+  // épicerie réclamaient la clôture d'une autre.
+  final shopId = await ref.watch(currentShopIdProvider.future);
+  if (shopId == null || shopId.isEmpty) return null;
 
-    final startOfDay = DateTime(date.year, date.month, date.day);
-    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+  final startOfDay = DateTime(date.year, date.month, date.day);
+  final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
-    final today = DateTime.now();
-    final startOfToday = DateTime(today.year, today.month, today.day);
-    if (!startOfDay.isBefore(startOfToday)) return null; // jour en cours
+  final today = DateTime.now();
+  final startOfToday = DateTime(today.year, today.month, today.day);
+  if (!startOfDay.isBefore(startOfToday)) return null; // jour en cours
 
-    final closing =
-        await (db.select(db.localDailyClosings)..where(
+  final closing =
+      await (db.select(db.localDailyClosings)
+            ..where(
               (t) =>
                   t.shopId.equals(shopId) &
                   t.closingDate.isBetweenValues(startOfDay, endOfDay),
-            ))
-            .getSingleOrNull();
-    if (closing != null) return null;
+            )
+            // `getSingleOrNull` LÈVE au-delà d'une ligne, il ne rend pas null.
+            // Or deux clôtures peuvent coexister pour un même jour : une
+            // enregistrée hors ligne avec son identifiant local, et celle que
+            // le serveur avait déjà — le téléchargement fusionne sur
+            // l'identifiant, pas sur la date, et garde les deux. L'écran des
+            // ventes devenait alors gris, sans un mot.
+            ..limit(1))
+          .getSingleOrNull();
+  if (closing != null) return null;
 
-    final sales =
-        await (db.select(db.localSales)..where(
-              (t) =>
-                  t.shopId.equals(shopId) &
-                  t.createdAt.isBetweenValues(startOfDay, endOfDay),
-            ))
-            .get();
-    final movements =
-        await (db.select(db.localCashMovements)..where(
-              (t) =>
-                  t.shopId.equals(shopId) &
-                  t.createdAt.isBetweenValues(startOfDay, endOfDay),
-            ))
-            .get();
-    if (sales.isEmpty && movements.isEmpty) return null;
+  final sales =
+      await (db.select(db.localSales)..where(
+            (t) =>
+                t.shopId.equals(shopId) &
+                t.createdAt.isBetweenValues(startOfDay, endOfDay),
+          ))
+          .get();
+  final movements =
+      await (db.select(db.localCashMovements)..where(
+            (t) =>
+                t.shopId.equals(shopId) &
+                t.createdAt.isBetweenValues(startOfDay, endOfDay),
+          ))
+          .get();
+  if (sales.isEmpty && movements.isEmpty) return null;
 
-    return PendingClosing(
-      date: startOfDay,
-      daysLate: startOfToday.difference(startOfDay).inDays,
-    );
-  },
-);
+  return PendingClosing(
+    date: startOfDay,
+    daysLate: startOfToday.difference(startOfDay).inDays,
+  );
+});
 
 /// Les journées passées où l'on a vendu sans jamais compter la caisse.
 ///
@@ -341,11 +350,19 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     // ==========================================
     // ✅ FIX : Utilisation de isBetweenValues au lieu de .year.equals()
     final todayClosing =
-        await (db.select(db.localDailyClosings)..where(
-              (t) =>
-                  t.shopId.equals(shopId) &
-                  t.closingDate.isBetweenValues(startOfDay, endOfDay),
-            ))
+        await (db.select(db.localDailyClosings)
+              ..where(
+                (t) =>
+                    t.shopId.equals(shopId) &
+                    t.closingDate.isBetweenValues(startOfDay, endOfDay),
+              )
+              // `getSingleOrNull` LÈVE au-delà d'une ligne, il ne rend pas null.
+              // Or deux clôtures peuvent coexister pour un même jour : une
+              // enregistrée hors ligne avec son identifiant local, et celle que
+              // le serveur avait déjà — le téléchargement fusionne sur
+              // l'identifiant, pas sur la date, et garde les deux. L'écran des
+              // ventes devenait alors gris, sans un mot.
+              ..limit(1))
             .getSingleOrNull();
 
     if (todayClosing != null && todayClosing.isClosed) {
@@ -658,11 +675,19 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
     final closing =
-        await (db.select(db.localDailyClosings)..where(
-              (t) =>
-                  t.shopId.equals(shopId) &
-                  t.closingDate.isBetweenValues(startOfDay, endOfDay),
-            ))
+        await (db.select(db.localDailyClosings)
+              ..where(
+                (t) =>
+                    t.shopId.equals(shopId) &
+                    t.closingDate.isBetweenValues(startOfDay, endOfDay),
+              )
+              // `getSingleOrNull` LÈVE au-delà d'une ligne, il ne rend pas null.
+              // Or deux clôtures peuvent coexister pour un même jour : une
+              // enregistrée hors ligne avec son identifiant local, et celle que
+              // le serveur avait déjà — le téléchargement fusionne sur
+              // l'identifiant, pas sur la date, et garde les deux. L'écran des
+              // ventes devenait alors gris, sans un mot.
+              ..limit(1))
             .getSingleOrNull();
     if (closing == null) return;
 
@@ -767,14 +792,36 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final cashGap = physicalCash - totals.calculatedCash;
 
       final existingClosing =
-          await (db.select(db.localDailyClosings)..where(
-                (t) =>
-                    t.shopId.equals(shopId) &
-                    t.closingDate.isBetweenValues(startOfDay, endOfDay),
-              ))
+          await (db.select(db.localDailyClosings)
+                ..where(
+                  (t) =>
+                      t.shopId.equals(shopId) &
+                      t.closingDate.isBetweenValues(startOfDay, endOfDay),
+                )
+                // Voir plus haut : deux clôtures peuvent exister pour un jour.
+                ..limit(1))
               .getSingleOrNull();
       final closingId = existingClosing?.id ?? const Uuid().v4();
       final normalizedClosingDate = startOfDay;
+
+      // Une seule clôture par journée, en local aussi.
+      //
+      // Le serveur, lui, la garantit : la table est unique sur
+      // (shop_id, closing_date). En local rien ne l'impose — la clé est
+      // l'identifiant — et deux lignes peuvent donc coexister pour un même
+      // jour : celle créée hors ligne avec son identifiant local, et celle que
+      // le serveur avait déjà, ramenée par le téléchargement qui fusionne sur
+      // l'identifiant et non sur la date.
+      //
+      // On garde celle qu'on s'apprête à écrire et on retire les autres. Ça
+      // guérit une journée déjà dédoublée dès qu'on la reclôture.
+      await (db.delete(db.localDailyClosings)..where(
+            (t) =>
+                t.shopId.equals(shopId) &
+                t.closingDate.isBetweenValues(startOfDay, endOfDay) &
+                t.id.equals(closingId).not(),
+          ))
+          .go();
 
       // Refermer après une réouverture ne doit pas effacer la trace : on
       // conserve la note existante et on ajoute la nouvelle en dessous.

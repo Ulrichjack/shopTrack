@@ -181,6 +181,7 @@ void main() {
       expect(categoriesSansImpactSurLeBenefice, {
         'Versement banque',
         'Retrait patron',
+        'Remise à la patronne',
       });
     });
   });
