@@ -41,6 +41,7 @@ supabase/migrations/202608270002_commandes_acompte.sql
 supabase/migrations/202608300001_mouvements_ajustement.sql
 supabase/migrations/202608310001_vendeur_gestes_du_metier.sql
 supabase/migrations/202608310002_retirer_archivage_vendeur.sql
+supabase/migrations/202608310003_vendeur_corriger_article.sql
 ```
 
 ### Fonctions serveur

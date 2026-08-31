@@ -100,7 +100,6 @@ void main() {
     // étaient atteignables par un vendeur, par simple lien direct.
     test('les écrans sensibles ne s\'ouvrent plus au vendeur', () {
       const sensibles = [
-        '/edit-product',
         '/manage-units',
         '/cycles',
         '/create-cycle',
@@ -131,9 +130,10 @@ void main() {
       // l'enregistre à zéro — un zéro se remarque, un prix inventé non.
       expect(route(vers: '/add-product'), isNull);
 
-      // Modifier un article reste fermé : changer un prix existant n'est pas
-      // la même chose que déclarer un article nouveau.
-      expect(route(vers: '/edit-product'), '/profile');
+      // Et le corriger : sans ça, une faute de frappe faite à la création
+      // restait définitive jusqu'au passage du patron. L'écran masque le prix
+      // d'achat et le conserve à l'enregistrement.
+      expect(route(vers: '/edit-product'), isNull);
     });
 
     test('et il peut tenir la caisse de sa journée', () {

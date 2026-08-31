@@ -118,6 +118,16 @@ const sellerAllowedRoutes = {
   // chose que déclarer un article nouveau.
   '/add-product',
 
+  // Corriger une fiche, aussi. Il peut créer un article mais pas en réparer
+  // le nom : une faute de frappe restait définitive jusqu'au passage de la
+  // propriétaire, et ce genre de blocage pousse à contourner l'application.
+  //
+  // L'écran masque le prix d'ACHAT et conserve sa valeur à l'enregistrement.
+  // Le prix de VENTE, lui, reste modifiable : il peut déjà négocier n'importe
+  // quel montant au moment de la vente, et tout changement de tarif laisse une
+  // trace datée. Le lui interdire ici n'empêcherait rien.
+  '/edit-product',
+
   // Signaler une casse. Sans ça, la perte devient un manquant qu'on lui
   // reproche — exactement ce que le rapprochement d'inventaire existe pour
   // éviter. Une déclaration porte son auteur et ne s'efface pas.
