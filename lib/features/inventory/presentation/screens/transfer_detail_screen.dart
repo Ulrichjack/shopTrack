@@ -1,3 +1,4 @@
+import '../../../../core/providers/app_mode_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -89,25 +90,34 @@ class TransferDetailScreen extends ConsumerWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Le prix d'achat retenu est celui du jour de l'envoi, pas le
-            // prix actuel du produit — comme sur une ligne de vente : ce
-            // qu'on a payé ne bouge pas si le tarif change ensuite.
-            _Carte(
-              titre: "Ce que ça a coûté",
-              lignes: [
-                if (t.buyPrice != null)
+            // Ce que la marchandise a coûté ne regarde que le patron.
+            //
+            // Le vendeur doit pouvoir OUVRIR ce transfert — c'est ainsi qu'il
+            // est réapprovisionné, et confirmer la réception crédite son
+            // stock. Mais l'écran portait le prix d'achat et la valeur totale,
+            // soit précisément ce qu'on masque partout ailleurs.
+            //
+            // Le prix retenu est celui du jour de l'envoi, pas le tarif
+            // actuel — comme sur une ligne de vente : ce qu'on a payé ne bouge
+            // pas si le prix change ensuite.
+            if (ref.watch(appModeProvider).value ?? false) ...[
+              const SizedBox(height: 12),
+              _Carte(
+                titre: "Ce que ça a coûté",
+                lignes: [
+                  if (t.buyPrice != null)
+                    _ligne(
+                      'Prix d\'achat retenu',
+                      '${CurrencyFormatter.format(t.buyPrice!)} / ${t.unit ?? 'unité'}',
+                    ),
                   _ligne(
-                    'Prix d\'achat retenu',
-                    '${CurrencyFormatter.format(t.buyPrice!)} / ${t.unit ?? 'unité'}',
+                    'Valeur totale',
+                    CurrencyFormatter.format(entree.valeurAchat),
+                    gras: true,
                   ),
-                _ligne(
-                  'Valeur totale',
-                  CurrencyFormatter.format(entree.valeurAchat),
-                  gras: true,
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
             if (t.note != null && t.note!.trim().isNotEmpty) ...[
               const SizedBox(height: 12),
               _Carte(titre: 'Note', lignes: [_ligne(null, t.note!)]),

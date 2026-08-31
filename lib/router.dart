@@ -124,6 +124,17 @@ const sellerAllowedRoutes = {
   '/declare-loss',
   '/loss-entry',
 
+  // Recevoir un transfert d'une autre boutique.
+  //
+  // C'est LE chemin par lequel un vendeur est réapprovisionné : confirmer la
+  // réception crédite son stock. Les fermer revenait à le laisser vendre
+  // jusqu'à l'étagère vide sans pouvoir enregistrer ce qui arrivait.
+  //
+  // L'écran de détail masque de lui-même le prix d'achat et la valeur de la
+  // marchandise : il voit ce qui arrive, pas ce que ça a coûté.
+  '/transfers',
+  '/transfer-detail',
+
   // Enregistrer une sortie de caisse, et clôturer la journée.
   //
   // Ouverts le 31/08, après avoir constaté que fermer trop large revient à

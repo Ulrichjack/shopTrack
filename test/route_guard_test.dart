@@ -105,8 +105,6 @@ void main() {
         '/cycles',
         '/create-cycle',
         '/cycle-report',
-        '/transfers',
-        '/transfer-detail',
       ];
       for (final vers in sensibles) {
         expect(
@@ -145,6 +143,12 @@ void main() {
       // fermant : la patronne n'est pas là.
       expect(route(vers: '/cash-out'), isNull);
       expect(route(vers: '/closing'), isNull);
+
+      // Et recevoir un transfert : c'est LE chemin par lequel il est
+      // réapprovisionné. Le fermer revenait à le laisser vendre jusqu'à
+      // l'étagère vide sans pouvoir enregistrer ce qui arrive.
+      expect(route(vers: '/transfers'), isNull);
+      expect(route(vers: '/transfer-detail'), isNull);
 
       // Mais il CONSTATE, il ne consulte pas : le résultat de la boutique
       // reste au patron.
