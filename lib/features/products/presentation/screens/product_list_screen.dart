@@ -440,14 +440,25 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         ),
       ),
 
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        onPressed: () => context.push('/add-product'),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Ajouter un article',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+      // Le catalogue appartient au patron : la route est fermée au vendeur,
+      // et lui laisser le bouton reviendrait à lui montrer une porte qui le
+      // renvoie à son profil. Il croirait à une panne.
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: bossModeAccess,
+        builder: (context, estPatron, _) => estPatron
+            ? FloatingActionButton.extended(
+                backgroundColor: AppColors.primary,
+                onPressed: () => context.push('/add-product'),
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text(
+                  'Ajouter un article',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
