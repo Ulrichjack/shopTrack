@@ -794,3 +794,83 @@ select id, action, substr(payload, 1, 120) from sync_queue_items order by id;
 **Ce qui l'a rendu trompeur** : le message parlait de `products` alors que les
 produits allaient parfaitement bien. Chercher du côté des produits aurait pu
 coûter une journée.
+
+## 32. De l'argent encaissé qui n'entre jamais dans le tiroir
+
+**Vu le** 31/08/2026, en écrivant le module commandes — avant la première
+utilisation, ce qui est la seule bonne nouvelle de l'histoire.
+
+Le module enregistre un acompte : la cliente commande un gâteau à 150 000 F et
+verse 40 000 F en espèces. Le dossier est juste, le solde est juste, l'écran
+est juste. `paiements_commandes` porte la ligne.
+
+Et le soir, la clôture annonce **40 000 F de surplus**.
+
+Parce que la caisse ne se calcule pas à partir des dossiers. Elle se calcule à
+partir de `sales` et de `cash_movements`, et rien d'autre. Un acompte écrit
+dans sa propre table est invisible pour elle : les billets sont dans le tiroir,
+l'application ne les connaît pas, et l'écart est attribué à la personne qui a
+compté.
+
+C'est exactement le défaut du Mobile Money compté comme espèces, dans l'autre
+sens — et il se rejoue à chaque module qui touche de l'argent.
+
+**La règle** : *tout ce qui entre ou sort du tiroir physique écrit un
+`cash_movement`, quelle que soit la table qui porte le métier.* Une table
+métier décrit un engagement ; seule `cash_movements` décrit le tiroir.
+
+Deux détails qui vont avec, et qui se sont vus dans la même heure :
+
+- **Le type**. Un acompte est `incoming`, jamais une vente. Une vente porte une
+  marge ; un acompte est de l'argent avancé sur une commande dont on ne connaît
+  pas encore le coût. Le passer en vente inventerait un bénéfice.
+- **Le remboursement**. Rendre un acompte est un `withdrawal`, donc — par
+  défaut — une dépense qui ampute le bénéfice. Mais l'argent rendu n'était
+  jamais entré dans le bénéfice : sa catégorie rejoint
+  `categoriesSansImpactSurLeBenefice`. Sans ça, rendre 40 000 F affichait
+  « bénéfice −40 000 F », le même écran négatif que le versement à la banque
+  (piège #25 bis, vu le 29/08).
+
+**Ce qu'il reste à décider, et qui n'est pas un bug** : ces 150 000 F
+remplissent la caisse mais n'apparaissent dans aucun bénéfice, parce que
+l'application ne connaît pas le coût d'un gâteau. Le module dit ce qui est
+encaissé et ce qui est dû — pas ce qui est gagné. À trancher avec la cliente
+avant d'inventer un chiffre.
+
+## 33. Un contrôleur libéré sous un champ encore vivant
+
+**Vu le** 31/08/2026, écran rouge plein écran en tapant un acompte.
+
+```
+'package:flutter/src/widgets/framework.dart':
+Failed assertion: line 6268 pos 12: '_dependents.isEmpty': is not true.
+```
+
+Le code fautif avait l'air raisonnable :
+
+```dart
+final controleur = TextEditingController();
+final montant = await showModalBottomSheet<int>(...);  // la feuille utilise le contrôleur
+controleur.dispose();                                   // ← ici
+```
+
+`showModalBottomSheet` rend la main **au moment du `pop`**, pas quand la feuille
+a disparu. Pendant l'animation de fermeture, le `TextField` est toujours monté
+et toujours branché sur ce contrôleur. On le libère sous lui, et Flutter
+s'arrête à la désactivation de l'élément.
+
+**La règle** : *le contrôleur appartient au `State` qui l'utilise, et personne
+d'autre ne le libère.* C'est ce que fait `showChoiceSheet` depuis toujours —
+`_ChoiceSheetBody` crée son contrôleur et le libère dans son `dispose()`.
+
+`lib/shared/widgets/montant_sheet.dart` existe pour que la règle n'ait plus à
+être réapprise : demander un montant passe par `showMontantSheet`, qui possède
+son champ. Six tests l'entourent, dont un qui ouvre puis ferme la feuille et
+laisse l'animation aller au bout.
+
+**La leçon qui dépasse le cas** : ce projet a déjà trois écrans rouges ou gris
+au compteur, tous nés d'une feuille modale écrite à la main plutôt que reprise
+de celle qui marchait. Devant un besoin d'interface déjà résolu ailleurs dans
+l'application, **reprendre la forme existante avant d'en inventer une**. Le
+danger n'est pas le code en trop, c'est la discipline de cycle de vie qu'on ne
+recopie pas avec.

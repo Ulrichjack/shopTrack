@@ -379,3 +379,42 @@ on ne fusionne qu'après un test avec un vrai compte vendeur.
 Estimation : sécurité des rôles 3-4 jours, module commandes 5-6 jours.
 Deux semaines couvrent la sécurité **plus une première version** du module, pas
 une version finie.
+
+### Où en est le module commandes — 31/08/2026
+
+Livré et testable :
+
+| Pièce | État |
+|---|---|
+| Tables serveur + RLS + garde-fous financiers | fait (`202608270002`) |
+| Tables locales + `tablesTirees` | fait |
+| `DossierAvecSolde` — solde recalculé, jamais stocké | fait, 5 tests |
+| Réglage `commandes_enabled` + interrupteur dans Réglages | fait |
+| Onglet « Commandes » dans la barre du bas | fait, visible seulement si activé |
+| Liste des commandes (reste à encaisser, à deviser en tête) | fait |
+| Formulaire de création | fait — le prix n'est demandé qu'à la patronne |
+| Détail : prix, encaissement, remboursement, livrée | fait |
+| Lien avec la caisse (acompte en espèces → `incoming`) | fait, voir piège #32 |
+
+Ce qui reste, et pourquoi ce n'est pas bloquant :
+
+1. **Le bénéfice des commandes n'existe pas.** L'application ne connaît pas le
+   coût d'un gâteau : elle sait ce qui est encaissé et ce qui est dû, pas ce
+   qui est gagné. À trancher avec la cliente — un coût saisi à la main sur le
+   dossier suffirait, mais inventer le chiffre serait pire que l'absence.
+2. **Pas d'annulation depuis l'écran.** Le serveur la gère (`annulee`, motif,
+   auteur) ; le bouton n'est pas posé. Une commande abandonnée reste donc dans
+   la liste. À faire dès qu'un premier cas se présente.
+3. **Une inscription = un dossier** pour les formations, comme prévu en v1.
+
+Ce que le partage des rôles donne, tel qu'implémenté :
+
+```
+la vendeuse   enregistre la demande, encaisse un paiement
+la patronne   fixe le prix, rembourse, marque livrée
+```
+
+Ce partage est tenu **deux fois** : l'écran cache les boutons, et les règles
+RLS refusent les gestes correspondants. Cacher n'est pas interdire — mais
+interdire sans cacher fabrique des opérations bloquées que personne ne sait
+lire (piège #31).
