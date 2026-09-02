@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../providers/employees_provider.dart';
 import '../sync/sync_service.dart';
 
 class ActivityLogScreen extends ConsumerWidget {
@@ -86,6 +87,21 @@ class ActivityLogScreen extends ConsumerWidget {
             return const Center(child: CircularProgressIndicator());
           }
           final activities = snapshot.data!;
+          // Qui a fait le geste, et pas son identifiant.
+          //
+          // « utilisateur 891ff68c » ne répondait à aucune question. Celle
+          // qu'on se pose devant ce journal est « qui ? ».
+          //
+          // Avec une seule employée, « la vendeuse » y répond entièrement — et
+          // le numéro serait du bruit. À partir de deux, il ne répond plus, et
+          // le téléphone les sépare : c'est celui que la patronne a tapé en
+          // créant le compte, elle le reconnaît sans consulter une liste.
+          final membres = ref.watch(shopMembersProvider).value ?? const [];
+          final seulVendeur = membres.where((m) => !m.isOwner).length <= 1;
+          final roles = {
+            for (final m in membres)
+              m.userId: m.nommer(seulVendeur: seulVendeur),
+          };
           if (activities.isEmpty) {
             return const Center(child: Text('Aucune activité enregistrée.'));
           }
@@ -101,7 +117,7 @@ class ActivityLogScreen extends ConsumerWidget {
                 subtitle: Text(
                   '${activity.detail}\n'
                   '${DateFormat('dd/MM/yyyy HH:mm').format(activity.date)}'
-                  ' • utilisateur ${_shortId(activity.userId)}',
+                  ' • par ${roles[activity.userId] ?? _shortId(activity.userId)}',
                 ),
                 isThreeLine: true,
               );
@@ -112,7 +128,10 @@ class ActivityLogScreen extends ConsumerWidget {
     );
   }
 
-  String _shortId(String id) => id.length <= 8 ? id : id.substring(0, 8);
+  /// Repli quand le rôle est inconnu : un compte retiré de la boutique, ou une
+  /// ligne écrite hors ligne avant la première synchronisation.
+  String _shortId(String id) =>
+      id.length <= 8 ? id : 'utilisateur ${id.substring(0, 8)}';
 }
 
 class _Activity {

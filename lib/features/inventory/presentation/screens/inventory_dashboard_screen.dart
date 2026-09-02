@@ -8,6 +8,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../providers/takings_provider.dart';
 import '../../../../shared/widgets/shop_switcher.dart';
+import '../../../../shared/widgets/bouton_reglages.dart';
 
 /// Accueil des boutiques en inventaire périodique.
 ///
@@ -58,12 +59,7 @@ class InventoryDashboardScreen extends ConsumerWidget {
           ),
         ),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () => context.push('/profile'),
-          ),
-        ],
+        actions: const [BoutonReglages()],
       ),
       body: RefreshIndicator(
         onRefresh: () async {

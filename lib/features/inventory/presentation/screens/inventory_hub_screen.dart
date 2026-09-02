@@ -10,6 +10,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import 'declare_loss_screen.dart';
 import 'historique_comptages_sheet.dart';
 import '../providers/takings_provider.dart';
+import '../../../../shared/widgets/bouton_reglages.dart';
 
 /// Regroupe les opérations du mode inventaire, comme l'onglet Cycles le fait
 /// pour le module A : saisie quotidienne, comptage, rapport.
@@ -45,6 +46,7 @@ class InventoryHubScreen extends ConsumerWidget {
           'Inventaire',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: const [BoutonReglages()],
         elevation: 0,
       ),
       body: ListView(

@@ -7,6 +7,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/cycle_provider.dart';
+import '../../../../shared/widgets/bouton_reglages.dart';
 
 class CyclesHubScreen extends ConsumerWidget {
   const CyclesHubScreen({super.key});
@@ -23,6 +24,7 @@ class CyclesHubScreen extends ConsumerWidget {
           'Cycles',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: const [BoutonReglages()],
         elevation: 0,
       ),
       floatingActionButton: FloatingActionButton.extended(

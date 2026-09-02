@@ -55,6 +55,36 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
     }
   }
 
+  Future<void> _toggleCommandes(bool value) async {
+    setState(() => _saving = true);
+    try {
+      await ref.read(shopSettingsProvider.notifier).setCommandesEnabled(value);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value
+                  ? 'Commandes activées. L\'onglet Commandes est apparu.'
+                  : 'Commandes désactivées. Tes dossiers sont conservés.',
+            ),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(humanSyncError(error)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   Future<void> _toggleCaptureMode(bool value) async {
     setState(() => _saving = true);
     try {
@@ -94,6 +124,7 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
     final settingsAsync = ref.watch(shopSettingsProvider);
     final isHierarchical = settingsAsync.value?.unitMode == 'hierarchical';
     final isPeriodic = settingsAsync.value?.saleCaptureMode == 'periodic';
+    final commandesActives = settingsAsync.value?.commandesEnabled ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -181,16 +212,59 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
                 padding: const EdgeInsets.all(4),
                 child: SwitchListTile(
                   value: isPeriodic,
-                  onChanged: _saving ? null : _toggleCaptureMode,
+                  onChanged: _saving || commandesActives
+                      ? null
+                      : _toggleCaptureMode,
                   activeThumbColor: AppColors.primary,
                   title: const Text(
                     'Inventaire périodique',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: const Text(
-                    'Ne plus saisir chaque vente : noter la recette du jour, '
-                    'compter le stock de temps en temps, et laisser l\'app '
-                    'déduire ce qui a été vendu.',
+                  subtitle: Text(
+                    commandesActives
+                        ? 'Indisponible : les commandes avec acompte sont '
+                              'activées, et elles ont besoin d\'une caisse '
+                              'que ce mode ne tient pas.'
+                        : 'Ne plus saisir chaque vente : noter la recette du '
+                              'jour, compter le stock de temps en temps, et '
+                              'laisser l\'app déduire ce qui a été vendu.',
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Commandes avec acompte : gâteaux, objets sur mesure, formations,
+            // décoration. Un onglet de plus, rien de changé ailleurs — d'où
+            // l'interrupteur : une boutique qui ne prend aucune commande ne
+            // doit pas hériter d'un écran vide.
+            //
+            // EXCLUSIF avec l'inventaire périodique, dans les deux sens. Un
+            // acompte en espèces écrit une ligne de caisse ; en périodique il
+            // n'y a pas de caisse calculée, la ligne n'aurait aucun écran où
+            // apparaître. L'argent serait encaissé et invisible — pire que de
+            // ne pas pouvoir l'encaisser.
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: SwitchListTile(
+                  value: commandesActives,
+                  onChanged: _saving || isPeriodic ? null : _toggleCommandes,
+                  activeThumbColor: AppColors.primary,
+                  title: const Text(
+                    'Commandes avec acompte',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    isPeriodic
+                        ? 'Indisponible en inventaire périodique : un acompte '
+                              'entre dans le tiroir, et ce mode ne tient pas '
+                              'de caisse — l\'argent encaissé n\'apparaîtrait '
+                              'nulle part.'
+                        : 'Prendre une commande, encaisser une avance, suivre '
+                              'ce qui reste dû : gâteaux, objets sur mesure, '
+                              'formations, décoration.',
                   ),
                 ),
               ),

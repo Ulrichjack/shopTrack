@@ -43,6 +43,9 @@ import 'features/inventory/presentation/screens/transfers_screen.dart';
 import 'features/inventory/presentation/providers/stock_transfer_provider.dart';
 import 'features/inventory/presentation/screens/inventory_hub_screen.dart';
 import 'features/inventory/presentation/screens/inventory_report_screen.dart';
+import 'features/commandes/presentation/screens/commande_detail_screen.dart';
+import 'features/commandes/presentation/screens/commande_nouvelle_screen.dart';
+import 'features/commandes/presentation/screens/commandes_screen.dart';
 import 'core/constants/app_colors.dart';
 import 'core/providers/current_shop_provider.dart';
 
@@ -157,6 +160,11 @@ const sellerAllowedRoutes = {
   // rien de sensible : compter et lire le rapport sont fermés plus bas.
   '/inventory',
   '/daily-takings',
+
+  // Prendre une commande et encaisser une avance font partie de la vente.
+  '/commandes',
+  '/commande-nouvelle',
+  '/commande-detail',
 
   '/profile',
   '/sync-status',
@@ -315,6 +323,15 @@ final goRouter = GoRouter(
       path: '/employees',
       builder: (context, state) => const EmployeesScreen(),
     ),
+    // Écran poussé depuis le hub Inventaire, avec son bouton retour — comme
+    // « Déclarer une perte » ou « Recette du jour ».
+    //
+    // Ne PAS y remettre `parentNavigatorKey: _shellNavigatorKey` pour lui
+    // donner la barre du bas : go_router exige que la route soit réellement
+    // DANS le ShellRoute pour accepter cette clé, sinon il refuse de
+    // construire le routeur et l'application s'ouvre sur un écran rouge —
+    // toute l'application, pas seulement les transferts. Constaté au premier
+    // lancement du 31/08.
     GoRoute(
       path: '/transfers',
       builder: (context, state) => const TransfersScreen(),
@@ -323,6 +340,15 @@ final goRouter = GoRouter(
       path: '/transfer-detail',
       builder: (context, state) =>
           TransferDetailScreen(entree: state.extra as TransferEntry),
+    ),
+    GoRoute(
+      path: '/commande-nouvelle',
+      builder: (context, state) => const CommandeNouvelleScreen(),
+    ),
+    GoRoute(
+      path: '/commande-detail',
+      builder: (context, state) =>
+          CommandeDetailScreen(dossierId: state.extra as String),
     ),
     GoRoute(
       path: '/declare-loss',
@@ -381,6 +407,10 @@ final goRouter = GoRouter(
         GoRoute(
           path: '/cycles',
           builder: (context, state) => const CyclesHubScreen(),
+        ),
+        GoRoute(
+          path: '/commandes',
+          builder: (context, state) => const CommandesScreen(),
         ),
         GoRoute(
           path: '/inventory',

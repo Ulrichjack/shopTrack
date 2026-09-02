@@ -8,12 +8,35 @@ import 'user_shops_provider.dart';
 
 /// Un compte rattaché à la boutique active.
 class ShopMember {
-  const ShopMember({required this.userId, required this.role});
+  const ShopMember({required this.userId, required this.role, this.telephone});
 
   final String userId;
   final String role;
 
+  /// Toujours nul aujourd'hui.
+  ///
+  /// Une vue serveur avait été posée le 01/09 pour l'alimenter, et elle a vidé
+  /// l'écran des employés : la requête échouait, et l'échec était avalé par le
+  /// `catch` qui rend une liste vide. Retirée le jour même.
+  ///
+  /// La leçon vaut au-delà : un `catch` qui rend une liste vide transforme une
+  /// panne en écran vide, et un écran vide ne se lit pas comme une erreur — il
+  /// se lit comme « il n'y a personne ».
+  final String? telephone;
+
   bool get isOwner => role == 'owner';
+
+  /// Comment le nommer dans le journal d'activité.
+  ///
+  /// Le rôle seul suffit tant qu'il n'y a qu'une vendeuse ; à deux, il ne
+  /// répond plus à la question posée — laquelle ? Le numéro les distingue, et
+  /// c'est celui que la patronne a tapé elle-même en créant le compte : elle
+  /// le reconnaît sans avoir à consulter une liste.
+  String nommer({required bool seulVendeur}) {
+    if (isOwner) return 'la patronne';
+    if (seulVendeur || telephone == null) return 'la vendeuse';
+    return 'la vendeuse $telephone';
+  }
 }
 
 /// Marqueur posé sur le compte d'un employé tant qu'il n'a pas choisi son

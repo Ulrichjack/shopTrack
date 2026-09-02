@@ -24,6 +24,7 @@ class MainLayout extends ConsumerWidget {
     final settings = ref.watch(shopSettingsProvider).value;
     final isHierarchical = settings?.unitMode == 'hierarchical';
     final isPeriodic = settings?.saleCaptureMode == 'periodic';
+    final commandesActives = settings?.commandesEnabled ?? false;
 
     // Un seul endroit décide des onglets ET de leur ordre : impossible que
     // l'index tapé et l'index surligné se désynchronisent quand un onglet
@@ -69,6 +70,17 @@ class MainLayout extends ConsumerWidget {
           label: 'Inventaire',
           icon: Icons.checklist_outlined,
           activeIcon: Icons.checklist,
+        ),
+      // Les commandes sont un onglet, pas un écran caché derrière l'accueil :
+      // c'est le seul endroit où vit l'argent déjà promis mais pas encore
+      // encaissé. Ouvert au vendeur aussi — c'est lui qui reçoit le client et
+      // encaisse l'acompte ; la propriétaire, elle, fixe le prix.
+      if (commandesActives)
+        const _NavDestination(
+          route: '/commandes',
+          label: 'Commandes',
+          icon: Icons.assignment_outlined,
+          activeIcon: Icons.assignment,
         ),
       // Le bilan mensuel se nourrit des ventes enregistrées : en inventaire
       // périodique il n'y en a aucune, l'onglet affichait des zéros. Le vrai
