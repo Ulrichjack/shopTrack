@@ -16,6 +16,19 @@ void main() {
     emplacement: vers,
   );
 
+  test('le routeur se construit — toutes les routes sont déclarables', () {
+    // Ce test ne vérifie aucune règle métier : il construit simplement le
+    // routeur. C'est suffisant, parce que go_router valide sa configuration à
+    // la construction et refuse de démarrer si une route est mal placée.
+    //
+    // Le 31/08, `/transfers` portait `parentNavigatorKey: _shellNavigatorKey`
+    // en étant déclarée HORS du ShellRoute. go_router l'a refusé, et
+    // l'application entière s'est ouverte sur un écran rouge — pas seulement
+    // les transferts. Les 20 tests de garde passaient tous : ils testaient la
+    // fonction de redirection, jamais le routeur lui-même.
+    expect(goRouter.configuration.routes, isNotEmpty);
+  });
+
   group('sans être connecté', () {
     test('tout écran renvoie à la connexion', () {
       expect(route(connecte: false, vers: '/home'), '/login');

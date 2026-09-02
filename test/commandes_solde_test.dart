@@ -117,4 +117,222 @@ void main() {
     expect(d.solde, 0);
     expect(d.estSolde, isTrue);
   });
+
+  test('le Mobile Money se compte, mais à part', () {
+    // La vendeuse remet tout à la patronne le soir, Mobile Money compris. Cet
+    // argent ne doit donc pas disparaître de l'écran — mais il ne doit pas non
+    // plus entrer dans le tiroir, sinon le comptage du soir accuse quelqu'un.
+    final d = DossierAvecSolde(
+      dossier: dossier(montant: 150000),
+      client: null,
+      paiements: [
+        paiement('p1', 40000),
+        paiement('p2', 25000, mode: 'orange_money'),
+        paiement('p3', 10000, mode: 'mtn_momo'),
+      ],
+    );
+
+    expect(d.netEncaisse, 75000, reason: 'tout ce qui est entré');
+    expect(d.encaisseEnEspeces, 40000, reason: 'ce qui est dans le tiroir');
+    expect(
+      d.netEncaisse - d.encaisseEnEspeces,
+      35000,
+      reason: 'à remettre à la patronne sans passer par la caisse',
+    );
+  });
+
+  test('un remboursement en espèces retire bien du tiroir', () {
+    final d = DossierAvecSolde(
+      dossier: dossier(montant: 150000),
+      client: null,
+      paiements: [
+        paiement('p1', 50000),
+        paiement('p2', 50000, type: 'remboursement'),
+      ],
+    );
+
+    expect(d.netEncaisse, 0);
+    expect(d.encaisseEnEspeces, 0, reason: 'entré puis ressorti du tiroir');
+    expect(d.solde, 150000, reason: 'la commande redevient entièrement due');
+  });
+
+  test('livrée et soldée ne veulent pas dire la même chose', () {
+    // Le gâteau du 15 septembre, payé en entier aujourd'hui : soldé, et
+    // entièrement à faire. Ranger la liste sur l'argent aurait rangé cette
+    // commande parmi les affaires classées.
+    final payeeNonLivree = DossierAvecSolde(
+      dossier: dossier(montant: 60000),
+      client: null,
+      paiements: [paiement('p1', 60000)],
+    );
+    expect(payeeNonLivree.estSolde, isTrue);
+    expect(payeeNonLivree.estLivree, isFalse);
+
+    // L'inverse : la cliente emporte sa commande et doit encore 20 000 F.
+    final livreeNonPayee = DossierAvecSolde(
+      dossier: LocalDossiersCommande(
+        id: 'd1',
+        shopId: 'shop-1',
+        clientId: 'c1',
+        categorie: 'gateau',
+        description: 'Gâteau anniversaire',
+        details: '{}',
+        montantAccepte: 60000,
+        statut: 'terminee',
+        createdAt: DateTime(2026, 8, 31),
+      ),
+      client: null,
+      paiements: [paiement('p1', 40000)],
+    );
+    expect(livreeNonPayee.estLivree, isTrue);
+    expect(livreeNonPayee.estSolde, isFalse);
+    expect(
+      livreeNonPayee.solde,
+      20000,
+      reason: 'livrer n\'efface pas la dette',
+    );
+  });
+
+  test('sans coût saisi, le bénéfice est INCONNU — pas zéro', () {
+    // Zéro dirait « elle n'a rien gagné ». Nul dit « on ne sait pas ». Afficher
+    // zéro ferait croire à une commande blanche, et c'est le genre de chiffre
+    // qu'on recopie dans un bilan sans se méfier.
+    final d = DossierAvecSolde(
+      dossier: dossier(montant: 150000),
+      client: null,
+      paiements: const [],
+    );
+    expect(d.benefice, isNull);
+  });
+
+  test('avec le coût, le bénéfice se calcule sur le PRIX, pas sur l\'encaissé', () {
+    // Elle a gagné sa marge dès que la commande est livrée, même si la cliente
+    // doit encore. Compter sur l'encaissé ferait baisser un bénéfice réel
+    // parce qu'une cliente traîne à payer.
+    final d = DossierAvecSolde(
+      dossier: LocalDossiersCommande(
+        id: 'd1',
+        shopId: 'shop-1',
+        clientId: 'c1',
+        categorie: 'gateau',
+        description: 'Gâteau mariage',
+        details: '{}',
+        montantAccepte: 150000,
+        coutMatiere: 42000,
+        statut: 'terminee',
+        createdAt: DateTime(2026, 9, 1),
+      ),
+      client: null,
+      paiements: [paiement('p1', 40000)],
+    );
+
+    expect(d.benefice, 108000, reason: '150 000 − 42 000');
+    expect(d.solde, 110000, reason: 'et la cliente doit encore 110 000');
+  });
+
+  test('livrer n\'efface pas la dette : elle reste dans le total', () {
+    // Le total de l'écran ne comptait que les commandes à livrer. Une cliente
+    // qui avait emporté sa commande en devant 150 000 F sortait du compte, et
+    // l'écran annonçait « reste à encaisser : 0 » avec 150 000 F dehors.
+    //
+    // C'est même là que la dette devient gênante : la marchandise est partie.
+    final livreeAvecDette = DossierAvecSolde(
+      dossier: LocalDossiersCommande(
+        id: 'd1',
+        shopId: 'shop-1',
+        clientId: 'c1',
+        categorie: 'gateau',
+        description: 'Gâteau',
+        details: '{}',
+        montantAccepte: 200000,
+        statut: 'terminee',
+        createdAt: DateTime(2026, 9, 1),
+      ),
+      client: null,
+      paiements: [paiement('p1', 50000)],
+    );
+
+    expect(livreeAvecDette.estLivree, isTrue);
+    expect(
+      livreeAvecDette.solde,
+      150000,
+      reason: 'la dette survit à la livraison',
+    );
+
+    // La règle du total : tout sauf les annulées, et seulement les soldes
+    // positifs — une commande soldée ne retranche rien.
+    final toutes = [
+      livreeAvecDette,
+      DossierAvecSolde(
+        dossier: dossier(montant: 60000),
+        client: null,
+        paiements: [paiement('p2', 60000)],
+      ),
+    ];
+    final total = toutes
+        .where((d) => !d.estAnnulee && (d.solde ?? 0) > 0)
+        .fold<int>(0, (somme, d) => somme + d.solde!);
+    expect(total, 150000);
+  });
+
+  test('en retard se compare au JOUR, pas à l\'instant', () {
+    // Une commande promise pour aujourd'hui n'est pas en retard à 8 h du
+    // matin. Sans ce détail, tout ce qui est dû dans la journée s'afficherait
+    // en rouge dès l'ouverture — et l'alerte deviendrait un décor.
+    DossierAvecSolde avecDate(DateTime? quand, {String statut = 'confirmee'}) =>
+        DossierAvecSolde(
+          dossier: LocalDossiersCommande(
+            id: 'd1',
+            shopId: 'shop-1',
+            clientId: 'c1',
+            categorie: 'gateau',
+            description: 'Gâteau',
+            details: '{}',
+            montantAccepte: 50000,
+            datePrevue: quand,
+            statut: statut,
+            createdAt: DateTime(2026, 9, 1),
+          ),
+          client: null,
+          paiements: const [],
+        );
+
+    final maintenant = DateTime.now();
+    final aujourdhui = DateTime(
+      maintenant.year,
+      maintenant.month,
+      maintenant.day,
+    );
+
+    expect(
+      avecDate(aujourdhui.add(const Duration(hours: 2))).estEnRetard,
+      isFalse,
+      reason: 'promise aujourd\'hui : la journée n\'est pas finie',
+    );
+    expect(
+      avecDate(aujourdhui.subtract(const Duration(days: 1))).estEnRetard,
+      isTrue,
+    );
+    expect(
+      avecDate(null).estEnRetard,
+      isFalse,
+      reason: 'sans date promise, aucun retard possible',
+    );
+    // Une commande livrée ou annulée n'est jamais en retard : le travail est
+    // fait, ou il n\'y en a plus.
+    expect(
+      avecDate(
+        aujourdhui.subtract(const Duration(days: 5)),
+        statut: 'terminee',
+      ).estEnRetard,
+      isFalse,
+    );
+    expect(
+      avecDate(
+        aujourdhui.subtract(const Duration(days: 5)),
+        statut: 'annulee',
+      ).estEnRetard,
+      isFalse,
+    );
+  });
 }

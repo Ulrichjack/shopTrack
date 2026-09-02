@@ -182,7 +182,58 @@ void main() {
         'Versement banque',
         'Retrait patron',
         'Remise à la patronne',
+        // Écrite par le module commandes, pas par l'écran de caisse : rendre un
+        // acompte n'est pas une dépense, l'argent avancé n'était jamais entré
+        // dans le bénéfice.
+        'Remboursement commande',
+        'Entrée depuis un compte',
       });
+    });
+
+    test('rendre un acompte vide la caisse sans creuser le bénéfice', () {
+      // L'acompte est entré en `incoming`, pas en vente : il n'a jamais gonflé
+      // le bénéfice. Le rendre en `withdrawal` ordinaire l'aurait donc rendu
+      // négatif — la même erreur que le versement à la banque, sur un module
+      // neuf.
+      final totals = DailyCashCalculator.calculate(
+        sales: [
+          SaleValue(
+            amount: 12000,
+            profit: 3000,
+            createdAt: DateTime(2026, 8, 31, 10),
+          ),
+        ],
+        movements: [
+          CashMovementValue(
+            type: 'morning_balance',
+            amount: 20000,
+            createdAt: DateTime(2026, 8, 31, 7),
+          ),
+          CashMovementValue(
+            type: 'incoming',
+            amount: 40000,
+            category: 'Acompte commande',
+            createdAt: DateTime(2026, 8, 31, 11),
+          ),
+          CashMovementValue(
+            type: 'withdrawal',
+            amount: 40000,
+            category: 'Remboursement commande',
+            createdAt: DateTime(2026, 8, 31, 16),
+          ),
+        ],
+      );
+
+      expect(
+        totals.calculatedCash,
+        32000,
+        reason: '20 000 + 12 000 + 40 000 − 40 000',
+      );
+      expect(
+        totals.netProfit,
+        3000,
+        reason: 'seule la vente compte : l\'acompte entre et ressort intact',
+      );
     });
   });
 }
