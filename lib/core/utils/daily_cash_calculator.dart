@@ -20,6 +20,18 @@ const categoriesSansImpactSurLeBenefice = {
   // change de mains, il n'est pas dépensé — le compter comme une dépense
   // afficherait un bénéfice négatif tous les soirs.
   'Remise à la patronne',
+  // Rendre un acompte n'est pas dépenser. L'argent avancé par le client était
+  // entré en `incoming`, jamais en vente : il n'a donc jamais gonflé le
+  // bénéfice, et le rendre ne doit pas le creuser. Écrit par le module
+  // commandes, pas par `cash_screen.dart` — la règle du commentaire ci-dessus
+  // vaut pour lui aussi.
+  'Remboursement commande',
+  // L'argent reçu par Orange Money, MTN ou virement entre dans la caisse
+  // (`incoming`), il n'en sort pas — cette ligne ne devrait donc jamais croiser
+  // cette liste. Elle y figure par sécurité : le jour où quelqu'un enregistrera
+  // le geste inverse (poser des espèces sur un compte), ce sera un déplacement
+  // d'argent, pas une dépense.
+  'Entrée depuis un compte',
 };
 
 class CashMovementValue {
@@ -55,6 +67,7 @@ class DailyCashTotals {
   const DailyCashTotals({
     required this.morningBalance,
     required this.totalSales,
+    required this.totalIncoming,
     required this.totalWithdrawals,
     required this.calculatedCash,
     required this.grossProfit,
@@ -63,6 +76,17 @@ class DailyCashTotals {
 
   final double morningBalance;
   final double totalSales;
+
+  /// L'argent entré autrement que par une vente : acompte de commande, retrait
+  /// d'un compte mobile, apport.
+  ///
+  /// Exposé parce qu'il était invisible. La clôture n'affichait que « Ventes »
+  /// et « Sorties » : 285 000 F d'acomptes entraient dans le tiroir sans
+  /// apparaître nulle part, pendant que les remboursements, eux, se voyaient
+  /// dans les sorties. Le commerçant lisait « encaissé 12 000 » devant une
+  /// caisse à 312 000 et ne pouvait pas recoller les deux.
+  final double totalIncoming;
+
   final double totalWithdrawals;
   final double calculatedCash;
   final double grossProfit;
@@ -141,6 +165,12 @@ class DailyCashCalculator {
     return DailyCashTotals(
       morningBalance: morningBalance,
       totalSales: totalSales,
+      // Les ajustements à la hausse restent dehors : ce n'est pas de l'argent
+      // reçu, c'est un écart constaté. Les mêler ferait passer une erreur de
+      // comptage pour une recette.
+      totalIncoming: effectiveMovements
+          .where((movement) => movement.type == 'incoming')
+          .fold<double>(0, (sum, movement) => sum + movement.amount),
       // La caisse, elle, perd tout ce qui sort — déplacement compris.
       totalWithdrawals: totalWithdrawals,
       calculatedCash:

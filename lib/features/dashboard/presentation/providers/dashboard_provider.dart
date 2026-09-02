@@ -33,6 +33,12 @@ final closingRepositoryProvider = Provider((ref) {
 class DashboardState {
   final double morningBalance;
   final double totalSales;
+
+  /// Entré sans être une vente : acompte de commande, retrait d'un compte
+  /// mobile. Nul pour une journée déjà clôturée — la colonne n'existe pas dans
+  /// les clôtures enregistrées, et on ne réécrit pas l'histoire.
+  final double totalIncoming;
+
   final double totalWithdrawals;
   final double calculatedCash;
   final double grossProfit;
@@ -66,6 +72,7 @@ class DashboardState {
   DashboardState({
     required this.morningBalance,
     required this.totalSales,
+    this.totalIncoming = 0,
     required this.totalWithdrawals,
     required this.calculatedCash,
     required this.grossProfit,
@@ -444,6 +451,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       hasMorningBalance: true,
       morningBalance: totals.morningBalance,
       totalSales: totals.totalSales,
+      totalIncoming: totals.totalIncoming,
       totalWithdrawals: totals.totalWithdrawals,
       calculatedCash: totals.calculatedCash,
       grossProfit: totals.grossProfit,

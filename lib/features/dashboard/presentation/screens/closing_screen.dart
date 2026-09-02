@@ -106,6 +106,17 @@ class _ClosingScreenState extends ConsumerState<ClosingScreen> {
                       ),
                       const Divider(),
                       _buildRow('Ventes (+)', dashboardState.totalSales),
+                      // Sans cette ligne, un acompte de commande entrait dans
+                      // le tiroir sans apparaître nulle part, pendant que son
+                      // remboursement se voyait dans les sorties. On lisait
+                      // « encaissé 12 000 » devant une caisse à 312 000.
+                      if (dashboardState.totalIncoming > 0) ...[
+                        const Divider(),
+                        _buildRow(
+                          'Autres entrées (+)',
+                          dashboardState.totalIncoming,
+                        ),
+                      ],
                       const Divider(),
                       _buildRow(
                         'Sorties (-)',

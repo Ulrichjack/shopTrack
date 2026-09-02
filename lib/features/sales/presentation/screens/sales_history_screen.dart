@@ -9,6 +9,7 @@ import '../../../../core/sync/sync_service.dart'; // Pour accéder à localDbPro
 import '../../../../core/errors/sync_error_message.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:drift/drift.dart' hide Column;
+import '../../../../shared/widgets/bouton_reglages.dart';
 
 // --- 1. MODÈLE DE DONNÉES ---
 class TransactionItem {
@@ -112,7 +113,14 @@ final dailyTransactionsProvider =
             title: switch (movement.type) {
               'morning_balance' => 'Solde initial',
               'withdrawal' => 'Sortie : ${movement.category ?? 'Autre'}',
-              'incoming' => 'Entrée caisse',
+              // « Entrée caisse » ne disait rien : 40 000 F entrent, et le
+              // journal ne dit ni d'où ni de qui. La catégorie porte le motif
+              // (« Acompte commande »), la note porte le nom de la cliente —
+              // les deux existaient déjà et n'étaient pas montrés.
+              'incoming' =>
+                movement.category == null
+                    ? 'Entrée caisse'
+                    : 'Entrée : ${movement.category}',
               'adjustment_in' => 'Ajustement positif',
               'adjustment_out' => 'Ajustement négatif',
               _ => 'Mouvement de caisse',
@@ -369,6 +377,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
             floating: false,
             snap: false,
             elevation: 0,
+            actions: const [BoutonReglages()],
           ),
         ],
         body: Column(
@@ -698,9 +707,12 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                                 ),
                               ],
 
-                              if (!tx.isIncome &&
-                                  tx.note != null &&
-                                  tx.note!.isNotEmpty) ...[
+                              // La note s'affiche aussi sur les ENTRÉES.
+                              //
+                              // Elle était réservée aux sorties : une cliente
+                              // qui paie 40 000 F laissait une ligne muette,
+                              // alors que le nom était enregistré juste à côté.
+                              if (tx.note != null && tx.note!.isNotEmpty) ...[
                                 const SizedBox(height: 12),
                                 Container(
                                   width: double.infinity,

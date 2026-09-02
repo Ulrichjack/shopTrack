@@ -12,6 +12,7 @@ import '../../../../shared/widgets/network_error_widget.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../../../../shared/widgets/shop_switcher.dart';
+import '../../../../shared/widgets/bouton_reglages.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -432,12 +433,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () => context.push('/profile'),
-          ),
-        ],
+        actions: const [BoutonReglages()],
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dashboardProvider),

@@ -14,6 +14,7 @@ import '../../../../shared/widgets/network_error_widget.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../domain/entities/cash_movement_entity.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 
 final todayWithdrawalsProvider = FutureProvider<List<CashMovementEntity>>((
   ref,
@@ -83,15 +84,28 @@ class _CashScreenState extends ConsumerState<CashScreen> {
   /// `daily_cash_calculator.dart`. En renommer un ici sans le faire là-bas
   /// referait un déplacement en dépense, en silence — d'où le test qui fige
   /// les deux listes ensemble.
-  final List<String> _categories = [
+  ///
+  /// « Retrait patron » et « Remise à la patronne » décrivent le MÊME
+  /// mouvement d'argent vu des deux bouts : le tiroir se vide, le résultat ne
+  /// bouge pas. Ce qui change, c'est qui l'a fait — et c'est pour ça qu'on
+  /// n'en montre qu'un seul à la fois.
+  ///
+  /// Au vendeur, « Retrait patron » n'a aucun sens : il ne se sert pas dans la
+  /// caisse pour le compte de quelqu'un d'autre. Le lui proposer ouvrait une
+  /// porte et brouillait le journal — deux lignes différentes pour un geste
+  /// identique, impossibles à distinguer six mois plus tard.
+  static const _categoriesCommunes = [
     'Repas',
     'Transport',
     'Fournisseur',
     'Personnel',
     'Autre',
     'Versement banque',
-    'Retrait patron',
-    'Remise à la patronne',
+  ];
+
+  List<String> _categoriesPour({required bool estPatron}) => [
+    ..._categoriesCommunes,
+    if (estPatron) 'Retrait patron' else 'Remise à la patronne',
   ];
 
   @override
@@ -185,6 +199,8 @@ class _CashScreenState extends ConsumerState<CashScreen> {
   @override
   Widget build(BuildContext context) {
     final withdrawalsAsync = ref.watch(todayWithdrawalsProvider);
+    final estPatron = ref.watch(appModeProvider).value ?? false;
+    final categories = _categoriesPour(estPatron: estPatron);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -256,7 +272,7 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
-                    children: _categories.map((category) {
+                    children: categories.map((category) {
                       final isSelected = _selectedCategory == category;
                       return ChoiceChip(
                         label: Text(category),
