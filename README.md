@@ -45,6 +45,15 @@ supabase/migrations/202608310003_vendeur_corriger_article.sql
 supabase/migrations/202608310004_upsert_caisse_et_cloture.sql
 supabase/migrations/202608310005_vendeur_lire_sa_caisse.sql
 supabase/migrations/202608310006_catalogue_au_patron.sql
+supabase/migrations/202608310007_vendeuse_sert_le_client.sql
+supabase/migrations/202609010001_decoration_au_patron.sql
+supabase/migrations/202609010002_produit_ingredient.sql
+supabase/migrations/202609010003_cout_commande.sql
+supabase/migrations/202609010004_date_de_livraison.sql
+supabase/migrations/202609010005_nommer_les_employes.sql
+supabase/migrations/202609010006_retirer_vue_membres.sql
+supabase/migrations/202609010007_rembourser_une_annulee.sql
+supabase/migrations/202609020001_corriger_le_nom_client.sql
 ```
 
 ### Fonctions serveur
