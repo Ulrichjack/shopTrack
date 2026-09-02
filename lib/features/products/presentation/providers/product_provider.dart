@@ -104,6 +104,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     minQuantity: p.minQuantity,
     barcode: p.barcode,
     photoUrl: p.photoUrl,
+    isIngredient: p.isIngredient,
     // Oubli initial : sans cette ligne l'unité existait en base mais
     // disparaissait dès le chargement. Les pastilles d'unités connues
     // restaient vides, et surtout MODIFIER un produit effaçait son unité —
@@ -232,6 +233,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     required int minQuantity,
     String? barcode,
     String? unit,
+    bool isIngredient = false,
     import_io.File? imageFile,
   }) async {
     state = const AsyncValue.loading();
@@ -287,6 +289,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
         'min_quantity': minQuantity,
         'barcode': finalBarcode,
         'photo_url': photoUrl,
+        'is_ingredient': isIngredient,
         if (unit != null && unit.trim().isNotEmpty) 'unit': unit.trim(),
       };
 
@@ -304,6 +307,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
               barcode: finalBarcode,
               photoUrl: photoUrl,
               unit: (unit == null || unit.trim().isEmpty) ? null : unit.trim(),
+              isIngredient: isIngredient,
             ),
           );
 
@@ -325,6 +329,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     required int minQuantity,
     String? barcode,
     String? unit,
+    bool isIngredient = false,
     String? existingPhotoUrl,
     import_io.File? newImageFile,
   }) async {
@@ -374,6 +379,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
         'min_quantity': minQuantity,
         'barcode': finalBarcode,
         'photo_url': finalPhotoUrl,
+        'is_ingredient': isIngredient,
         if (unit != null && unit.trim().isNotEmpty) 'unit': unit.trim(),
       };
 
@@ -389,6 +395,7 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
           unit: drift.Value(
             (unit == null || unit.trim().isEmpty) ? null : unit.trim(),
           ),
+          isIngredient: drift.Value(isIngredient),
         ),
       );
 

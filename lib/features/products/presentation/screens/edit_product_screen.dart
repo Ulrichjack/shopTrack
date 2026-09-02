@@ -94,6 +94,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     return InputDecoration(
       hintText: hint,
       prefixIcon: prefixIcon,
+      // Sans ça, un message d'erreur qui explique quelque chose est coupé à la
+      // première ligne : le champ des prix vit dans une colonne étroite.
+      errorMaxLines: 3,
       fillColor: Colors.white,
       filled: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -211,8 +214,16 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                               final buy = double.tryParse(
                                 _buyPriceController.text,
                               );
+                              // « Vente < Achat ! » ne disait rien à
+                              // personne : ni ce qui n'allait pas, ni quoi
+                              // faire. Le message nomme la conséquence et
+                              // rappelle le chiffre à battre — sans avoir à
+                              // remonter au champ précédent pour le relire.
                               if (buy != null && sell != null && sell < buy)
-                                return 'Vente < Achat !';
+                                return 'À ce prix tu perds '
+                                    '${(buy - sell).toStringAsFixed(0)} F par '
+                                    'article. Vends au moins '
+                                    '${buy.toStringAsFixed(0)} F.';
                               return null;
                             },
                           ),

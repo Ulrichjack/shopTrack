@@ -433,7 +433,13 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
                           p.name.toLowerCase().contains(
                             _searchQuery.toLowerCase(),
                           ) &&
-                          p.quantity > 0,
+                          p.quantity > 0 &&
+                          // La farine et le beurre entrent dans le stock pour
+                          // chiffrer une commande, pas pour être vendus au
+                          // comptoir. Sans ce filtre, trente ingrédients
+                          // s'intercalent entre deux articles réels et on
+                          // choisit « Farine » un soir de presse.
+                          !p.estIngredient,
                     )
                     .toList();
 

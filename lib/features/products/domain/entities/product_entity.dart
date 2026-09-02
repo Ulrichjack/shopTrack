@@ -18,6 +18,12 @@ class ProductEntity {
 
   bool get estArchive => archivedAt != null;
 
+  /// Matière première : entre dans le coût d'une commande, ne se vend pas au
+  /// comptoir. Nul se lit « non », comme pour [archivedAt].
+  final bool? isIngredient;
+
+  bool get estIngredient => isIngredient == true;
+
   ProductEntity({
     required this.id,
     required this.shopId,
@@ -30,6 +36,7 @@ class ProductEntity {
     this.photoUrl,
     this.unit,
     this.archivedAt,
+    this.isIngredient,
   });
 
   ProductEntity copyWith({
@@ -44,6 +51,7 @@ class ProductEntity {
     String? photoUrl,
     String? unit,
     DateTime? archivedAt,
+    bool? isIngredient,
   }) {
     return ProductEntity(
       id: id ?? this.id,
@@ -57,6 +65,7 @@ class ProductEntity {
       photoUrl: photoUrl ?? this.photoUrl,
       unit: unit ?? this.unit,
       archivedAt: archivedAt ?? this.archivedAt,
+      isIngredient: isIngredient ?? this.isIngredient,
     );
   }
 }

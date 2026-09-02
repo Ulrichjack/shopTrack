@@ -8,6 +8,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/product_entity.dart';
 import '../providers/product_provider.dart';
 import '../widgets/archived_products_sheet.dart';
+import '../../../../shared/widgets/bouton_reglages.dart';
 
 class ProductListScreen extends ConsumerStatefulWidget {
   const ProductListScreen({super.key});
@@ -101,6 +102,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       )
                     : const SizedBox.shrink(),
               ),
+              BoutonReglages(),
             ],
           ),
         ],
