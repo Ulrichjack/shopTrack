@@ -33,6 +33,23 @@ class LocalProducts extends Table {
   /// bilan déjà consulté en changerait le bénéfice.
   DateTimeColumn get archivedAt => dateTime().nullable()();
 
+  /// Matière première, pas marchandise.
+  ///
+  /// La farine, le beurre, le tissu et la peinture entrent dans le stock avec
+  /// leur prix d'achat — c'est ce qui permet de chiffrer ce qu'une commande a
+  /// coûté. Mais ils ne se vendent pas au comptoir : sans cette marque, trente
+  /// ingrédients viendraient encombrer l'écran de vente entre deux articles
+  /// que la cliente peut réellement acheter.
+  ///
+  /// Nullable, et pas `withDefault(false)`, pour une raison très concrète :
+  /// Drift rend obligatoire dans la classe générée toute colonne non nullable,
+  /// même avec une valeur par défaut. Il aurait fallu écrire `isIngredient:
+  /// false` dans les douze endroits qui construisent un produit, tests
+  /// compris — beaucoup de bruit pour une colonne qui ne concerne qu'un métier.
+  ///
+  /// Nul se lit « non », comme `archivedAt` nul se lit « pas archivé ».
+  BoolColumn get isIngredient => boolean().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -245,6 +262,17 @@ class LocalDossiersCommandes extends Table {
   /// Null tant que la propriétaire n'a pas fixé le prix.
   IntColumn get montantAccepte => integer().nullable()();
   DateTimeColumn get datePrevue => dateTime().nullable()();
+
+  /// Ce que la commande a coûté, saisi à la livraison par la propriétaire.
+  ///
+  /// Un seul nombre, pas une recette. Nul veut dire « pas encore renseigné »,
+  /// jamais zéro — un coût nul et un coût inconnu ne se comptent pas pareil
+  /// dans un bilan.
+  IntColumn get coutMatiere => integer().nullable()();
+
+  /// Le jour de la livraison réelle — jamais [datePrevue], qui est une
+  /// intention. C'est cette date qui décide dans quel bilan tombe le bénéfice.
+  DateTimeColumn get livreeAt => dateTime().nullable()();
 
   /// demande · devis · confirmee · en_cours · prete · terminee · annulee
   TextColumn get statut => text().withDefault(const Constant('demande'))();
@@ -483,7 +511,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -557,6 +585,21 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(
           localShopSettings,
           localShopSettings.commandesEnabled,
+        );
+      }
+      if (from < 18) {
+        await m.addColumn(localProducts, localProducts.isIngredient);
+      }
+      if (from < 19) {
+        await m.addColumn(
+          localDossiersCommandes,
+          localDossiersCommandes.coutMatiere,
+        );
+      }
+      if (from < 20) {
+        await m.addColumn(
+          localDossiersCommandes,
+          localDossiersCommandes.livreeAt,
         );
       }
     },

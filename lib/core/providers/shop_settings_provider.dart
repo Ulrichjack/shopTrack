@@ -173,6 +173,46 @@ class ShopSettingsNotifier extends AsyncNotifier<ShopSettings> {
     await future;
   }
 
+  /// Active le module « commandes avec acompte » pour cette boutique.
+  ///
+  /// Purement additif, comme la vente par unités : il ajoute un onglet et ne
+  /// touche à rien d'autre. Une boutique qui ne prend aucune commande ne doit
+  /// pas hériter d'un écran vide — d'où l'interrupteur plutôt qu'une
+  /// activation pour tous.
+  Future<void> setCommandesEnabled(bool actif) async {
+    final db = ref.read(localDbProvider);
+    final shopId = await requireShopId(ref);
+
+    debugPrint('[REGLAGES] boutique $shopId — commandes_enabled := $actif');
+
+    await db
+        .into(db.localShopSettings)
+        .insertOnConflictUpdate(
+          LocalShopSettingsCompanion.insert(
+            shopId: shopId,
+            commandesEnabled: drift.Value(actif),
+          ),
+        );
+
+    // TOUS les réglages ensemble — même raison que dans `setUnitMode` : l'envoi
+    // est un upsert, et une colonne absente reprendrait sa valeur par défaut.
+    final actuel = state.valueOrNull ?? const ShopSettings();
+    await db.addToQueue(
+      'SET_SHOP_SETTINGS',
+      jsonEncode({
+        'shop_id': shopId,
+        'unit_mode': actuel.unitMode,
+        'sale_capture_mode': actuel.saleCaptureMode,
+        'multi_point_enabled': actuel.multiPointEnabled,
+        'commandes_enabled': actif,
+      }),
+    );
+    await ref.read(syncServiceProvider).processQueue();
+
+    ref.invalidateSelf();
+    await future;
+  }
+
   /// Bascule entre vente enregistrée au fil de l'eau et inventaire périodique.
   ///
   /// Contrairement au mode unités, ce n'est **pas** une couche qui s'ajoute :

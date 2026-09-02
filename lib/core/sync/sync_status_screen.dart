@@ -303,6 +303,7 @@ class _BlockedTile extends ConsumerWidget {
 String _actionLabel(String action) => switch (action) {
   'CREATE_SALE' => 'Une vente',
   'ADD_CASH_MOVEMENT' => 'Un mouvement de caisse',
+  'UPDATE_CLIENT' => 'La correction du nom d\'un client',
   'ADD_PRODUCT' => 'La création d\'un produit',
   'UPDATE_PRODUCT' => 'La modification d\'un produit',
   'DELETE_PRODUCT' => 'La suppression d\'un produit',

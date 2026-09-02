@@ -122,6 +122,20 @@ class $LocalProductsTable extends LocalProducts
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isIngredientMeta = const VerificationMeta(
+    'isIngredient',
+  );
+  @override
+  late final GeneratedColumn<bool> isIngredient = GeneratedColumn<bool>(
+    'is_ingredient',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_ingredient" IN (0, 1))',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -135,6 +149,7 @@ class $LocalProductsTable extends LocalProducts
     photoUrl,
     unit,
     archivedAt,
+    isIngredient,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -228,6 +243,15 @@ class $LocalProductsTable extends LocalProducts
         archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
       );
     }
+    if (data.containsKey('is_ingredient')) {
+      context.handle(
+        _isIngredientMeta,
+        isIngredient.isAcceptableOrUnknown(
+          data['is_ingredient']!,
+          _isIngredientMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -281,6 +305,10 @@ class $LocalProductsTable extends LocalProducts
         DriftSqlType.dateTime,
         data['${effectivePrefix}archived_at'],
       ),
+      isIngredient: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_ingredient'],
+      ),
     );
   }
 
@@ -313,6 +341,23 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
   /// reste réservée à ce qui n'a jamais servi — effacer un produit cité par un
   /// bilan déjà consulté en changerait le bénéfice.
   final DateTime? archivedAt;
+
+  /// Matière première, pas marchandise.
+  ///
+  /// La farine, le beurre, le tissu et la peinture entrent dans le stock avec
+  /// leur prix d'achat — c'est ce qui permet de chiffrer ce qu'une commande a
+  /// coûté. Mais ils ne se vendent pas au comptoir : sans cette marque, trente
+  /// ingrédients viendraient encombrer l'écran de vente entre deux articles
+  /// que la cliente peut réellement acheter.
+  ///
+  /// Nullable, et pas `withDefault(false)`, pour une raison très concrète :
+  /// Drift rend obligatoire dans la classe générée toute colonne non nullable,
+  /// même avec une valeur par défaut. Il aurait fallu écrire `isIngredient:
+  /// false` dans les douze endroits qui construisent un produit, tests
+  /// compris — beaucoup de bruit pour une colonne qui ne concerne qu'un métier.
+  ///
+  /// Nul se lit « non », comme `archivedAt` nul se lit « pas archivé ».
+  final bool? isIngredient;
   const LocalProduct({
     required this.id,
     required this.shopId,
@@ -325,6 +370,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     this.photoUrl,
     this.unit,
     this.archivedAt,
+    this.isIngredient,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -348,6 +394,9 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     if (!nullToAbsent || archivedAt != null) {
       map['archived_at'] = Variable<DateTime>(archivedAt);
     }
+    if (!nullToAbsent || isIngredient != null) {
+      map['is_ingredient'] = Variable<bool>(isIngredient);
+    }
     return map;
   }
 
@@ -370,6 +419,9 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
       archivedAt: archivedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(archivedAt),
+      isIngredient: isIngredient == null && nullToAbsent
+          ? const Value.absent()
+          : Value(isIngredient),
     );
   }
 
@@ -390,6 +442,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
       photoUrl: serializer.fromJson<String?>(json['photoUrl']),
       unit: serializer.fromJson<String?>(json['unit']),
       archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
+      isIngredient: serializer.fromJson<bool?>(json['isIngredient']),
     );
   }
   @override
@@ -407,6 +460,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
       'photoUrl': serializer.toJson<String?>(photoUrl),
       'unit': serializer.toJson<String?>(unit),
       'archivedAt': serializer.toJson<DateTime?>(archivedAt),
+      'isIngredient': serializer.toJson<bool?>(isIngredient),
     };
   }
 
@@ -422,6 +476,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     Value<String?> photoUrl = const Value.absent(),
     Value<String?> unit = const Value.absent(),
     Value<DateTime?> archivedAt = const Value.absent(),
+    Value<bool?> isIngredient = const Value.absent(),
   }) => LocalProduct(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
@@ -434,6 +489,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     photoUrl: photoUrl.present ? photoUrl.value : this.photoUrl,
     unit: unit.present ? unit.value : this.unit,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
+    isIngredient: isIngredient.present ? isIngredient.value : this.isIngredient,
   );
   LocalProduct copyWithCompanion(LocalProductsCompanion data) {
     return LocalProduct(
@@ -452,6 +508,9 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
       archivedAt: data.archivedAt.present
           ? data.archivedAt.value
           : this.archivedAt,
+      isIngredient: data.isIngredient.present
+          ? data.isIngredient.value
+          : this.isIngredient,
     );
   }
 
@@ -468,7 +527,8 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
           ..write('barcode: $barcode, ')
           ..write('photoUrl: $photoUrl, ')
           ..write('unit: $unit, ')
-          ..write('archivedAt: $archivedAt')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('isIngredient: $isIngredient')
           ..write(')'))
         .toString();
   }
@@ -486,6 +546,7 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
     photoUrl,
     unit,
     archivedAt,
+    isIngredient,
   );
   @override
   bool operator ==(Object other) =>
@@ -501,7 +562,8 @@ class LocalProduct extends DataClass implements Insertable<LocalProduct> {
           other.barcode == this.barcode &&
           other.photoUrl == this.photoUrl &&
           other.unit == this.unit &&
-          other.archivedAt == this.archivedAt);
+          other.archivedAt == this.archivedAt &&
+          other.isIngredient == this.isIngredient);
 }
 
 class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
@@ -516,6 +578,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
   final Value<String?> photoUrl;
   final Value<String?> unit;
   final Value<DateTime?> archivedAt;
+  final Value<bool?> isIngredient;
   final Value<int> rowid;
   const LocalProductsCompanion({
     this.id = const Value.absent(),
@@ -529,6 +592,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     this.photoUrl = const Value.absent(),
     this.unit = const Value.absent(),
     this.archivedAt = const Value.absent(),
+    this.isIngredient = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalProductsCompanion.insert({
@@ -543,6 +607,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     this.photoUrl = const Value.absent(),
     this.unit = const Value.absent(),
     this.archivedAt = const Value.absent(),
+    this.isIngredient = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
@@ -563,6 +628,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     Expression<String>? photoUrl,
     Expression<String>? unit,
     Expression<DateTime>? archivedAt,
+    Expression<bool>? isIngredient,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -577,6 +643,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
       if (photoUrl != null) 'photo_url': photoUrl,
       if (unit != null) 'unit': unit,
       if (archivedAt != null) 'archived_at': archivedAt,
+      if (isIngredient != null) 'is_ingredient': isIngredient,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -593,6 +660,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     Value<String?>? photoUrl,
     Value<String?>? unit,
     Value<DateTime?>? archivedAt,
+    Value<bool?>? isIngredient,
     Value<int>? rowid,
   }) {
     return LocalProductsCompanion(
@@ -607,6 +675,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
       photoUrl: photoUrl ?? this.photoUrl,
       unit: unit ?? this.unit,
       archivedAt: archivedAt ?? this.archivedAt,
+      isIngredient: isIngredient ?? this.isIngredient,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -647,6 +716,9 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
     if (archivedAt.present) {
       map['archived_at'] = Variable<DateTime>(archivedAt.value);
     }
+    if (isIngredient.present) {
+      map['is_ingredient'] = Variable<bool>(isIngredient.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -667,6 +739,7 @@ class LocalProductsCompanion extends UpdateCompanion<LocalProduct> {
           ..write('photoUrl: $photoUrl, ')
           ..write('unit: $unit, ')
           ..write('archivedAt: $archivedAt, ')
+          ..write('isIngredient: $isIngredient, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -8948,6 +9021,28 @@ class $LocalDossiersCommandesTable extends LocalDossiersCommandes
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _coutMatiereMeta = const VerificationMeta(
+    'coutMatiere',
+  );
+  @override
+  late final GeneratedColumn<int> coutMatiere = GeneratedColumn<int>(
+    'cout_matiere',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _livreeAtMeta = const VerificationMeta(
+    'livreeAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> livreeAt = GeneratedColumn<DateTime>(
+    'livree_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statutMeta = const VerificationMeta('statut');
   @override
   late final GeneratedColumn<String> statut = GeneratedColumn<String>(
@@ -9001,6 +9096,8 @@ class $LocalDossiersCommandesTable extends LocalDossiersCommandes
     details,
     montantAccepte,
     datePrevue,
+    coutMatiere,
+    livreeAt,
     statut,
     motifAnnulation,
     annuleAt,
@@ -9079,6 +9176,21 @@ class $LocalDossiersCommandesTable extends LocalDossiersCommandes
         datePrevue.isAcceptableOrUnknown(data['date_prevue']!, _datePrevueMeta),
       );
     }
+    if (data.containsKey('cout_matiere')) {
+      context.handle(
+        _coutMatiereMeta,
+        coutMatiere.isAcceptableOrUnknown(
+          data['cout_matiere']!,
+          _coutMatiereMeta,
+        ),
+      );
+    }
+    if (data.containsKey('livree_at')) {
+      context.handle(
+        _livreeAtMeta,
+        livreeAt.isAcceptableOrUnknown(data['livree_at']!, _livreeAtMeta),
+      );
+    }
     if (data.containsKey('statut')) {
       context.handle(
         _statutMeta,
@@ -9149,6 +9261,14 @@ class $LocalDossiersCommandesTable extends LocalDossiersCommandes
         DriftSqlType.dateTime,
         data['${effectivePrefix}date_prevue'],
       ),
+      coutMatiere: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cout_matiere'],
+      ),
+      livreeAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}livree_at'],
+      ),
       statut: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}statut'],
@@ -9191,6 +9311,17 @@ class LocalDossiersCommande extends DataClass
   final int? montantAccepte;
   final DateTime? datePrevue;
 
+  /// Ce que la commande a coûté, saisi à la livraison par la propriétaire.
+  ///
+  /// Un seul nombre, pas une recette. Nul veut dire « pas encore renseigné »,
+  /// jamais zéro — un coût nul et un coût inconnu ne se comptent pas pareil
+  /// dans un bilan.
+  final int? coutMatiere;
+
+  /// Le jour de la livraison réelle — jamais [datePrevue], qui est une
+  /// intention. C'est cette date qui décide dans quel bilan tombe le bénéfice.
+  final DateTime? livreeAt;
+
   /// demande · devis · confirmee · en_cours · prete · terminee · annulee
   final String statut;
   final String? motifAnnulation;
@@ -9205,6 +9336,8 @@ class LocalDossiersCommande extends DataClass
     required this.details,
     this.montantAccepte,
     this.datePrevue,
+    this.coutMatiere,
+    this.livreeAt,
     required this.statut,
     this.motifAnnulation,
     this.annuleAt,
@@ -9224,6 +9357,12 @@ class LocalDossiersCommande extends DataClass
     }
     if (!nullToAbsent || datePrevue != null) {
       map['date_prevue'] = Variable<DateTime>(datePrevue);
+    }
+    if (!nullToAbsent || coutMatiere != null) {
+      map['cout_matiere'] = Variable<int>(coutMatiere);
+    }
+    if (!nullToAbsent || livreeAt != null) {
+      map['livree_at'] = Variable<DateTime>(livreeAt);
     }
     map['statut'] = Variable<String>(statut);
     if (!nullToAbsent || motifAnnulation != null) {
@@ -9250,6 +9389,12 @@ class LocalDossiersCommande extends DataClass
       datePrevue: datePrevue == null && nullToAbsent
           ? const Value.absent()
           : Value(datePrevue),
+      coutMatiere: coutMatiere == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coutMatiere),
+      livreeAt: livreeAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(livreeAt),
       statut: Value(statut),
       motifAnnulation: motifAnnulation == null && nullToAbsent
           ? const Value.absent()
@@ -9275,6 +9420,8 @@ class LocalDossiersCommande extends DataClass
       details: serializer.fromJson<String>(json['details']),
       montantAccepte: serializer.fromJson<int?>(json['montantAccepte']),
       datePrevue: serializer.fromJson<DateTime?>(json['datePrevue']),
+      coutMatiere: serializer.fromJson<int?>(json['coutMatiere']),
+      livreeAt: serializer.fromJson<DateTime?>(json['livreeAt']),
       statut: serializer.fromJson<String>(json['statut']),
       motifAnnulation: serializer.fromJson<String?>(json['motifAnnulation']),
       annuleAt: serializer.fromJson<DateTime?>(json['annuleAt']),
@@ -9293,6 +9440,8 @@ class LocalDossiersCommande extends DataClass
       'details': serializer.toJson<String>(details),
       'montantAccepte': serializer.toJson<int?>(montantAccepte),
       'datePrevue': serializer.toJson<DateTime?>(datePrevue),
+      'coutMatiere': serializer.toJson<int?>(coutMatiere),
+      'livreeAt': serializer.toJson<DateTime?>(livreeAt),
       'statut': serializer.toJson<String>(statut),
       'motifAnnulation': serializer.toJson<String?>(motifAnnulation),
       'annuleAt': serializer.toJson<DateTime?>(annuleAt),
@@ -9309,6 +9458,8 @@ class LocalDossiersCommande extends DataClass
     String? details,
     Value<int?> montantAccepte = const Value.absent(),
     Value<DateTime?> datePrevue = const Value.absent(),
+    Value<int?> coutMatiere = const Value.absent(),
+    Value<DateTime?> livreeAt = const Value.absent(),
     String? statut,
     Value<String?> motifAnnulation = const Value.absent(),
     Value<DateTime?> annuleAt = const Value.absent(),
@@ -9324,6 +9475,8 @@ class LocalDossiersCommande extends DataClass
         ? montantAccepte.value
         : this.montantAccepte,
     datePrevue: datePrevue.present ? datePrevue.value : this.datePrevue,
+    coutMatiere: coutMatiere.present ? coutMatiere.value : this.coutMatiere,
+    livreeAt: livreeAt.present ? livreeAt.value : this.livreeAt,
     statut: statut ?? this.statut,
     motifAnnulation: motifAnnulation.present
         ? motifAnnulation.value
@@ -9349,6 +9502,10 @@ class LocalDossiersCommande extends DataClass
       datePrevue: data.datePrevue.present
           ? data.datePrevue.value
           : this.datePrevue,
+      coutMatiere: data.coutMatiere.present
+          ? data.coutMatiere.value
+          : this.coutMatiere,
+      livreeAt: data.livreeAt.present ? data.livreeAt.value : this.livreeAt,
       statut: data.statut.present ? data.statut.value : this.statut,
       motifAnnulation: data.motifAnnulation.present
           ? data.motifAnnulation.value
@@ -9369,6 +9526,8 @@ class LocalDossiersCommande extends DataClass
           ..write('details: $details, ')
           ..write('montantAccepte: $montantAccepte, ')
           ..write('datePrevue: $datePrevue, ')
+          ..write('coutMatiere: $coutMatiere, ')
+          ..write('livreeAt: $livreeAt, ')
           ..write('statut: $statut, ')
           ..write('motifAnnulation: $motifAnnulation, ')
           ..write('annuleAt: $annuleAt, ')
@@ -9387,6 +9546,8 @@ class LocalDossiersCommande extends DataClass
     details,
     montantAccepte,
     datePrevue,
+    coutMatiere,
+    livreeAt,
     statut,
     motifAnnulation,
     annuleAt,
@@ -9404,6 +9565,8 @@ class LocalDossiersCommande extends DataClass
           other.details == this.details &&
           other.montantAccepte == this.montantAccepte &&
           other.datePrevue == this.datePrevue &&
+          other.coutMatiere == this.coutMatiere &&
+          other.livreeAt == this.livreeAt &&
           other.statut == this.statut &&
           other.motifAnnulation == this.motifAnnulation &&
           other.annuleAt == this.annuleAt &&
@@ -9420,6 +9583,8 @@ class LocalDossiersCommandesCompanion
   final Value<String> details;
   final Value<int?> montantAccepte;
   final Value<DateTime?> datePrevue;
+  final Value<int?> coutMatiere;
+  final Value<DateTime?> livreeAt;
   final Value<String> statut;
   final Value<String?> motifAnnulation;
   final Value<DateTime?> annuleAt;
@@ -9434,6 +9599,8 @@ class LocalDossiersCommandesCompanion
     this.details = const Value.absent(),
     this.montantAccepte = const Value.absent(),
     this.datePrevue = const Value.absent(),
+    this.coutMatiere = const Value.absent(),
+    this.livreeAt = const Value.absent(),
     this.statut = const Value.absent(),
     this.motifAnnulation = const Value.absent(),
     this.annuleAt = const Value.absent(),
@@ -9449,6 +9616,8 @@ class LocalDossiersCommandesCompanion
     this.details = const Value.absent(),
     this.montantAccepte = const Value.absent(),
     this.datePrevue = const Value.absent(),
+    this.coutMatiere = const Value.absent(),
+    this.livreeAt = const Value.absent(),
     this.statut = const Value.absent(),
     this.motifAnnulation = const Value.absent(),
     this.annuleAt = const Value.absent(),
@@ -9469,6 +9638,8 @@ class LocalDossiersCommandesCompanion
     Expression<String>? details,
     Expression<int>? montantAccepte,
     Expression<DateTime>? datePrevue,
+    Expression<int>? coutMatiere,
+    Expression<DateTime>? livreeAt,
     Expression<String>? statut,
     Expression<String>? motifAnnulation,
     Expression<DateTime>? annuleAt,
@@ -9484,6 +9655,8 @@ class LocalDossiersCommandesCompanion
       if (details != null) 'details': details,
       if (montantAccepte != null) 'montant_accepte': montantAccepte,
       if (datePrevue != null) 'date_prevue': datePrevue,
+      if (coutMatiere != null) 'cout_matiere': coutMatiere,
+      if (livreeAt != null) 'livree_at': livreeAt,
       if (statut != null) 'statut': statut,
       if (motifAnnulation != null) 'motif_annulation': motifAnnulation,
       if (annuleAt != null) 'annule_at': annuleAt,
@@ -9501,6 +9674,8 @@ class LocalDossiersCommandesCompanion
     Value<String>? details,
     Value<int?>? montantAccepte,
     Value<DateTime?>? datePrevue,
+    Value<int?>? coutMatiere,
+    Value<DateTime?>? livreeAt,
     Value<String>? statut,
     Value<String?>? motifAnnulation,
     Value<DateTime?>? annuleAt,
@@ -9516,6 +9691,8 @@ class LocalDossiersCommandesCompanion
       details: details ?? this.details,
       montantAccepte: montantAccepte ?? this.montantAccepte,
       datePrevue: datePrevue ?? this.datePrevue,
+      coutMatiere: coutMatiere ?? this.coutMatiere,
+      livreeAt: livreeAt ?? this.livreeAt,
       statut: statut ?? this.statut,
       motifAnnulation: motifAnnulation ?? this.motifAnnulation,
       annuleAt: annuleAt ?? this.annuleAt,
@@ -9551,6 +9728,12 @@ class LocalDossiersCommandesCompanion
     if (datePrevue.present) {
       map['date_prevue'] = Variable<DateTime>(datePrevue.value);
     }
+    if (coutMatiere.present) {
+      map['cout_matiere'] = Variable<int>(coutMatiere.value);
+    }
+    if (livreeAt.present) {
+      map['livree_at'] = Variable<DateTime>(livreeAt.value);
+    }
     if (statut.present) {
       map['statut'] = Variable<String>(statut.value);
     }
@@ -9580,6 +9763,8 @@ class LocalDossiersCommandesCompanion
           ..write('details: $details, ')
           ..write('montantAccepte: $montantAccepte, ')
           ..write('datePrevue: $datePrevue, ')
+          ..write('coutMatiere: $coutMatiere, ')
+          ..write('livreeAt: $livreeAt, ')
           ..write('statut: $statut, ')
           ..write('motifAnnulation: $motifAnnulation, ')
           ..write('annuleAt: $annuleAt, ')
@@ -10815,6 +11000,7 @@ typedef $$LocalProductsTableCreateCompanionBuilder =
       Value<String?> photoUrl,
       Value<String?> unit,
       Value<DateTime?> archivedAt,
+      Value<bool?> isIngredient,
       Value<int> rowid,
     });
 typedef $$LocalProductsTableUpdateCompanionBuilder =
@@ -10830,6 +11016,7 @@ typedef $$LocalProductsTableUpdateCompanionBuilder =
       Value<String?> photoUrl,
       Value<String?> unit,
       Value<DateTime?> archivedAt,
+      Value<bool?> isIngredient,
       Value<int> rowid,
     });
 
@@ -10894,6 +11081,11 @@ class $$LocalProductsTableFilterComposer
 
   ColumnFilters<DateTime> get archivedAt => $composableBuilder(
     column: $table.archivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isIngredient => $composableBuilder(
+    column: $table.isIngredient,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10961,6 +11153,11 @@ class $$LocalProductsTableOrderingComposer
     column: $table.archivedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isIngredient => $composableBuilder(
+    column: $table.isIngredient,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalProductsTableAnnotationComposer
@@ -11008,6 +11205,11 @@ class $$LocalProductsTableAnnotationComposer
     column: $table.archivedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get isIngredient => $composableBuilder(
+    column: $table.isIngredient,
+    builder: (column) => column,
+  );
 }
 
 class $$LocalProductsTableTableManager
@@ -11052,6 +11254,7 @@ class $$LocalProductsTableTableManager
                 Value<String?> photoUrl = const Value.absent(),
                 Value<String?> unit = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
+                Value<bool?> isIngredient = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalProductsCompanion(
                 id: id,
@@ -11065,6 +11268,7 @@ class $$LocalProductsTableTableManager
                 photoUrl: photoUrl,
                 unit: unit,
                 archivedAt: archivedAt,
+                isIngredient: isIngredient,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -11080,6 +11284,7 @@ class $$LocalProductsTableTableManager
                 Value<String?> photoUrl = const Value.absent(),
                 Value<String?> unit = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
+                Value<bool?> isIngredient = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalProductsCompanion.insert(
                 id: id,
@@ -11093,6 +11298,7 @@ class $$LocalProductsTableTableManager
                 photoUrl: photoUrl,
                 unit: unit,
                 archivedAt: archivedAt,
+                isIngredient: isIngredient,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -15443,6 +15649,8 @@ typedef $$LocalDossiersCommandesTableCreateCompanionBuilder =
       Value<String> details,
       Value<int?> montantAccepte,
       Value<DateTime?> datePrevue,
+      Value<int?> coutMatiere,
+      Value<DateTime?> livreeAt,
       Value<String> statut,
       Value<String?> motifAnnulation,
       Value<DateTime?> annuleAt,
@@ -15459,6 +15667,8 @@ typedef $$LocalDossiersCommandesTableUpdateCompanionBuilder =
       Value<String> details,
       Value<int?> montantAccepte,
       Value<DateTime?> datePrevue,
+      Value<int?> coutMatiere,
+      Value<DateTime?> livreeAt,
       Value<String> statut,
       Value<String?> motifAnnulation,
       Value<DateTime?> annuleAt,
@@ -15512,6 +15722,16 @@ class $$LocalDossiersCommandesTableFilterComposer
 
   ColumnFilters<DateTime> get datePrevue => $composableBuilder(
     column: $table.datePrevue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get coutMatiere => $composableBuilder(
+    column: $table.coutMatiere,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get livreeAt => $composableBuilder(
+    column: $table.livreeAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15585,6 +15805,16 @@ class $$LocalDossiersCommandesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get coutMatiere => $composableBuilder(
+    column: $table.coutMatiere,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get livreeAt => $composableBuilder(
+    column: $table.livreeAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get statut => $composableBuilder(
     column: $table.statut,
     builder: (column) => ColumnOrderings(column),
@@ -15644,6 +15874,14 @@ class $$LocalDossiersCommandesTableAnnotationComposer
     column: $table.datePrevue,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get coutMatiere => $composableBuilder(
+    column: $table.coutMatiere,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get livreeAt =>
+      $composableBuilder(column: $table.livreeAt, builder: (column) => column);
 
   GeneratedColumn<String> get statut =>
       $composableBuilder(column: $table.statut, builder: (column) => column);
@@ -15714,6 +15952,8 @@ class $$LocalDossiersCommandesTableTableManager
                 Value<String> details = const Value.absent(),
                 Value<int?> montantAccepte = const Value.absent(),
                 Value<DateTime?> datePrevue = const Value.absent(),
+                Value<int?> coutMatiere = const Value.absent(),
+                Value<DateTime?> livreeAt = const Value.absent(),
                 Value<String> statut = const Value.absent(),
                 Value<String?> motifAnnulation = const Value.absent(),
                 Value<DateTime?> annuleAt = const Value.absent(),
@@ -15728,6 +15968,8 @@ class $$LocalDossiersCommandesTableTableManager
                 details: details,
                 montantAccepte: montantAccepte,
                 datePrevue: datePrevue,
+                coutMatiere: coutMatiere,
+                livreeAt: livreeAt,
                 statut: statut,
                 motifAnnulation: motifAnnulation,
                 annuleAt: annuleAt,
@@ -15744,6 +15986,8 @@ class $$LocalDossiersCommandesTableTableManager
                 Value<String> details = const Value.absent(),
                 Value<int?> montantAccepte = const Value.absent(),
                 Value<DateTime?> datePrevue = const Value.absent(),
+                Value<int?> coutMatiere = const Value.absent(),
+                Value<DateTime?> livreeAt = const Value.absent(),
                 Value<String> statut = const Value.absent(),
                 Value<String?> motifAnnulation = const Value.absent(),
                 Value<DateTime?> annuleAt = const Value.absent(),
@@ -15758,6 +16002,8 @@ class $$LocalDossiersCommandesTableTableManager
                 details: details,
                 montantAccepte: montantAccepte,
                 datePrevue: datePrevue,
+                coutMatiere: coutMatiere,
+                livreeAt: livreeAt,
                 statut: statut,
                 motifAnnulation: motifAnnulation,
                 annuleAt: annuleAt,

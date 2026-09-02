@@ -128,6 +128,8 @@ final List<TableTiree> tablesTirees = [
       photoUrl: p['photo_url'],
       unit: p['unit'] as String?,
       archivedAt: _dateOuNulle(p['archived_at']),
+      // Nul se lit « non » : un produit ordinaire n'est pas un ingrédient.
+      isIngredient: p['is_ingredient'] as bool?,
     ),
   ),
   _tableTiree(
@@ -361,6 +363,10 @@ final List<TableTiree> tablesTirees = [
       // Null tant que la propriétaire n'a pas fixé le prix : c'est l'état
       // normal d'une demande enregistrée par la vendeuse.
       montantAccepte: d['montant_accepte'] as int?,
+      // Nul = pas encore renseigné. L'oublier ici effacerait le coût quelques
+      // secondes après sa saisie, et le bénéfice du mois avec.
+      coutMatiere: d['cout_matiere'] as int?,
+      livreeAt: _dateOuNulle(d['livree_at']),
       datePrevue: _dateOuNulle(d['date_prevue']),
       statut: d['statut'],
       motifAnnulation: d['motif_annulation'] as String?,

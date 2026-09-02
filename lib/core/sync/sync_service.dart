@@ -402,11 +402,17 @@ class SyncService {
       // portée pour les trois, sinon un paiement partirait avant le dossier
       // qu'il référence et se ferait refuser sur une clé étrangère.
       case 'ADD_CLIENT':
+      case 'UPDATE_CLIENT':
         return {'client:${payload['id']}'};
       case 'ADD_DOSSIER_COMMANDE':
         return {'client:${payload['client_id']}', 'dossier:${payload['id']}'};
       case 'ADD_PAIEMENT_COMMANDE':
         return {'dossier:${payload['dossier_id']}'};
+      // Même portée que la création : fixer le prix d'un dossier encore en
+      // file doit attendre que le dossier existe côté serveur, sinon l'UPDATE
+      // ne trouve aucune ligne et le prix disparaît en silence.
+      case 'UPDATE_DOSSIER_COMMANDE':
+        return {'dossier:${payload['id']}'};
       case 'ADD_CLOSING':
         return {'cloture:${payload['shop_id']}:${payload['closing_date']}'};
       case 'SET_SHOP_SETTINGS':
@@ -445,10 +451,17 @@ class SyncService {
         await supabase.from('cash_movements').upsert(payload);
       case 'ADD_CLIENT':
         await supabase.from('clients').upsert(payload);
+      case 'UPDATE_CLIENT':
+        await supabase.from('clients').update(payload).eq('id', payload['id']);
       case 'ADD_DOSSIER_COMMANDE':
         await supabase.from('dossiers_commandes').upsert(payload);
       case 'ADD_PAIEMENT_COMMANDE':
         await supabase.from('paiements_commandes').upsert(payload);
+      case 'UPDATE_DOSSIER_COMMANDE':
+        await supabase
+            .from('dossiers_commandes')
+            .update(payload)
+            .eq('id', payload['id']);
       case 'ADD_PRODUCT':
         await supabase.from('products').upsert(payload);
       case 'UPDATE_PRODUCT':
