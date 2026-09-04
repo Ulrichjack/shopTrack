@@ -58,6 +58,20 @@ Ce que cette vente vous rapporte. Cette ligne n'apparaît pas chez la vendeuse.
 **3 Confirmer la vente
 L'argent entre en caisse et le stock baisse tout seul.
 
+== Sortir de l'argent de la caisse
+@ 11-sortie-caisse-annote
+Touchez la case SORTIES sur l'accueil.
+**1 Combien
+Le montant que vous avez pris dans le tiroir.
+**2 DÉPENSÉ
+Repas, transport, fournisseur, personnel, autre. L'argent est parti pour de bon : il sort de la caisse ET du bénéfice.
+**3 DÉPLACÉ
+Versement banque, retrait patron. L'argent a changé de place, il existe encore : il sort de la caisse mais PAS du bénéfice.
+Sans cette distinction, une recette mise en sécurité chaque soir ferait fondre votre bénéfice sans raison.
+**4 Enregistrer la sortie
+**5 Les sorties du jour
+Tout ce qui est sorti aujourd'hui, avec l'heure et le motif. Les remboursements de commandes y apparaissent avec le nom de la cliente.
+
 == Compter la caisse le soir
 @ 04-cloture-annote
 **1 Le résumé de la journée

@@ -29,25 +29,50 @@ Pour vendre au comptoir.
 **5 Clôturer la journée
 Le soir, pour compter l'argent. Faites-le tous les soirs : c'est ce qui prouve que votre caisse tombe juste.
 
-== Vendre au comptoir
-Touchez NOUVELLE VENTE, puis l'article. Vous pouvez changer le prix si la cliente a négocié, et la quantité. Puis AJOUTER AU PANIER.
-Ajoutez autant d'articles que nécessaire, touchez ENCAISSER, vérifiez la liste, et CONFIRMER LA VENTE.
+== Vendre : choisir l'article
+@ 02-vente-quantite-annote
+Touchez NOUVELLE VENTE, puis l'article dans la liste. Une feuille s'ouvre par le bas.
+**1 Prix de vente négocié
+Il est déjà rempli. Changez-le si la cliente a négocié.
+**2 Quantité
+Les boutons moins et plus, ou tapez directement dans la case.
+**3 Ajouter au panier
+Recommencez pour chaque article.
+
+== Vendre : encaisser
+@ 02b-encaisser-annote
+Quand le panier est complet, touchez ENCAISSER en bas de l'écran.
+**1 Les articles
+Vérifiez la liste avec la cliente. La corbeille rouge retire une ligne si vous vous êtes trompée.
+**2 Total à encaisser
+Ce que la cliente doit payer.
+**3 Confirmer la vente
 L'argent entre en caisse et le stock baisse tout seul. Vous n'avez rien d'autre à faire.
-**Si vous vous trompez
-Sur l'écran de confirmation, la corbeille rouge retire une ligne. Après confirmation, prévenez la patronne : elle seule peut corriger.
+Après confirmation, on ne peut plus corriger. Prévenez la patronne : elle seule peut.
 
 == Sortir de l'argent
-Touchez la case SORTIES sur l'accueil. Tapez le montant, puis choisissez pourquoi. Les catégories sont rangées en deux familles.
-**Dépensé
+@ 11-sortie-caisse-annote
+Touchez la case SORTIES sur l'accueil.
+**1 Combien
+Ce que vous avez pris dans le tiroir.
+**2 DÉPENSÉ
 Repas, transport, fournisseur, personnel, autre. L'argent est parti pour de bon.
-**Déplacé
+**3 DÉPLACÉ
 Versement banque, remise à la patronne. L'argent a changé de place, il n'est pas dépensé.
-Cette différence compte : elle évite que le bénéfice de la boutique baisse quand vous remettez simplement la recette à la patronne.
+Cette différence évite que le bénéfice de la boutique baisse quand vous remettez simplement la recette à la patronne.
+**4 Enregistrer la sortie
+**5 Les sorties du jour
+Tout ce qui est sorti aujourd'hui, même par la patronne. C'est ce qui explique le montant que vous compterez ce soir.
 **Enregistrez TOUJOURS
 Même 500 F pour le taxi. Un billet qui sort sans être noté fera un manquant le soir — et c'est vous qu'on cherchera.
 
 == Compter la caisse le soir
-Touchez CLÔTURER LA JOURNÉE. L'application montre son calcul, puis vous demande de compter vos billets et de taper le vrai montant.
+@ 12-cloture-annote
+Touchez CLÔTURER LA JOURNÉE sur l'accueil.
+**1 Le résumé de la journée
+Ce qu'il y avait ce matin, les ventes, les autres entrées (les avances sur commandes), et ce qui est sorti.
+**2 Compter ma caisse
+Comptez vos billets et tapez le vrai montant.
 **Si les deux ne tombent pas pareil
 L'application enregistre l'écart et vous demande pourquoi. Écrivez ce que vous savez, même « je ne sais pas ».
 Un écart n'est pas une accusation. C'est une information. Ce qui serait grave, c'est de ne pas compter du tout.
