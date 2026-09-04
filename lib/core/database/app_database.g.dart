@@ -2932,6 +2932,17 @@ class $LocalDailyClosingsTable extends LocalDailyClosings
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _closedAtMeta = const VerificationMeta(
+    'closedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> closedAt = GeneratedColumn<DateTime>(
+    'closed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -2956,6 +2967,7 @@ class $LocalDailyClosingsTable extends LocalDailyClosings
     physicalCash,
     cashGap,
     isClosed,
+    closedAt,
     note,
   ];
   @override
@@ -3083,6 +3095,12 @@ class $LocalDailyClosingsTable extends LocalDailyClosings
         isClosed.isAcceptableOrUnknown(data['is_closed']!, _isClosedMeta),
       );
     }
+    if (data.containsKey('closed_at')) {
+      context.handle(
+        _closedAtMeta,
+        closedAt.isAcceptableOrUnknown(data['closed_at']!, _closedAtMeta),
+      );
+    }
     if (data.containsKey('note')) {
       context.handle(
         _noteMeta,
@@ -3150,6 +3168,10 @@ class $LocalDailyClosingsTable extends LocalDailyClosings
         DriftSqlType.bool,
         data['${effectivePrefix}is_closed'],
       )!,
+      closedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}closed_at'],
+      ),
       note: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}note'],
@@ -3178,6 +3200,16 @@ class LocalDailyClosing extends DataClass
   final double? physicalCash;
   final double? cashGap;
   final bool isClosed;
+
+  /// L'instant RÉEL du comptage, pas seulement son jour.
+  ///
+  /// C'est la frontière à partir de laquelle l'argent compte pour le
+  /// lendemain. Sans elle, le calcul repartait de minuit et perdait tout ce
+  /// qui entrait entre la clôture et la fin de la journée.
+  ///
+  /// Nulle sur les clôtures d'avant le 03/09/2026 : elles retombent sur
+  /// l'ancien calcul, et leurs bilans ne bougent pas.
+  final DateTime? closedAt;
   final String? note;
   const LocalDailyClosing({
     required this.id,
@@ -3193,6 +3225,7 @@ class LocalDailyClosing extends DataClass
     this.physicalCash,
     this.cashGap,
     required this.isClosed,
+    this.closedAt,
     this.note,
   });
   @override
@@ -3215,6 +3248,9 @@ class LocalDailyClosing extends DataClass
       map['cash_gap'] = Variable<double>(cashGap);
     }
     map['is_closed'] = Variable<bool>(isClosed);
+    if (!nullToAbsent || closedAt != null) {
+      map['closed_at'] = Variable<DateTime>(closedAt);
+    }
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
@@ -3240,6 +3276,9 @@ class LocalDailyClosing extends DataClass
           ? const Value.absent()
           : Value(cashGap),
       isClosed: Value(isClosed),
+      closedAt: closedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(closedAt),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
     );
   }
@@ -3263,6 +3302,7 @@ class LocalDailyClosing extends DataClass
       physicalCash: serializer.fromJson<double?>(json['physicalCash']),
       cashGap: serializer.fromJson<double?>(json['cashGap']),
       isClosed: serializer.fromJson<bool>(json['isClosed']),
+      closedAt: serializer.fromJson<DateTime?>(json['closedAt']),
       note: serializer.fromJson<String?>(json['note']),
     );
   }
@@ -3283,6 +3323,7 @@ class LocalDailyClosing extends DataClass
       'physicalCash': serializer.toJson<double?>(physicalCash),
       'cashGap': serializer.toJson<double?>(cashGap),
       'isClosed': serializer.toJson<bool>(isClosed),
+      'closedAt': serializer.toJson<DateTime?>(closedAt),
       'note': serializer.toJson<String?>(note),
     };
   }
@@ -3301,6 +3342,7 @@ class LocalDailyClosing extends DataClass
     Value<double?> physicalCash = const Value.absent(),
     Value<double?> cashGap = const Value.absent(),
     bool? isClosed,
+    Value<DateTime?> closedAt = const Value.absent(),
     Value<String?> note = const Value.absent(),
   }) => LocalDailyClosing(
     id: id ?? this.id,
@@ -3316,6 +3358,7 @@ class LocalDailyClosing extends DataClass
     physicalCash: physicalCash.present ? physicalCash.value : this.physicalCash,
     cashGap: cashGap.present ? cashGap.value : this.cashGap,
     isClosed: isClosed ?? this.isClosed,
+    closedAt: closedAt.present ? closedAt.value : this.closedAt,
     note: note.present ? note.value : this.note,
   );
   LocalDailyClosing copyWithCompanion(LocalDailyClosingsCompanion data) {
@@ -3347,6 +3390,7 @@ class LocalDailyClosing extends DataClass
           : this.physicalCash,
       cashGap: data.cashGap.present ? data.cashGap.value : this.cashGap,
       isClosed: data.isClosed.present ? data.isClosed.value : this.isClosed,
+      closedAt: data.closedAt.present ? data.closedAt.value : this.closedAt,
       note: data.note.present ? data.note.value : this.note,
     );
   }
@@ -3367,6 +3411,7 @@ class LocalDailyClosing extends DataClass
           ..write('physicalCash: $physicalCash, ')
           ..write('cashGap: $cashGap, ')
           ..write('isClosed: $isClosed, ')
+          ..write('closedAt: $closedAt, ')
           ..write('note: $note')
           ..write(')'))
         .toString();
@@ -3387,6 +3432,7 @@ class LocalDailyClosing extends DataClass
     physicalCash,
     cashGap,
     isClosed,
+    closedAt,
     note,
   );
   @override
@@ -3406,6 +3452,7 @@ class LocalDailyClosing extends DataClass
           other.physicalCash == this.physicalCash &&
           other.cashGap == this.cashGap &&
           other.isClosed == this.isClosed &&
+          other.closedAt == this.closedAt &&
           other.note == this.note);
 }
 
@@ -3423,6 +3470,7 @@ class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
   final Value<double?> physicalCash;
   final Value<double?> cashGap;
   final Value<bool> isClosed;
+  final Value<DateTime?> closedAt;
   final Value<String?> note;
   final Value<int> rowid;
   const LocalDailyClosingsCompanion({
@@ -3439,6 +3487,7 @@ class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
     this.physicalCash = const Value.absent(),
     this.cashGap = const Value.absent(),
     this.isClosed = const Value.absent(),
+    this.closedAt = const Value.absent(),
     this.note = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3456,6 +3505,7 @@ class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
     this.physicalCash = const Value.absent(),
     this.cashGap = const Value.absent(),
     this.isClosed = const Value.absent(),
+    this.closedAt = const Value.absent(),
     this.note = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -3482,6 +3532,7 @@ class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
     Expression<double>? physicalCash,
     Expression<double>? cashGap,
     Expression<bool>? isClosed,
+    Expression<DateTime>? closedAt,
     Expression<String>? note,
     Expression<int>? rowid,
   }) {
@@ -3499,6 +3550,7 @@ class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
       if (physicalCash != null) 'physical_cash': physicalCash,
       if (cashGap != null) 'cash_gap': cashGap,
       if (isClosed != null) 'is_closed': isClosed,
+      if (closedAt != null) 'closed_at': closedAt,
       if (note != null) 'note': note,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3518,6 +3570,7 @@ class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
     Value<double?>? physicalCash,
     Value<double?>? cashGap,
     Value<bool>? isClosed,
+    Value<DateTime?>? closedAt,
     Value<String?>? note,
     Value<int>? rowid,
   }) {
@@ -3535,6 +3588,7 @@ class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
       physicalCash: physicalCash ?? this.physicalCash,
       cashGap: cashGap ?? this.cashGap,
       isClosed: isClosed ?? this.isClosed,
+      closedAt: closedAt ?? this.closedAt,
       note: note ?? this.note,
       rowid: rowid ?? this.rowid,
     );
@@ -3582,6 +3636,9 @@ class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
     if (isClosed.present) {
       map['is_closed'] = Variable<bool>(isClosed.value);
     }
+    if (closedAt.present) {
+      map['closed_at'] = Variable<DateTime>(closedAt.value);
+    }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
@@ -3607,6 +3664,7 @@ class LocalDailyClosingsCompanion extends UpdateCompanion<LocalDailyClosing> {
           ..write('physicalCash: $physicalCash, ')
           ..write('cashGap: $cashGap, ')
           ..write('isClosed: $isClosed, ')
+          ..write('closedAt: $closedAt, ')
           ..write('note: $note, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -12407,6 +12465,7 @@ typedef $$LocalDailyClosingsTableCreateCompanionBuilder =
       Value<double?> physicalCash,
       Value<double?> cashGap,
       Value<bool> isClosed,
+      Value<DateTime?> closedAt,
       Value<String?> note,
       Value<int> rowid,
     });
@@ -12425,6 +12484,7 @@ typedef $$LocalDailyClosingsTableUpdateCompanionBuilder =
       Value<double?> physicalCash,
       Value<double?> cashGap,
       Value<bool> isClosed,
+      Value<DateTime?> closedAt,
       Value<String?> note,
       Value<int> rowid,
     });
@@ -12500,6 +12560,11 @@ class $$LocalDailyClosingsTableFilterComposer
 
   ColumnFilters<bool> get isClosed => $composableBuilder(
     column: $table.isClosed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get closedAt => $composableBuilder(
+    column: $table.closedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12583,6 +12648,11 @@ class $$LocalDailyClosingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get closedAt => $composableBuilder(
+    column: $table.closedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get note => $composableBuilder(
     column: $table.note,
     builder: (column) => ColumnOrderings(column),
@@ -12651,6 +12721,9 @@ class $$LocalDailyClosingsTableAnnotationComposer
   GeneratedColumn<bool> get isClosed =>
       $composableBuilder(column: $table.isClosed, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get closedAt =>
+      $composableBuilder(column: $table.closedAt, builder: (column) => column);
+
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 }
@@ -12708,6 +12781,7 @@ class $$LocalDailyClosingsTableTableManager
                 Value<double?> physicalCash = const Value.absent(),
                 Value<double?> cashGap = const Value.absent(),
                 Value<bool> isClosed = const Value.absent(),
+                Value<DateTime?> closedAt = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalDailyClosingsCompanion(
@@ -12724,6 +12798,7 @@ class $$LocalDailyClosingsTableTableManager
                 physicalCash: physicalCash,
                 cashGap: cashGap,
                 isClosed: isClosed,
+                closedAt: closedAt,
                 note: note,
                 rowid: rowid,
               ),
@@ -12742,6 +12817,7 @@ class $$LocalDailyClosingsTableTableManager
                 Value<double?> physicalCash = const Value.absent(),
                 Value<double?> cashGap = const Value.absent(),
                 Value<bool> isClosed = const Value.absent(),
+                Value<DateTime?> closedAt = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalDailyClosingsCompanion.insert(
@@ -12758,6 +12834,7 @@ class $$LocalDailyClosingsTableTableManager
                 physicalCash: physicalCash,
                 cashGap: cashGap,
                 isClosed: isClosed,
+                closedAt: closedAt,
                 note: note,
                 rowid: rowid,
               ),

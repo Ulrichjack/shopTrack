@@ -206,6 +206,8 @@ final List<TableTiree> tablesTirees = [
       physicalCash: _reelOuNul(c['physical_cash']),
       cashGap: _reelOuNul(c['cash_gap']),
       isClosed: c['is_closed'] ?? false,
+      // Nulle sur les clôtures antérieures : l'ancien calcul reprend la main.
+      closedAt: _dateOuNulle(c['closed_at']),
       note: c['note'],
     ),
   ),

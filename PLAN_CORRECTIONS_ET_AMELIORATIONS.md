@@ -1442,3 +1442,49 @@ occurrence sera lisible.
 db.getPendingCount() > 0) return;` sort de `pullDataFromSupabase` **sans
 aucune trace**. C'est volontaire — une opération en attente rend le serveur
 périmé — mais indistinguable d'une panne pour qui lit les journaux.
+
+## Relevés pendant le test à deux rôles — 03/09/2026
+
+Trois défauts vus en utilisant le vrai produit (build release), par ordre de
+gravité.
+
+### 1. L'argent reçu après la clôture disparaissait — CORRIGÉ le 03/09
+
+Clôture à 18h, acompte à 19h : les billets entraient dans le tiroir et
+n'existaient nulle part. Le solde du lendemain repartait du comptage puis
+n'ajoutait que ce qui suivait **minuit** — six heures de recettes perdues
+chaque soir. La table ne gardait que le jour de la clôture, jamais son heure.
+
+Corrigé par `202609030001_heure_de_cloture.sql` : la frontière devient
+l'instant réel du comptage. Quatre tests figent le comportement, dont un qui
+garde l'ancienne erreur pour que personne ne la rétablisse en croyant
+simplifier.
+
+⚠️ On n'a **pas** bloqué l'encaissement après clôture. C'est le réflexe, et
+c'est le piège déjà payé trois fois : la cliente verse quand même, la vendeuse
+prend les billets, et l'argent entre sans être noté. On remplacerait un chiffre
+faux par un manquant inexpliqué au nom de quelqu'un.
+
+### 2. Créer une boutique perd le mode en cours — À FAIRE
+
+Depuis une boutique en mode « commandes avec acompte », créer une nouvelle
+boutique donne une boutique en **mode simple**. Les réglages sont par boutique
+et la nouvelle repart des valeurs par défaut.
+
+Ce n'est pas faux — deux boutiques peuvent légitimement différer — mais c'est
+surprenant : on croit avoir créé une boutique de commandes et l'onglet manque.
+
+Piste : proposer à la création « reprendre les réglages de la boutique
+actuelle ? », plutôt que de recopier en silence. Un commerçant qui ouvre un
+second point de vente veut presque toujours le même mode ; celui qui ouvre un
+autre métier, non.
+
+### 3. Une déconnexion qui échoue sur le réseau laisse la session — À FAIRE
+
+Vu le 03/09 : `AuthRetryableFetchException` sur `/auth/v1/logout`, coupure
+réseau de l'émulateur. L'application est restée connectée.
+
+La session locale devrait être effacée **même si le serveur ne répond pas** :
+se déconnecter est une décision de l'utilisateur, pas une négociation avec le
+réseau. Sinon on reste coincé sur un compte parce qu'une requête a échoué — et
+sur ce projet, changer de rôle demande justement de se déconnecter.

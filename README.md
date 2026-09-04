@@ -54,6 +54,7 @@ supabase/migrations/202609010005_nommer_les_employes.sql
 supabase/migrations/202609010006_retirer_vue_membres.sql
 supabase/migrations/202609010007_rembourser_une_annulee.sql
 supabase/migrations/202609020001_corriger_le_nom_client.sql
+supabase/migrations/202609030001_heure_de_cloture.sql
 ```
 
 ### Fonctions serveur

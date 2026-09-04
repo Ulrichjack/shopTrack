@@ -15,6 +15,7 @@ import '../../../../shared/widgets/shop_switcher.dart';
 import '../../../../core/providers/employees_provider.dart';
 import '../../../../core/providers/user_shops_provider.dart';
 import '../../../../core/providers/current_shop_provider.dart';
+import '../../../../core/version_application.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -812,10 +813,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
 
             const SizedBox(height: 20),
-            const Center(
+            // La version, lue au démarrage et non écrite en dur.
+            //
+            // Elle affichait « v1.0.0 » sur une application en 1.3.0. Ce n'est
+            // pas cosmétique : c'est la première chose qu'on demande à un
+            // commerçant au téléphone quand quelque chose ne va pas, et une
+            // fausse réponse envoie chercher au mauvais endroit.
+            Center(
               child: Text(
-                'ShopTrack v1.0.0',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                'ShopTrack v${versionApplication.value}',
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ),
           ],

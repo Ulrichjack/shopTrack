@@ -131,6 +131,17 @@ class LocalDailyClosings extends Table {
   RealColumn get physicalCash => real().nullable()();
   RealColumn get cashGap => real().nullable()();
   BoolColumn get isClosed => boolean().withDefault(const Constant(false))();
+
+  /// L'instant RÉEL du comptage, pas seulement son jour.
+  ///
+  /// C'est la frontière à partir de laquelle l'argent compte pour le
+  /// lendemain. Sans elle, le calcul repartait de minuit et perdait tout ce
+  /// qui entrait entre la clôture et la fin de la journée.
+  ///
+  /// Nulle sur les clôtures d'avant le 03/09/2026 : elles retombent sur
+  /// l'ancien calcul, et leurs bilans ne bougent pas.
+  DateTimeColumn get closedAt => dateTime().nullable()();
+
   TextColumn get note => text().nullable()();
 
   @override
@@ -511,7 +522,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -601,6 +612,9 @@ class AppDatabase extends _$AppDatabase {
           localDossiersCommandes,
           localDossiersCommandes.livreeAt,
         );
+      }
+      if (from < 21) {
+        await m.addColumn(localDailyClosings, localDailyClosings.closedAt);
       }
     },
   );

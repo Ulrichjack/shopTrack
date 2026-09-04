@@ -730,6 +730,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         'closing_date':
             "${startOfDay.year}-${startOfDay.month.toString().padLeft(2, '0')}-${startOfDay.day.toString().padLeft(2, '0')}",
         'morning_balance': closing.morningBalance,
+        'closed_at': closing.closedAt?.toUtc().toIso8601String(),
         'total_sales': closing.totalSales,
         'total_withdrawals': closing.totalWithdrawals,
         'calculated_cash': closing.calculatedCash,
@@ -857,6 +858,10 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
               physicalCash: physicalCash,
               cashGap: cashGap,
               isClosed: true,
+              // L'INSTANT du comptage, pas le jour. C'est lui qui dit ce qui
+              // appartient à demain : sans lui, le calcul repartait de minuit
+              // et perdait tout ce qui entrait après la clôture.
+              closedAt: DateTime.now(),
               note: finalNote,
             ),
             mode: drift.InsertMode.insertOrReplace,
@@ -931,13 +936,23 @@ Future<double> soldeCaisseAvant({
 
   final checkpointBalance =
       checkpoint?.physicalCash ?? checkpoint?.calculatedCash ?? 0;
+
+  // La frontière est L'INSTANT de la clôture, pas le lendemain à minuit.
+  //
+  // Une cliente qui verse un acompte à 19h après une clôture de 18h tombait
+  // dans un trou de six heures : trop tard pour la journée close, trop tôt
+  // pour la suivante. Cet argent était dans le tiroir et n'existait nulle part.
+  //
+  // `closedAt` est nulle sur les clôtures d'avant le 03/09/2026 : elles
+  // retombent sur l'ancien calcul, et leurs bilans ne bougent pas.
   final activityStart = checkpoint == null
       ? null
-      : DateTime(
-          checkpoint.closingDate.year,
-          checkpoint.closingDate.month,
-          checkpoint.closingDate.day,
-        ).add(const Duration(days: 1));
+      : checkpoint.closedAt ??
+            DateTime(
+              checkpoint.closingDate.year,
+              checkpoint.closingDate.month,
+              checkpoint.closingDate.day,
+            ).add(const Duration(days: 1));
 
   final salesQuery = db.select(db.localSales)
     ..where(
