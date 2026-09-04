@@ -9,6 +9,23 @@ Un second guide existe pour votre vendeuse. Elle ne voit pas les mêmes choses q
 - ouvrir le Bilan
 Gardez ce guide sur votre téléphone. Vous n'aurez pas besoin de tout retenir aujourd'hui.
 
+== Vos réglages
+@ 06-profil-annote
+Le rouage en haut à droite de tous les écrans ouvre votre profil.
+**1 Sécurité
+Changer votre mot de passe. Protéger l'application par un code PIN pour que la vendeuse ne puisse pas passer en mode patron. Ajouter une boutique. Et Employés, pour créer le compte de votre vendeuse.
+**2 Données
+État de synchronisation, pour voir si tout est bien parti sur internet. Historique d'audit, pour savoir qui a fait quoi. Réglages de la boutique, pour les modules.
+
+== Allumer les commandes
+@ 08-reglages-annote
+Rouage, puis Réglages de la boutique.
+**1 Inventaire périodique
+Une boutique ne peut pas faire l'inventaire périodique ET les commandes. Les commandes ont besoin d'une caisse que ce mode ne tient pas. L'application le dit et bloque le choix, au lieu de vous laisser faire une erreur.
+**2 Commandes avec acompte
+Allumez-le. Un onglet COMMANDES apparaît aussitôt en bas de l'écran.
+Ce réglage ne vaut que pour cette boutique. Si vous en avez plusieurs, chacune a le sien.
+
 == L'accueil
 @ 01-accueil-annote
 **1 Solde reporté
@@ -43,7 +60,7 @@ Vous comptez vos billets et vous tapez le vrai montant. Si les deux ne tombent p
 Cet écart n'est pas une faute : c'est une information. Un manquant qui revient tous les soirs veut dire quelque chose.
 
 == Prendre une commande
-@ ../02-nouvelle-annote
+@ 10-nouvelle-commande-annote
 **1 Le nom de la cliente
 Obligatoire. C'est lui que vous lirez partout.
 **2 Le métier
@@ -58,7 +75,7 @@ Laissez vide si vous ne le connaissez pas encore : la commande sera marquée « 
 La fiche s'ouvre aussitôt : vous pouvez encaisser l'avance dans la foulée.
 
 == Suivre les commandes
-@ ../01-liste-annote
+@ 09-liste-commandes-annote
 **1 Reste à encaisser
 L'argent qui vous attend encore. Ce n'est pas le total des commandes : celles qui sont payées n'y sont plus.
 **2 À livrer
@@ -67,6 +84,31 @@ Le travail qui reste. Les retards remontent en haut, en rouge, avec le nom.
 L'histoire, gardée. Une commande annulée n'est jamais effacée : ses acomptes doivent rester visibles.
 **4 Nouvelle commande
 Pour enregistrer une demande.
+
+== La fiche d'une commande
+@ 04-fiche-a-livrer-annote
+Touchez une commande dans la liste pour l'ouvrir.
+**1 L'argent
+Le prix convenu, ce qui est déjà encaissé, et ce qui reste à payer en rouge.
+**2 Corriger le prix
+Si la cliente ajoute un étage ou trente invités. Possible tant que la commande n'est pas livrée.
+**3 Encaisser un paiement
+À chaque avance versée.
+**4 Marquer comme livrée
+Quand la commande part.
+**5 Ce que ça m'a coûté
+Vous seule voyez ce bouton.
+**6 Annuler la commande
+Vous seule aussi. Il faudra dire pourquoi.
+
+== Encaisser une avance
+@ 05-encaisser-feuille-annote
+**1 Le montant
+L'application vous rappelle le maximum : on ne peut pas encaisser plus que ce qui reste dû.
+**2 Comment ?
+Espèces, Orange Money ou MTN MoMo. Ce choix est important, lisez la page suivante.
+**3 Valider
+Le versement s'ajoute à la liste, avec son heure et son moyen.
 
 == L'argent des commandes
 Sur la fiche d'une commande, ENCAISSER UN PAIEMENT à chaque avance.
@@ -79,6 +121,14 @@ Si l'application comptait le Mobile Money dans la caisse, vous trouveriez un man
 **Rembourser
 Un remboursement s'ajoute, il n'efface jamais l'avance. L'histoire de votre argent ne se réécrit pas.
 
+== Une commande livrée
+@ 07-fiche-livree-annote
+**1 Ce que vous avez gagné
+Une fois le coût saisi, la fiche affiche ce que la commande vous a rapporté. La vendeuse ne voit jamais ces deux lignes.
+**2 Corriger le coût
+Si vous vous êtes trompée, ou si une facture arrive après.
+Les versements restent tous visibles en dessous, avec leur date, leur heure et leur moyen de paiement.
+
 == Livrer une commande
 Touchez MARQUER COMME LIVRÉE. L'application vous demande alors ce que la commande vous a coûté.
 **N'y mettez pas ce qui resservira
@@ -88,7 +138,7 @@ Vous pouvez passer et le mettre plus tard. Un bandeau orange restera sur la fich
 Plus de correction de prix, plus d'annulation. Corriger un prix des semaines plus tard ferait changer tout seul un bilan que vous avez déjà consulté.
 
 == Le bilan
-@ ../../guide-commandes/patron/07-bilan
+@ 07-bilan
 Réservé à vous. Deux parties, jamais mélangées.
 **La boutique
 Ce que le comptoir a vendu, ce qu'il a coûté, ce qu'il a rapporté.

@@ -79,6 +79,28 @@ L'histoire, gardée. Une commande annulée n'est jamais effacée.
 **4 Nouvelle commande
 Pour enregistrer une demande.
 
+== La fiche d'une commande
+@ 09-fiche-commande-annote
+Touchez une commande dans la liste pour l'ouvrir.
+**1 L'argent
+Le prix convenu, ce qui est déjà encaissé, et ce qui reste à payer en rouge.
+**2 Corriger le prix
+Pour un gâteau, un objet ou une formation. Pas pour une décoration : ce bouton n'apparaîtra pas.
+**3 Encaisser un paiement
+À chaque avance versée par la cliente.
+**4 Marquer comme livrée
+Quand la cliente emporte sa commande.
+Vous ne verrez ni « Ce que ça m'a coûté » ni « Annuler la commande » : ces deux-là sont à la patronne.
+
+== Encaisser une avance
+@ 10-encaisser-annote
+**1 Le montant
+L'application rappelle le maximum : on ne peut pas encaisser plus que ce qui reste dû. Si vous tapez plus, elle refuse et vous dit pourquoi.
+**2 Comment ?
+Espèces, Orange Money ou MTN MoMo. Ce choix est le plus important de cet écran, lisez la page suivante.
+**3 Valider
+Le versement s'ajoute à la liste, avec son heure et son moyen. Il ne s'efface jamais.
+
 == L'argent des commandes
 Sur la fiche d'une commande, ENCAISSER UN PAIEMENT à chaque avance versée.
 **Espèces
@@ -97,6 +119,20 @@ L'application ne vous demandera pas ce que ça a coûté : c'est la patronne qui
 Vous pouvez encaisser après la livraison. C'est normal : elle a emporté sa commande sans tout payer.
 **Une commande livrée est finie
 Plus de correction, plus d'annulation. Si quelque chose ne va pas, appelez la patronne.
+
+== Votre profil
+@ 07-profil-annote
+Le rouage en haut à droite de tous les écrans.
+**1 Changer mon mot de passe
+Choisissez-en un que vous seule connaissez. La patronne ne peut pas le lire.
+**2 État de synchronisation
+Pour vérifier que votre travail est bien parti sur internet.
+
+== Vérifier que tout est parti
+@ 08-synchronisation-annote
+**1 Données synchronisées
+« 0 opération en attente » veut dire que tout votre travail est arrivé chez la patronne. S'il y a un nombre, c'est que le réseau manquait : ce n'est pas perdu, ça partira tout seul.
+Regardez cet écran avant de vous déconnecter, et avant de rendre le téléphone. Ne vous déconnectez jamais s'il reste des opérations en attente.
 
 == En cas de problème
 **Un bouton a disparu
