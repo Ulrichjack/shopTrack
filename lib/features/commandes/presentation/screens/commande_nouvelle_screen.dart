@@ -262,7 +262,7 @@ class _Titre extends StatelessWidget {
       child: Text(
         texte,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 13.5,
           fontWeight: FontWeight.bold,
           color: Colors.grey.shade600,
           letterSpacing: 1.2,

@@ -304,7 +304,7 @@ class _CorpsMotifState extends State<_CorpsMotif> {
           const Text(
             'La commande reste dans la liste, barrée, avec sa raison. Les '
             'acomptes déjà encaissés restent à rembourser.',
-            style: TextStyle(fontSize: 13, height: 1.35),
+            style: TextStyle(fontSize: 14.5, height: 1.35),
           ),
           const SizedBox(height: 16),
           TextField(

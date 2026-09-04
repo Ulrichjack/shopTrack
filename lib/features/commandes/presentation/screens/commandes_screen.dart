@@ -183,7 +183,7 @@ class _Total extends StatelessWidget {
             Text(
               'RESTE À ENCAISSER',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 13.5,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey.shade600,
                 letterSpacing: 1.2,
@@ -205,7 +205,7 @@ class _Total extends StatelessWidget {
                         '${CurrencyFormatter.format(encaisse.toDouble())} reçus'
                   : '$nombreDebiteurs cliente(s) doivent encore · '
                         '${CurrencyFormatter.format(encaisse.toDouble())} déjà reçus',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 14.5, color: Colors.grey.shade600),
             ),
           ],
         ),
@@ -254,7 +254,7 @@ class _CompteMobileMoney extends ConsumerWidget {
                     const Text(
                       'PAS ENCORE DANS LA CAISSE',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: AppColors.warningDark,
                         letterSpacing: 1.2,
@@ -282,7 +282,7 @@ class _CompteMobileMoney extends ConsumerWidget {
                           )
                           .join(' · '),
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.warningDark,
                       ),
@@ -291,7 +291,7 @@ class _CompteMobileMoney extends ConsumerWidget {
                     const Text(
                       'Touche quand tu l\'as retiré et mis dans le tiroir.',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13.5,
                         color: AppColors.warningDark,
                         height: 1.3,
                       ),
@@ -361,7 +361,7 @@ class _TitreSection extends StatelessWidget {
     return Text(
       texte,
       style: TextStyle(
-        fontSize: 13,
+        fontSize: 14.5,
         fontWeight: FontWeight.bold,
         color: Colors.grey.shade600,
         letterSpacing: 1.2,
@@ -416,7 +416,7 @@ class _BandeauRetard extends StatelessWidget {
               child: Text(
                 '${d.client?.nom ?? 'Client'} · promise le '
                 '${format.format(d.dossier.datePrevue!)}',
-                style: const TextStyle(fontSize: 12.5, height: 1.3),
+                style: const TextStyle(fontSize: 14, height: 1.3),
               ),
             ),
           if (dossiers.length > 3)
@@ -424,7 +424,7 @@ class _BandeauRetard extends StatelessWidget {
               padding: const EdgeInsets.only(left: 34, top: 2),
               child: Text(
                 'et ${dossiers.length - 3} autre(s)',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                style: TextStyle(fontSize: 13.5, color: Colors.grey.shade700),
               ),
             ),
         ],
@@ -507,13 +507,13 @@ class _LigneDossier extends StatelessWidget {
             if (d.datePrevue != null && !dossier.estAnnulee)
               Text(
                 'Pour le ${format.format(d.datePrevue!)}',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 13.5, color: Colors.grey.shade600),
               ),
             if (dossier.estAnnulee && d.motifAnnulation != null)
               Text(
                 'Annulée — ${d.motifAnnulation}',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13.5,
                   color: AppColors.error,
                   fontStyle: FontStyle.italic,
                 ),
@@ -524,10 +524,27 @@ class _LigneDossier extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            // Sur une ANNULÉE, le sens s'inverse : la cliente ne doit rien,
+            // c'est la boutique qui garde son argent. Corrigé sur la fiche le
+            // 04/09 et oublié ici — la liste continuait d'afficher « 170 000 F »
+            // en rouge sur une commande annulée, comme une créance.
+            if (dossier.estAnnulee)
+              Text(
+                dossier.netEncaisse > 0
+                    ? 'À rendre ${CurrencyFormatter.format(dossier.netEncaisse.toDouble())}'
+                    : 'Rien à rendre',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                  color: dossier.netEncaisse > 0
+                      ? AppColors.error
+                      : Colors.grey.shade600,
+                ),
+              )
             // « Prix à fixer » plutôt qu'un zéro : un montant nul se lirait
             // comme une commande gratuite, alors que c'est une demande qui
             // attend la propriétaire.
-            if (solde == null)
+            else if (solde == null)
               Text(
                 'Prix à fixer',
                 style: TextStyle(
@@ -545,10 +562,13 @@ class _LigneDossier extends StatelessWidget {
                   color: AppColors.error,
                 ),
               ),
-            if (solde != null && solde > 0 && dossier.netEncaisse > 0)
+            if (!dossier.estAnnulee &&
+                solde != null &&
+                solde > 0 &&
+                dossier.netEncaisse > 0)
               Text(
                 'sur ${CurrencyFormatter.format(d.montantAccepte!.toDouble())}',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
           ],
         ),

@@ -178,7 +178,7 @@ class _EnTete extends StatelessWidget {
                     child: Text(
                       'À livrer le ${format.format(d.datePrevue!)}',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14.5,
                         color: Colors.grey.shade700,
                       ),
                     ),
@@ -245,7 +245,7 @@ class _Argent extends ConsumerWidget {
                 alignment: Alignment.centerRight,
                 child: Text(
                   'dont ${CurrencyFormatter.format(dossier.totalRembourse.toDouble())} remboursés',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 13.5, color: Colors.grey.shade600),
                 ),
               ),
             ],
@@ -296,7 +296,7 @@ class _Argent extends ConsumerWidget {
                   Text(
                     dossier.netEncaisse > 0 ? 'À RENDRE' : 'ANNULÉE',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey.shade700,
                       letterSpacing: 1.1,
@@ -325,7 +325,7 @@ class _Argent extends ConsumerWidget {
                   Text(
                     solde <= 0 ? 'SOLDÉE' : 'RESTE À PAYER',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey.shade700,
                       letterSpacing: 1.1,
@@ -393,7 +393,7 @@ class _CoutManquant extends ConsumerWidget {
               'Tant que c\'est vide, le bénéfice du mois est plus beau que le '
               'vrai.',
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 14,
                 color: AppColors.warningDark,
                 height: 1.3,
               ),
@@ -892,7 +892,7 @@ class _Historique extends StatelessWidget {
         Text(
           'VERSEMENTS',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 13.5,
             fontWeight: FontWeight.bold,
             color: Colors.grey.shade600,
             letterSpacing: 1.2,
