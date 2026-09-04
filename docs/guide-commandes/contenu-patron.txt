@@ -9,9 +9,16 @@ Un second guide existe pour votre vendeuse. Elle ne voit pas les mêmes choses q
 - ouvrir le Bilan
 Gardez ce guide sur votre téléphone. Vous n'aurez pas besoin de tout retenir aujourd'hui.
 
+== Où trouver les réglages
+@ 00-rouage-annote
+**1 Le rouage
+En haut à droite, sur TOUS les écrans : accueil, ventes, stock, commandes, bilan.
+Vous n'avez jamais besoin de revenir à l'accueil pour le trouver. Touchez-le depuis l'écran où vous êtes.
+Il ouvre votre profil, d'où l'on atteint tout le reste : votre mot de passe, le code PIN, vos employés, la synchronisation, et les réglages de la boutique.
+
 == Vos réglages
 @ 06-profil-annote
-Le rouage en haut à droite de tous les écrans ouvre votre profil.
+Ce que vous y trouvez.
 **1 Sécurité
 Changer votre mot de passe. Protéger l'application par un code PIN pour que la vendeuse ne puisse pas passer en mode patron. Ajouter une boutique. Et Employés, pour créer le compte de votre vendeuse.
 **2 Données

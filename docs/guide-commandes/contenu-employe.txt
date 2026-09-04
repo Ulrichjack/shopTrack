@@ -120,9 +120,16 @@ Vous pouvez encaisser après la livraison. C'est normal : elle a emporté sa com
 **Une commande livrée est finie
 Plus de correction, plus d'annulation. Si quelque chose ne va pas, appelez la patronne.
 
+== Où trouver les réglages
+@ 00-rouage-annote
+**1 Le rouage
+En haut à droite, sur TOUS les écrans : accueil, ventes, stock, commandes.
+Vous n'avez jamais besoin de revenir à l'accueil pour le trouver. Touchez-le depuis l'écran où vous êtes.
+Il ouvre votre profil : votre mot de passe, et l'état de la synchronisation.
+
 == Votre profil
 @ 07-profil-annote
-Le rouage en haut à droite de tous les écrans.
+Ce que vous y trouvez.
 **1 Changer mon mot de passe
 Choisissez-en un que vous seule connaissez. La patronne ne peut pas le lire.
 **2 État de synchronisation
