@@ -282,30 +282,67 @@ class _Argent extends ConsumerWidget {
               ),
             ],
             const Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  solde <= 0 ? 'SOLDÉE' : 'RESTE À PAYER',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade700,
-                    letterSpacing: 1.1,
+            // Sur une commande ANNULÉE, le sens s'inverse.
+            //
+            // L'écran annonçait « RESTE À PAYER 170 000 F » sur une commande
+            // annulée dont la cliente avait versé 110 000 et reçu 100 000. Elle
+            // ne doit rien : c'est la BOUTIQUE qui lui doit les 10 000 gardés.
+            // Réclamer 170 000 F à quelqu'un qu'on doit rembourser, c'est le
+            // genre d'erreur qui coûte une cliente.
+            if (dossier.estAnnulee)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    dossier.netEncaisse > 0 ? 'À RENDRE' : 'ANNULÉE',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade700,
+                      letterSpacing: 1.1,
+                    ),
                   ),
-                ),
-                Text(
-                  solde <= 0
-                      ? 'Rien à encaisser'
-                      : CurrencyFormatter.format(solde.toDouble()),
-                  style: TextStyle(
-                    fontSize: solde <= 0 ? 15 : 22,
-                    fontWeight: FontWeight.bold,
-                    color: solde <= 0 ? AppColors.primary : AppColors.error,
+                  Text(
+                    dossier.netEncaisse > 0
+                        ? CurrencyFormatter.format(
+                            dossier.netEncaisse.toDouble(),
+                          )
+                        : 'Rien à rendre',
+                    style: TextStyle(
+                      fontSize: dossier.netEncaisse > 0 ? 22 : 15,
+                      fontWeight: FontWeight.bold,
+                      color: dossier.netEncaisse > 0
+                          ? AppColors.error
+                          : AppColors.primary,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    solde <= 0 ? 'SOLDÉE' : 'RESTE À PAYER',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade700,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  Text(
+                    solde <= 0
+                        ? 'Rien à encaisser'
+                        : CurrencyFormatter.format(solde.toDouble()),
+                    style: TextStyle(
+                      fontSize: solde <= 0 ? 15 : 22,
+                      fontWeight: FontWeight.bold,
+                      color: solde <= 0 ? AppColors.primary : AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

@@ -190,7 +190,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   _buildPdfSummaryBox('Vente Réalisée', report.totalSales),
-                  _buildPdfSummaryBox('Dépenses', report.totalWithdrawals),
+                  _buildPdfSummaryBox('Sorties', report.totalWithdrawals),
                   _buildPdfSummaryBox(
                     'Bénéfice Net',
                     report.totalNetProfit,
@@ -226,7 +226,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                   'Date',
                   'Achat',
                   'Vente',
-                  'Dépenses',
+                  'Sorties',
                   'Écart caisse',
                   'Marge nette',
                 ],
@@ -291,6 +291,26 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                         ),
                       ),
                     ),
+              ],
+
+              // La ventilation des sorties, comme à l'écran.
+              //
+              // Sans elle, le PDF annonce « encaissé 10 900, sorties 202 000,
+              // bénéfice 1 300 » — trois chiffres qui semblent se contredire.
+              // Et un PDF se lit loin de l'application, souvent par quelqu'un
+              // qui ne peut demander d'explication à personne.
+              if (commandes != null && report.totalDeplacements > 0) ...[
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Sur ces sorties, ${report.totalDeplacements.toStringAsFixed(0)} FCFA '
+                  'ont été DÉPLACÉS et non dépensés (remis, versés en banque, '
+                  'retirés, ou rendus à une cliente). Ils ne réduisent pas le '
+                  'bénéfice.',
+                  style: const pw.TextStyle(
+                    fontSize: 9,
+                    color: PdfColors.grey700,
+                  ),
+                ),
               ],
 
               // Le bloc COMMANDES, ajouté seulement s'il y a quelque chose à
@@ -778,6 +798,36 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
+                              // Ce qui est sorti sans être dépensé, dit à part.
+                              //
+                              // Le gros chiffre mélangeait les deux : une
+                              // remise de 50 000 F à la patronne s'affichait
+                              // comme si elle avait coûté 50 000 F. Le bénéfice
+                              // était juste — c'est l'affichage qui inquiétait
+                              // pour rien. Et c'est la question que se pose une
+                              // propriétaire à distance : combien m'a-t-elle
+                              // remis ce mois-ci ?
+                              if (report.totalDeplacements > 0) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  'dont ${CurrencyFormatter.format(report.totalDeplacements)} '
+                                  'déplacés, pas dépensés',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                                Text(
+                                  'remis, versés en banque, retirés ou rendus '
+                                  'à une cliente : rien de tout ça n\'est une '
+                                  'dépense.',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 11.5,
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -955,7 +1005,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                                 ),
                                 DataColumn(
                                   label: Text(
-                                    'Dépenses',
+                                    'Sorties',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -1154,34 +1204,52 @@ class _BlocCommandes extends ConsumerWidget {
             ],
           ),
           const Divider(height: 22),
-          _LigneBilan('Chiffre d\'affaires', bilan.chiffreAffaires),
-          const SizedBox(height: 6),
-          _LigneBilan('Ce que ça a coûté', bilan.cout),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Bénéfice',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          // Rien de livré = rien à dire sur le bénéfice.
+          //
+          // Trois lignes à zéro suivies de « Coût non saisi » se lisaient comme
+          // un oubli : elle allait chercher ce qu'elle avait raté. Alors qu'il
+          // n'y a simplement encore rien de livré ce mois-ci — et le seul
+          // chiffre qui compte, ce qu'on lui doit, est juste en dessous.
+          if (bilan.nombreLivrees == 0)
+            Text(
+              'Aucune commande livrée ce mois-ci. Le bénéfice se compte à la '
+              'livraison, pas à l\'acompte.',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: Colors.grey.shade600,
+                height: 1.3,
               ),
-              Text(
-                // Nul veut dire « on ne sait pas », et le dire vaut mieux
-                // qu'afficher le chiffre d'affaires comme un bénéfice — le
-                // mensonge le plus facile à faire dans ce module.
-                bilan.benefice == null
-                    ? 'Coût non saisi'
-                    : CurrencyFormatter.format(bilan.benefice!.toDouble()),
-                style: TextStyle(
-                  fontSize: bilan.benefice == null ? 13 : 18,
-                  fontWeight: FontWeight.bold,
-                  color: bilan.benefice == null
-                      ? AppColors.warningDark
-                      : AppColors.primary,
+            )
+          else ...[
+            _LigneBilan('Chiffre d\'affaires', bilan.chiffreAffaires),
+            const SizedBox(height: 6),
+            _LigneBilan('Ce que ça a coûté', bilan.cout),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Bénéfice',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
-              ),
-            ],
-          ),
+                Text(
+                  // Nul veut dire « on ne sait pas », et le dire vaut mieux
+                  // qu'afficher le chiffre d'affaires comme un bénéfice — le
+                  // mensonge le plus facile à faire dans ce module.
+                  bilan.benefice == null
+                      ? 'Coût non saisi'
+                      : CurrencyFormatter.format(bilan.benefice!.toDouble()),
+                  style: TextStyle(
+                    fontSize: bilan.benefice == null ? 13 : 18,
+                    fontWeight: FontWeight.bold,
+                    color: bilan.benefice == null
+                        ? AppColors.warningDark
+                        : AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
           // L'avertissement compte autant que les chiffres : si elle livre dix
           // commandes et n'en chiffre que huit, le bénéfice montré est trop
           // beau. Le taire la ferait décider sur un chiffre incomplet.

@@ -103,4 +103,33 @@ void main() {
     expect(partiel.benefice, 285000);
     expect(partiel.livreesSansCout, 2);
   });
+
+  test('aucune livraison : « inconnu » ne doit pas se lire « oublié »', () {
+    // Vu à l'écran le 04/09 : trois lignes à zéro suivies de « Coût non
+    // saisi ». Ça se lit comme un reproche, et on va chercher ce qu'on a raté.
+    // Alors qu'il n'y a simplement rien de livré — et que le seul chiffre qui
+    // compte, ce qu'on lui doit, est ailleurs.
+    const rienDeLivre = BilanCommandes(
+      chiffreAffaires: 0,
+      cout: 0,
+      nombreLivrees: 0,
+      livreesSansCout: 0,
+      encoreDu: 230000,
+      debitrices: [],
+      semaines: [],
+    );
+
+    expect(rienDeLivre.benefice, isNull);
+    expect(
+      rienDeLivre.nombreLivrees,
+      0,
+      reason: 'c\'est CE nombre qui doit décider du texte affiché, pas le '
+          'bénéfice nul — les deux valent « rien » pour des raisons opposées',
+    );
+    expect(
+      rienDeLivre.estVide,
+      isFalse,
+      reason: 'le bloc reste visible : 230 000 F sont attendus',
+    );
+  });
 }

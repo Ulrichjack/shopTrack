@@ -335,4 +335,43 @@ void main() {
       isFalse,
     );
   });
+
+  test('sur une commande annulée, c\'est la BOUTIQUE qui doit', () {
+    // Vu à l'écran le 04/09 : « RESTE À PAYER 170 000 F » sur une commande
+    // annulée dont la cliente avait versé 110 000 et reçu 100 000. Elle ne doit
+    // rien — la boutique lui doit les 10 000 gardés.
+    //
+    // Réclamer 170 000 F à quelqu'un qu'on doit rembourser, c'est le genre
+    // d'erreur qui coûte une cliente.
+    final annulee = DossierAvecSolde(
+      dossier: LocalDossiersCommande(
+        id: 'd1',
+        shopId: 'shop-1',
+        clientId: 'c1',
+        categorie: 'decoration_evenementielle',
+        description: 'Déco',
+        details: '{}',
+        montantAccepte: 180000,
+        statut: 'annulee',
+        createdAt: DateTime(2026, 9, 1),
+      ),
+      client: null,
+      paiements: [
+        paiement('p1', 60000),
+        paiement('p2', 50000),
+        paiement('p3', 100000, type: 'remboursement'),
+      ],
+    );
+
+    expect(annulee.estAnnulee, isTrue);
+    expect(
+      annulee.netEncaisse,
+      10000,
+      reason: 'ce que la boutique garde encore, et doit rendre',
+    );
+    // `solde` reste 170 000 — c'est arithmétiquement vrai, et c'est pour ça que
+    // l'écran ne doit PAS l'afficher tel quel sur une annulée : le nombre est
+    // juste, la phrase qui l'accompagnait était fausse.
+    expect(annulee.solde, 170000);
+  });
 }

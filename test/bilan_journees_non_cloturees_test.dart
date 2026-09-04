@@ -187,4 +187,48 @@ void main() {
       expect(r.journeesNonCloturees, 1);
     },
   );
+
+  test('la journée EN COURS n\'est pas une journée oubliée', () {
+    // Vu à l'écran le 04/09 à 10h : « Comprend 1 journée non clôturée » sur une
+    // boutique dont la veille était clôturée sans écart. C'était aujourd'hui —
+    // et bien sûr qu'aujourd'hui n'est pas clôturé, la journée n'est pas finie.
+    //
+    // Dit comme un reproche, l'avertissement devient un décor. Le jour où il
+    // signale un vrai oubli, personne ne le lit. Même règle que le retard d'une
+    // commande : on compare au JOUR, pas à l'instant.
+    bool estOubliee(DateTime jourDeLaCloture, {required bool cloturee}) {
+      if (cloturee) return false;
+      final maintenant = DateTime.now();
+      final jour = DateTime(
+        jourDeLaCloture.year,
+        jourDeLaCloture.month,
+        jourDeLaCloture.day,
+      );
+      return jour.isBefore(
+        DateTime(maintenant.year, maintenant.month, maintenant.day),
+      );
+    }
+
+    final maintenant = DateTime.now();
+    final aujourdhui = DateTime(
+      maintenant.year,
+      maintenant.month,
+      maintenant.day,
+    );
+
+    expect(
+      estOubliee(aujourdhui.add(const Duration(hours: 10)), cloturee: false),
+      isFalse,
+      reason: 'la journée en cours ne se reproche pas',
+    );
+    expect(
+      estOubliee(aujourdhui.subtract(const Duration(days: 1)), cloturee: false),
+      isTrue,
+      reason: 'hier sans clôture est un vrai oubli',
+    );
+    expect(
+      estOubliee(aujourdhui.subtract(const Duration(days: 1)), cloturee: true),
+      isFalse,
+    );
+  });
 }

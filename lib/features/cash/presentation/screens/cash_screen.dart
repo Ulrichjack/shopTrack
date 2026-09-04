@@ -15,6 +15,7 @@ import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../domain/entities/cash_movement_entity.dart';
 import '../../../../core/providers/app_mode_provider.dart';
+import '../../../../core/utils/daily_cash_calculator.dart';
 
 final todayWithdrawalsProvider = FutureProvider<List<CashMovementEntity>>((
   ref,
@@ -269,29 +270,40 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: categories.map((category) {
-                      final isSelected = _selectedCategory == category;
-                      return ChoiceChip(
-                        label: Text(category),
-                        selected: isSelected,
-                        selectedColor: Colors.red.shade100,
-                        labelStyle: TextStyle(
-                          color: isSelected
-                              ? Colors.red.shade900
-                              : Colors.black,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                        onSelected: (selected) {
-                          if (selected)
-                            setState(() => _selectedCategory = category);
-                        },
-                      );
-                    }).toList(),
+                  // Deux familles nommées, plutôt que sept pastilles en vrac.
+                  //
+                  // « Transport » et « Remise à la patronne » ne font PAS la
+                  // même chose : l'un sort de la caisse ET du bénéfice,
+                  // l'autre seulement de la caisse. Rien à l'écran ne le
+                  // disait, et la question s'est posée dès le premier test.
+                  //
+                  // C'est aussi ce qui évite la peur du soir : une recette
+                  // mise en sécurité chaque jour affichait un bénéfice qui
+                  // fondait, sans qu'on comprenne pourquoi.
+                  _GroupeCategories(
+                    titre: 'DÉPENSÉ',
+                    explication: 'sort de la caisse et du bénéfice',
+                    categories: categories
+                        .where(
+                          (c) => !categoriesSansImpactSurLeBenefice.contains(c),
+                        )
+                        .toList(),
+                    selection: _selectedCategory,
+                    onChoisir: (c) => setState(() => _selectedCategory = c),
+                  ),
+                  const SizedBox(height: 18),
+                  _GroupeCategories(
+                    titre: 'DÉPLACÉ',
+                    explication:
+                        'sort de la caisse, pas du bénéfice — cet argent '
+                        'existe encore',
+                    categories: categories
+                        .where(
+                          (c) => categoriesSansImpactSurLeBenefice.contains(c),
+                        )
+                        .toList(),
+                    selection: _selectedCategory,
+                    onChoisir: (c) => setState(() => _selectedCategory = c),
                   ),
                   const SizedBox(height: 30),
 
@@ -491,6 +503,75 @@ class _CashScreenState extends ConsumerState<CashScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Une famille de catégories, avec son titre et ce qu'elle veut dire.
+///
+/// Le titre n'est pas décoratif : c'est lui qui répond à la question « pourquoi
+/// ma remise à la patronne n'apparaît pas dans mes dépenses ? », posée dès le
+/// premier test.
+class _GroupeCategories extends StatelessWidget {
+  const _GroupeCategories({
+    required this.titre,
+    required this.explication,
+    required this.categories,
+    required this.selection,
+    required this.onChoisir,
+  });
+
+  final String titre;
+  final String explication;
+  final List<String> categories;
+  final String selection;
+  final ValueChanged<String> onChoisir;
+
+  @override
+  Widget build(BuildContext context) {
+    if (categories.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          titre,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade700,
+            letterSpacing: 1.1,
+          ),
+        ),
+        Text(
+          explication,
+          style: TextStyle(
+            fontSize: 11.5,
+            color: Colors.grey.shade600,
+            height: 1.25,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: categories.map((category) {
+            final isSelected = selection == category;
+            return ChoiceChip(
+              label: Text(category),
+              selected: isSelected,
+              selectedColor: Colors.red.shade100,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.red.shade900 : Colors.black,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              onSelected: (selected) {
+                if (selected) onChoisir(category);
+              },
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

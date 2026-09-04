@@ -10,6 +10,14 @@ class MonthlyReportState {
   final double totalSales;
   final double totalNetProfit;
   final double totalWithdrawals;
+
+  /// Ce qui est SORTI du tiroir sans être dépensé : remis à la patronne, versé
+  /// à la banque, retiré par le patron. Cet argent existe encore, ailleurs.
+  ///
+  /// Le total des sorties les mélangeait aux vraies dépenses : une remise de
+  /// 50 000 F s'affichait comme si elle avait coûté 50 000 F. Le bénéfice, lui,
+  /// était juste — c'est l'affichage qui inquiétait pour rien.
+  final double totalDeplacements;
   final double totalCashGap;
   final double totalShortage;
   final double totalSurplus;
@@ -29,6 +37,7 @@ class MonthlyReportState {
     required this.totalSales,
     required this.totalNetProfit,
     required this.totalWithdrawals,
+    this.totalDeplacements = 0,
     required this.totalCashGap,
     required this.totalShortage,
     required this.totalSurplus,
@@ -190,6 +199,17 @@ final monthlyReportProvider =
 
       closings.sort((a, b) => a.closingDate.compareTo(b.closingDate));
 
+      // Calculé sur les mouvements et non sur les clôtures : c'est la seule
+      // source qui porte la CATÉGORIE, donc la seule qui sait distinguer un
+      // transport d'une remise.
+      final totalDeplacements = mouvementsDuMois
+          .where(
+            (m) =>
+                m.type == 'withdrawal' &&
+                categoriesSansImpactSurLeBenefice.contains(m.category),
+          )
+          .fold<double>(0, (somme, m) => somme + m.amount);
+
       double totalSales = 0;
       double totalNetProfit = 0;
       double totalWithdrawals = 0;
@@ -214,11 +234,33 @@ final monthlyReportProvider =
         totalSales: totalSales,
         totalNetProfit: totalNetProfit,
         totalWithdrawals: totalWithdrawals,
+        totalDeplacements: totalDeplacements,
         totalCashGap: totalCashGap,
         totalShortage: totalShortage,
         totalSurplus: totalSurplus,
         cashAdjustedResult: totalNetProfit + totalCashGap,
         dailyClosings: closings,
-        journeesNonCloturees: closings.where((c) => !c.isClosed).length,
+        // AUJOURD'HUI ne compte pas comme une journée oubliée.
+        //
+        // Le bandeau annonçait « 1 journée non clôturée » à 10h du matin, sur
+        // une boutique dont la veille était clôturée sans écart. Bien sûr que
+        // la journée en cours n'est pas comptée — elle n'est pas finie. Dit
+        // comme un reproche, l'avertissement devient un décor qu'on ne lit
+        // plus, et le jour où il signale un vrai oubli, personne ne le voit.
+        //
+        // Même règle que le retard d'une commande : on compare au JOUR, pas à
+        // l'instant.
+        journeesNonCloturees: closings.where((closing) {
+          if (closing.isClosed) return false;
+          final aujourdhui = DateTime.now();
+          final jour = DateTime(
+            closing.closingDate.year,
+            closing.closingDate.month,
+            closing.closingDate.day,
+          );
+          return jour.isBefore(
+            DateTime(aujourdhui.year, aujourdhui.month, aujourdhui.day),
+          );
+        }).length,
       );
     });
