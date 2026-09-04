@@ -9,11 +9,11 @@ relatives — elle suit l'image partout.
   ./scripts/annoter.py capturer 01-liste
   ./scripts/annoter.py annoter 01-liste "0.05,0.14,0.95,0.25:Ce qui reste à encaisser"
 """
-import subprocess, sys, pathlib
+import os, subprocess, sys, pathlib
 from PIL import Image, ImageDraw, ImageFont
 
 ADB = "/home/jack/Android/Sdk/platform-tools/adb"
-DOSSIER = pathlib.Path("docs/guide-commandes")
+DOSSIER = pathlib.Path(os.environ.get("GUIDE_DIR", "docs/guide-commandes"))
 ROUGE = (222, 45, 45)
 
 def police(taille):

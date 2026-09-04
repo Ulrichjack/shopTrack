@@ -1,0 +1,108 @@
+== Bienvenue
+Ce guide est pour VOUS, la propriétaire. Il montre chaque écran de ShopTrack et ce que vous pouvez y faire.
+Un second guide existe pour votre vendeuse. Elle ne voit pas les mêmes choses que vous : ni vos bénéfices, ni vos prix d'achat.
+**Ce que vous seule pouvez faire
+- voir le bénéfice de chaque vente et de chaque commande
+- fixer le prix d'une décoration
+- dire ce qu'une commande vous a coûté
+- annuler une commande
+- ouvrir le Bilan
+Gardez ce guide sur votre téléphone. Vous n'aurez pas besoin de tout retenir aujourd'hui.
+
+== L'accueil
+@ 01-accueil-annote
+**1 Solde reporté
+Ce qu'il restait dans la caisse hier soir. Vous ne saisissez rien le matin : l'argent d'hier est toujours là.
+**2 Caisse actuelle
+Ce que le tiroir devrait contenir maintenant. Elle monte à chaque vente et à chaque acompte, elle descend à chaque sortie.
+**3 Bénéfice net
+Ce que vous avez gagné aujourd'hui. La vendeuse ne voit pas cette case.
+**4 Sorties
+Tout ce qui est sorti du tiroir. Touchez-la pour enregistrer une dépense.
+**5 Nouvelle vente
+Pour vendre au comptoir.
+**6 Clôturer la journée
+Le soir, pour compter votre argent.
+
+== Vendre au comptoir
+@ 02d-encaisser-annote
+Touchez NOUVELLE VENTE, puis l'article. Vous pouvez changer le prix si la cliente a négocié, et la quantité.
+**1 Les articles du panier
+La corbeille rouge retire une ligne si vous vous êtes trompée.
+**2 Bénéfice estimé
+Ce que cette vente vous rapporte. Cette ligne n'apparaît pas chez la vendeuse.
+**3 Confirmer la vente
+L'argent entre en caisse et le stock baisse tout seul.
+
+== Compter la caisse le soir
+@ 04-cloture-annote
+**1 Le résumé de la journée
+L'application vous montre son calcul : ce qu'il y avait ce matin, les ventes, les autres entrées (les acomptes de commandes), et ce qui est sorti.
+**2 Compter ma caisse
+Vous comptez vos billets et vous tapez le vrai montant. Si les deux ne tombent pas pareil, l'application enregistre l'écart et vous demande pourquoi.
+Cet écart n'est pas une faute : c'est une information. Un manquant qui revient tous les soirs veut dire quelque chose.
+
+== Prendre une commande
+@ ../02-nouvelle-annote
+**1 Le nom de la cliente
+Obligatoire. C'est lui que vous lirez partout.
+**2 Le métier
+Gâteau, objet décoratif, formation, décoration.
+**3 Ce qu'elle demande
+Écrivez la phrase entière. Dans trois semaines vous ne vous souviendrez plus.
+**4 À livrer le
+C'est cette date qui déclenche l'alerte de retard. Sans elle, rien ne vous préviendra.
+**5 Le prix
+Laissez vide si vous ne le connaissez pas encore : la commande sera marquée « prix à fixer ».
+**6 Enregistrer
+La fiche s'ouvre aussitôt : vous pouvez encaisser l'avance dans la foulée.
+
+== Suivre les commandes
+@ ../01-liste-annote
+**1 Reste à encaisser
+L'argent qui vous attend encore. Ce n'est pas le total des commandes : celles qui sont payées n'y sont plus.
+**2 À livrer
+Le travail qui reste. Les retards remontent en haut, en rouge, avec le nom.
+**3 Livrées puis Annulées
+L'histoire, gardée. Une commande annulée n'est jamais effacée : ses acomptes doivent rester visibles.
+**4 Nouvelle commande
+Pour enregistrer une demande.
+
+== L'argent des commandes
+Sur la fiche d'une commande, ENCAISSER UN PAIEMENT à chaque avance.
+**Espèces
+L'argent entre dans votre caisse tout de suite.
+**Orange Money ou MTN
+L'argent est sur votre téléphone, PAS dans votre caisse. Une carte orange vous le rappelle sur l'écran Commandes.
+Quand vous allez retirer chez l'agent, touchez cette carte et tapez ce que vous avez retiré. C'est à ce moment que votre caisse monte.
+Si l'application comptait le Mobile Money dans la caisse, vous trouveriez un manquant du même montant chaque soir en comptant vos billets.
+**Rembourser
+Un remboursement s'ajoute, il n'efface jamais l'avance. L'histoire de votre argent ne se réécrit pas.
+
+== Livrer une commande
+Touchez MARQUER COMME LIVRÉE. L'application vous demande alors ce que la commande vous a coûté.
+**N'y mettez pas ce qui resservira
+Une arche, des vases, une tenture ne sont pas un coût de cette commande : ils resserviront trente fois. Ne comptez que ce qui est parti.
+Vous pouvez passer et le mettre plus tard. Un bandeau orange restera sur la fiche jusqu'à ce que ce soit fait, et le bilan vous préviendra que le bénéfice affiché est plus beau que le vrai.
+**Une commande livrée est finie
+Plus de correction de prix, plus d'annulation. Corriger un prix des semaines plus tard ferait changer tout seul un bilan que vous avez déjà consulté.
+
+== Le bilan
+@ ../../guide-commandes/patron/07-bilan
+Réservé à vous. Deux parties, jamais mélangées.
+**La boutique
+Ce que le comptoir a vendu, ce qu'il a coûté, ce qu'il a rapporté.
+**Les commandes
+Seulement celles qui sont LIVRÉES. Un acompte n'est pas un bénéfice : tant que la commande n'est pas partie, c'est de l'argent avancé.
+**Encore dû
+Avec le nom de chaque cliente, la plus grosse dette en premier. Celles qui ont déjà emporté leur commande sont en rouge.
+Le bouton en haut à droite fabrique un PDF, à envoyer ou à imprimer.
+
+== Votre vendeuse
+Créez son compte dans Réglages, puis Employés. Elle se connecte avec son numéro et un mot de passe que vous choisissez ; l'application lui demandera d'en mettre un autre à sa première connexion.
+**Elle peut
+vendre, enregistrer une commande, fixer le prix d'un gâteau, d'un objet ou d'une formation, encaisser, corriger un nom ou une date, marquer une commande livrée, sortir de l'argent, clôturer.
+**Elle ne peut pas
+voir vos bénéfices, ouvrir le Bilan, fixer le prix d'une décoration, dire ce qu'une commande a coûté, annuler une commande, rembourser une commande déjà livrée.
+**Pourquoi la décoration est à part
+Un gâteau et une formation ont un tarif connu. Une décoration se chiffre au cas par cas : c'est un devis, pas un prix.

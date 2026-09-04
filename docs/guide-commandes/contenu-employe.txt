@@ -1,0 +1,109 @@
+== Bienvenue
+Ce guide est pour vous. Il montre chaque écran de ShopTrack et ce que vous pouvez y faire.
+La patronne a un autre guide. Elle voit des choses que vous ne voyez pas : les bénéfices et les prix d'achat. Ce n'est pas un manque de confiance, c'est la règle de la boutique.
+**Ce que vous pouvez faire
+- vendre au comptoir
+- enregistrer une commande et encaisser une avance
+- fixer le prix d'un gâteau, d'un objet ou d'une formation
+- corriger un nom, une date, une description
+- marquer une commande livrée
+- sortir de l'argent de la caisse et l'enregistrer
+- compter la caisse le soir
+**Ce que vous ne pouvez pas faire
+- voir les bénéfices ni ouvrir le Bilan
+- fixer le prix d'une décoration : la patronne s'en charge
+- annuler une commande
+- rembourser une commande déjà livrée
+Quand un bouton n'apparaît pas, ce n'est pas une panne : appelez la patronne.
+
+== L'accueil
+@ 01-accueil-annote
+**1 Solde reporté
+Ce qu'il restait dans la caisse hier soir. Vous ne saisissez rien le matin : l'argent d'hier est toujours là.
+**2 Caisse actuelle
+Ce que le tiroir devrait contenir maintenant. Elle monte à chaque vente et à chaque avance, elle descend à chaque sortie.
+**3 Sorties
+Tout ce qui est sorti du tiroir aujourd'hui, même si c'est la patronne qui l'a pris. Touchez la case pour enregistrer une dépense.
+**4 Nouvelle vente
+Pour vendre au comptoir.
+**5 Clôturer la journée
+Le soir, pour compter l'argent. Faites-le tous les soirs : c'est ce qui prouve que votre caisse tombe juste.
+
+== Vendre au comptoir
+Touchez NOUVELLE VENTE, puis l'article. Vous pouvez changer le prix si la cliente a négocié, et la quantité. Puis AJOUTER AU PANIER.
+Ajoutez autant d'articles que nécessaire, touchez ENCAISSER, vérifiez la liste, et CONFIRMER LA VENTE.
+L'argent entre en caisse et le stock baisse tout seul. Vous n'avez rien d'autre à faire.
+**Si vous vous trompez
+Sur l'écran de confirmation, la corbeille rouge retire une ligne. Après confirmation, prévenez la patronne : elle seule peut corriger.
+
+== Sortir de l'argent
+Touchez la case SORTIES sur l'accueil. Tapez le montant, puis choisissez pourquoi. Les catégories sont rangées en deux familles.
+**Dépensé
+Repas, transport, fournisseur, personnel, autre. L'argent est parti pour de bon.
+**Déplacé
+Versement banque, remise à la patronne. L'argent a changé de place, il n'est pas dépensé.
+Cette différence compte : elle évite que le bénéfice de la boutique baisse quand vous remettez simplement la recette à la patronne.
+**Enregistrez TOUJOURS
+Même 500 F pour le taxi. Un billet qui sort sans être noté fera un manquant le soir — et c'est vous qu'on cherchera.
+
+== Compter la caisse le soir
+Touchez CLÔTURER LA JOURNÉE. L'application montre son calcul, puis vous demande de compter vos billets et de taper le vrai montant.
+**Si les deux ne tombent pas pareil
+L'application enregistre l'écart et vous demande pourquoi. Écrivez ce que vous savez, même « je ne sais pas ».
+Un écart n'est pas une accusation. C'est une information. Ce qui serait grave, c'est de ne pas compter du tout.
+
+== Prendre une commande
+@ 06-nouvelle-commande-annote
+Onglet COMMANDES, puis NOUVELLE COMMANDE.
+**1 Le nom de la cliente
+Obligatoire. C'est lui que vous lirez partout.
+**2 Le métier
+Gâteau, objet décoratif, formation, décoration.
+**3 Ce qu'elle demande
+Écrivez la phrase entière. Dans trois semaines, personne ne se souviendra.
+**4 À livrer le
+C'est cette date qui déclenche l'alerte de retard. Sans elle, rien ne préviendra.
+**5 Enregistrer
+La fiche s'ouvre aussitôt : vous pouvez encaisser l'avance dans la foulée.
+**Le prix
+Il n'y a pas de case prix ici. Sur la fiche qui s'ouvre après, un bouton FIXER LE PRIX apparaît — sauf pour une décoration, qui revient à la patronne.
+
+== Suivre les commandes
+@ 05b-commandes-liste-annote
+**1 Reste à encaisser
+L'argent qui attend encore. Ce n'est pas le total des commandes : celles qui sont payées n'y sont plus.
+**2 À livrer
+Le travail qui reste. Les retards remontent en haut, en rouge, avec le nom de la cliente.
+**3 Livrées puis Annulées
+L'histoire, gardée. Une commande annulée n'est jamais effacée.
+**4 Nouvelle commande
+Pour enregistrer une demande.
+
+== L'argent des commandes
+Sur la fiche d'une commande, ENCAISSER UN PAIEMENT à chaque avance versée.
+**Espèces
+L'argent entre dans la caisse tout de suite. C'est celui que vous compterez ce soir.
+**Orange Money ou MTN
+L'argent est sur le téléphone, PAS dans la caisse. Une carte orange le rappelle sur l'écran Commandes.
+Quand vous allez retirer chez l'agent, touchez cette carte et tapez ce que vous avez retiré. C'est à ce moment que la caisse monte.
+Choisissez bien le bon moyen. Si vous mettez « espèces » pour un paiement Orange Money, il manquera cette somme dans le tiroir ce soir.
+**Rembourser
+Possible tant que la commande n'est pas livrée. Après livraison, seule la patronne peut.
+
+== Livrer une commande
+Quand la cliente emporte sa commande, touchez MARQUER COMME LIVRÉE.
+L'application ne vous demandera pas ce que ça a coûté : c'est la patronne qui le saisit, plus tard.
+**Si la cliente doit encore
+Vous pouvez encaisser après la livraison. C'est normal : elle a emporté sa commande sans tout payer.
+**Une commande livrée est finie
+Plus de correction, plus d'annulation. Si quelque chose ne va pas, appelez la patronne.
+
+== En cas de problème
+**Un bouton a disparu
+Ce n'est pas une panne. Certaines actions sont réservées à la patronne : fixer le prix d'une décoration, annuler une commande, rembourser après livraison, voir les bénéfices.
+**Pas de réseau
+Continuez à travailler normalement. Tout est enregistré dans le téléphone et partira tout seul quand le réseau reviendra. Ne recommencez pas une vente en croyant qu'elle n'a pas pris.
+**Un message rouge apparaît
+Notez ce qu'il dit et montrez-le à la patronne. Ne refaites pas l'opération plusieurs fois.
+**Le soir, avant de partir
+Clôturez. Tous les soirs, même les jours calmes. C'est ce qui protège votre travail.

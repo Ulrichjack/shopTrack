@@ -6,12 +6,14 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/sale_provider.dart';
+import '../../../../core/providers/app_mode_provider.dart';
 
 class SaleConfirmationScreen extends ConsumerWidget {
   const SaleConfirmationScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final estPatron = ref.watch(appModeProvider).value ?? false;
     final cartItems = ref.watch(cartProvider);
     final cartTotal = ref.watch(cartTotalProvider);
     final cartProfit = ref.watch(cartProfitProvider);
@@ -65,24 +67,36 @@ class SaleConfirmationScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Bénéfice estimé',
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
-                      ),
-                      Text(
-                        CurrencyFormatter.format(cartProfit),
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                  // Le bénéfice ne s'affiche qu'au patron.
+                  //
+                  // Il était caché sur la feuille de quantité et VISIBLE ici :
+                  // le vendeur ne voyait pas la marge d'un article, mais lisait
+                  // celle du panier entier sur l'écran suivant. Trouvé le 04/09
+                  // en écrivant le mode d'emploi, en comparant les deux écrans
+                  // côte à côte.
+                  //
+                  // Le calcul, lui, reste : la vente doit porter son bénéfice
+                  // figé pour que le bilan du patron soit juste.
+                  if (estPatron) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Bénéfice estimé',
+                          style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
+                        Text(
+                          CurrencyFormatter.format(cartProfit),
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
