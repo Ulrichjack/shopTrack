@@ -1,0 +1,105 @@
+== Bienvenue
+Ce guide est pour votre boutique en mode simple : vous enregistrez chaque vente au fur et à mesure, et l'application tient votre caisse.
+Trois gestes suffisent, et le troisième est celui qu'on oublie :
+- enregistrer chaque vente
+- noter chaque sortie d'argent
+- compter la caisse le soir
+Les deux premiers, vous les faites déjà. Le troisième est ce qui transforme l'application en outil de contrôle plutôt qu'en simple carnet.
+
+== L'accueil
+@ 01-accueil-annote
+**1 Solde reporté
+Ce qu'il restait dans la caisse hier soir. Vous ne saisissez rien le matin : l'argent d'hier est toujours là.
+**2 Caisse actuelle
+Ce que le tiroir devrait contenir maintenant. Elle monte à chaque vente, elle descend à chaque sortie.
+**3 Bénéfice net
+Ce que vous avez gagné aujourd'hui, une fois les dépenses retirées.
+**4 Sorties
+Tout ce qui est sorti du tiroir. Touchez la case pour enregistrer une dépense.
+**5 Nouvelle vente
+**6 Gérer mon stock
+Pour ajouter un article, corriger un prix, ou enregistrer un arrivage.
+**7 Clôturer la journée
+Le soir. C'est le geste le plus important de tous.
+
+== Si la caisse affiche un montant négatif
+Cela veut dire que de l'argent est sorti sans que l'application sache combien il y en avait au départ.
+Ce n'est pas une panne. Il suffit de clôturer une fois en comptant vos vrais billets : l'application prend ce chiffre comme point de départ, et tout repart juste dès le lendemain.
+Tant que vous ne clôturez jamais, l'application ne peut pas savoir ce qu'il y a réellement dans le tiroir.
+
+== Vendre
+@ 02-nouvelle-vente
+Touchez NOUVELLE VENTE. La liste montre vos articles avec leur stock et leur prix.
+Cherchez dans la barre en haut, ou scannez le code-barres avec l'icône en haut à droite.
+Touchez l'article : une feuille s'ouvre, où vous pouvez changer le prix si le client a négocié et choisir la quantité. Puis AJOUTER AU PANIER.
+Recommencez pour chaque article, touchez ENCAISSER, vérifiez la liste, et CONFIRMER LA VENTE.
+L'argent entre en caisse, le stock baisse tout seul, et le bénéfice est calculé et figé sur cette vente.
+
+== Sortir de l'argent
+@ 05-sortie-caisse-annote
+Touchez la case SORTIES sur l'accueil.
+**1 Combien
+Le montant que vous avez pris dans le tiroir.
+**2 DÉPENSÉ
+Repas, transport, fournisseur, personnel, autre. L'argent est parti pour de bon : il sort de la caisse ET du bénéfice.
+**3 DÉPLACÉ
+Versement banque, retrait patron. L'argent a changé de place, il existe encore : il sort de la caisse mais PAS du bénéfice.
+Sans cette distinction, mettre sa recette en sécurité chaque soir ferait fondre le bénéfice sans raison.
+**4 Enregistrer la sortie
+**Notez TOUJOURS
+Même 500 F pour le taxi. Un billet qui sort sans être noté fera un manquant le soir, et vous chercherez d'où il vient.
+
+== Compter la caisse le soir
+@ 06-cloture-annote
+C'est le geste qui manque le plus souvent, et c'est celui qui fait tout le reste.
+**1 Le résumé de la journée
+L'application montre son calcul : ce qu'il y avait ce matin, les ventes, les autres entrées, ce qui est sorti, et ce que le tiroir devrait contenir.
+**2 Compter ma caisse
+Vous comptez vos vrais billets et vous tapez le montant.
+**Pourquoi c'est important
+Sans clôture, l'application calcule mais personne ne vérifie. S'il manque de l'argent, rien ne le dira — ni ce soir, ni jamais.
+Un écart n'est pas une accusation : c'est une information. Un manquant qui revient tous les soirs veut dire quelque chose, et c'est mieux de le savoir tôt.
+Et sans clôture, votre bilan reste vide : c'est elle qui alimente les chiffres du mois.
+
+== Votre stock
+@ 07-stock
+La liste de vos articles, avec leur quantité et leur valeur.
+Les pastilles en haut filtrent : TOUS, STOCK BAS, RUPTURE. C'est là que vous voyez ce qu'il faut racheter.
+Touchez un article pour voir sa fiche, corriger son prix, ou enregistrer un nouvel arrivage.
+**Un arrivage
+Ouvrez l'article, touchez NOUVEL ARRIVAGE, tapez la quantité reçue et le prix payé. Si le prix a changé, l'application garde l'ancien pour les ventes déjà faites : vos anciens bénéfices ne bougent pas.
+
+== Le journal de caisse
+@ 08-journal
+Tout ce qui s'est passé aujourd'hui, dans l'ordre : les ventes, les sorties, les entrées.
+Le sélecteur en haut change de jour. C'est là que vous retrouvez une vente dont vous n'êtes plus sûr, ou une dépense que vous cherchez.
+Chaque ligne dit ce que c'était, à quelle heure, et pour combien.
+
+== Le bilan du mois
+@ 09-bilan-annote
+**1 Encaissé et bénéfice net
+Ce que le mois a rapporté. Le bénéfice, c'est ce qui reste une fois les vraies dépenses retirées.
+**2 L'avertissement
+« Comprend 1 journée non clôturée : sa caisse n'a pas été comptée. » Cette phrase vous dit que le chiffre est incomplet. Elle disparaît quand toutes les journées ont été clôturées.
+**3 Sorties du mois
+Avec le détail : ce qui est vraiment dépensé, et ce qui a seulement changé de place.
+**4 Écarts de caisse
+Les manques et les surplus constatés à chaque comptage. C'est le résultat de vos clôtures — sans elles, cette case reste vide.
+**5 Ventes par semaine
+Pour voir quelle semaine a marché, et quelle semaine a été calme.
+Le bouton en haut à droite fabrique un PDF, à envoyer ou à imprimer.
+
+== Les réglages
+@ 00-rouage-annote
+**1 Le rouage
+En haut à droite, sur TOUS les écrans. Il ouvre votre profil : votre mot de passe, un code PIN pour protéger l'application, vos employés, l'état de la synchronisation, et les réglages de la boutique.
+
+== En cas de problème
+**Pas de réseau
+Continuez à travailler normalement. Tout est enregistré dans le téléphone et partira tout seul quand le réseau reviendra. Ne recommencez pas une vente en croyant qu'elle n'a pas pris : vous en auriez deux.
+**Vérifier que tout est parti
+Rouage, puis État de synchronisation. « 0 opération en attente » veut dire que tout est arrivé.
+**Un message rouge
+Notez ce qu'il dit avant de refermer. Ne refaites pas l'opération plusieurs fois.
+**La règle du soir
+Clôturez. Tous les soirs, même les jours calmes. Deux minutes qui donnent leur valeur à tout le reste.
