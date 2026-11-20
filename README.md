@@ -11,11 +11,11 @@ flutter test
 flutter run
 ```
 
-## Migration Supabase obligatoire
+## Migrations Supabase
 
 La synchronisation atomique du stock dépend de la fonction
-`apply_stock_movement`. Avant d'installer cette version sur les téléphones,
-appliquer, dans cet ordre :
+`apply_stock_movement`. L'historique du schéma se lit dans cet ordre ; ne pas
+le rejouer aveuglément sur un projet déjà utilisé :
 
 ```text
 supabase/migrations/202607270001_secure_sync.sql
@@ -55,19 +55,24 @@ supabase/migrations/202609010006_retirer_vue_membres.sql
 supabase/migrations/202609010007_rembourser_une_annulee.sql
 supabase/migrations/202609020001_corriger_le_nom_client.sql
 supabase/migrations/202609030001_heure_de_cloture.sql
+supabase/migrations/202609300002_stock_transfers_owner_both_sides.sql
+supabase/migrations/202610010001_product_photos_owner_upload.sql
+supabase/migrations/202610280001_revoke_anon_public_grants.sql
+supabase/migrations/202611130001_web_simple_product_edit.sql
+supabase/migrations/202611130002_web_simple_sale.sql
+supabase/migrations/202611130003_web_simple_close_day.sql
 ```
 
 ### Fonctions serveur
 
 ```bash
-supabase functions deploy creer-vendeur
+supabase functions deploy creer-vendeur --project-ref bjrmapcwfzrrvutozyfx  # staging
 ```
 
-Avec Supabase CLI sur un projet déjà lié :
-
-```bash
-supabase db push
-```
+La production liée au dépôt est en lecture seule par défaut : ne pas lancer
+`supabase db push` depuis sa racine. Pour initialiser un projet de test vide,
+suivre [la procédure de base initiale](supabase/baselines/README.md), cibler
+explicitement sa référence et commencer par `--dry-run`.
 
 La migration :
 
