@@ -1,0 +1,42 @@
+# Analyse et tests à chaque push. Volontairement limité à ce qui passe déjà au
+# vert en local : une CI qui naît rouge n'est plus regardée par personne.
+#
+# Ce workflow ne construit pas d'APK de release (la clé de signature ne doit
+# pas quitter le poste) et n'applique aucune migration Supabase (la base des
+# clients est en lecture seule ; `db push` reste un geste manuel et délibéré).
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+# Un nouveau push annule le run précédent de la même branche.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    name: Analyse et tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Même version qu'en local : un écart de version Flutter produit des
+      # erreurs d'analyse que personne ne reproduit sur son poste.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.4
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # Mêmes options que la commande de vérification du projet.
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - run: flutter test
