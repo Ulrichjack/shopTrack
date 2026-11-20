@@ -8,6 +8,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/employees_provider.dart';
 import '../../domain/auth_error_message.dart';
 import '../providers/session_handover.dart';
+import '../../../legal/legal_screen.dart';
 
 /// Le vendeur choisit son mot de passe avant d'entrer dans l'application.
 ///
@@ -268,6 +269,7 @@ class _FirstPasswordScreenState extends ConsumerState<FirstPasswordScreen> {
                       style: TextStyle(color: AppColors.textSecondary),
                     ),
                   ),
+                  const LegalLinks(),
                   const SizedBox(height: 16),
                 ],
               ),

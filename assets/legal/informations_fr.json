@@ -1,0 +1,102 @@
+{
+  "version": "2026-09-25-brouillon-1",
+  "draft": true,
+  "publisher": "FOSSO LIENOU Ulrich",
+  "contact": "ulrichfosso246@gmail.com",
+  "copyright": "© 2026 FOSSO LIENOU Ulrich. Tous droits réservés sur les éléments détenus par l’éditeur.",
+  "draftNotice": "Version préparatoire : les modalités de conservation, de suppression et d’établissement de l’éditeur restent à finaliser avant la publication sur Google Play. Ce texte ne constitue pas des conditions générales acceptées.",
+  "documents": [
+    {
+      "id": "editeur",
+      "title": "Informations légales",
+      "sections": [
+        {
+          "title": "Éditeur et contact",
+          "paragraphs": [
+            "ShopTrack est développé et édité par FOSSO LIENOU Ulrich, personne physique. Pour l’assistance ou une demande concernant vos données : ulrichfosso246@gmail.com.",
+            "ShopTrack est destiné à la gestion des commerces, initialement au Cameroun. Les informations d’établissement de l’éditeur seront complétées avant la publication commerciale."
+          ]
+        },
+        {
+          "title": "Droits sur l’application",
+          "paragraphs": [
+            "L’utilisation de ShopTrack ne transfère pas de droits de propriété sur le logiciel ou son identité visuelle. Les exceptions légales restent applicables.",
+            "Les composants tiers restent soumis à leurs propres licences, consultables dans l’application. Les données saisies par les boutiques ne deviennent pas la propriété de l’éditeur du seul fait de l’utilisation du service."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "confidentialite",
+      "title": "Confidentialité",
+      "sections": [
+        {
+          "title": "Qui contacter ?",
+          "paragraphs": [
+            "L’éditeur de ShopTrack est FOSSO LIENOU Ulrich. Pour toute question sur les données personnelles, écrivez à ulrichfosso246@gmail.com.",
+            "Pour les informations de clients ou d’employés saisies dans une boutique, le responsable de cette boutique est également un interlocuteur. Les responsabilités respectives de la boutique et de l’éditeur doivent être précisées dans les documents contractuels définitifs."
+          ]
+        },
+        {
+          "title": "Informations utilisées",
+          "paragraphs": [
+            "Le compte utilise un numéro de téléphone, un identifiant et des informations d’authentification. Dans la version actuelle, le numéro est transformé en identifiant technique au format numero@shoptrack.cm pour Supabase Auth : ce n’est pas une boîte e-mail personnelle et cela ne vérifie pas la possession du numéro par SMS.",
+            "ShopTrack enregistre les boutiques, leurs membres et leurs rôles, les produits, les stocks, les ventes et les mouvements de caisse. Selon les modules utilisés, il enregistre aussi les inventaires, transferts, coordonnées de clients, commandes et paiements. Des dates et des auteurs d’opérations sont conservés lorsque les fonctionnalités le prévoient.",
+            "Ces informations servent à gérer les accès, fournir les fonctions choisies et synchroniser les appareils. Des journaux techniques peuvent être produits par l’application et ses prestataires pour son fonctionnement et le diagnostic des incidents. Évitez de saisir des informations personnelles inutiles dans les notes ou les photos."
+          ]
+        },
+        {
+          "title": "Téléphone, synchronisation et accès",
+          "paragraphs": [
+            "Les données sont enregistrées dans une base locale sur le téléphone et synchronisées avec Supabase lorsque les conditions le permettent. Une opération hors ligne peut ne pas être encore disponible sur les autres appareils. La désinstallation ou l’effacement du stockage peut faire perdre des opérations non synchronisées.",
+            "Les membres d’une boutique accèdent aux informations selon leurs droits. L’éditeur et ses prestataires disposent d’accès techniques pour exploiter et assister le service ; ces accès doivent être limités aux besoins justifiés.",
+            "La région d’hébergement, les destinataires techniques, les conditions des éventuels transferts internationaux et les bases légales des traitements seront précisés dans la politique définitive."
+          ]
+        },
+        {
+          "title": "Caméra et photos",
+          "paragraphs": [
+            "La caméra sert au scan des codes et, si vous choisissez cette fonction, à photographier un produit. Le scan sert à identifier un article ; les photos de produits ajoutées en ligne sont envoyées vers le stockage Supabase.",
+            "La version actuelle utilise des liens publics pour les photos de produits : une personne disposant du lien peut potentiellement consulter l’image. Ne photographiez pas de document confidentiel ni de personne pour illustrer un produit."
+          ]
+        },
+        {
+          "title": "Conservation et droits",
+          "paragraphs": [
+            "Les durées de conservation par catégorie, le traitement des sauvegardes et les modalités de suppression restent à finaliser. La désinstallation de l’application ne supprime pas le compte ni les données conservées sur le serveur.",
+            "Vous pouvez contacter l’éditeur pour demander l’accès à vos données, leur rectification ou la suppression de votre compte et des données associées, selon les droits applicables. Une vérification proportionnée de votre identité peut être nécessaire. N’envoyez jamais votre mot de passe ou votre code PIN.",
+            "La rubrique « Supprimer mon compte » permet de préparer une demande par e-mail. L’ouverture d’un message ne vaut pas envoi ni suppression. Les cas de boutiques partagées et les éventuelles obligations de conservation doivent être examinés avant de supprimer des données."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "suppression-compte",
+      "title": "Supprimer mon compte",
+      "sections": [
+        {
+          "title": "Demander la suppression à ShopTrack",
+          "paragraphs": [
+            "Pour demander la suppression de votre compte ShopTrack et des données personnelles associées, écrivez à FOSSO LIENOU Ulrich à l’adresse ulrichfosso246@gmail.com. Cette démarche reste accessible sans connexion à l’application.",
+            "Indiquez le numéro utilisé pour vous connecter et précisez votre demande. N’envoyez ni mot de passe, ni code PIN, ni copie d’identité spontanée. Le numéro seul ne suffit pas à prouver que le compte vous appartient ; une vérification adaptée est nécessaire avant toute suppression.",
+            "Le bouton ci-dessous ouvre votre application de messagerie avec un brouillon. Relisez-le, complétez votre numéro et envoyez-le vous-même. Aucune demande n’est transmise par la seule ouverture de cet écran."
+          ]
+        },
+        {
+          "title": "Compte, données et boutiques partagées",
+          "paragraphs": [
+            "La demande porte sur le compte et les données personnelles qui lui sont associées, pas seulement sur une désactivation. Le traitement doit aussi prendre en compte les copies locales, les photos et les sauvegardes concernées.",
+            "Si vous êtes membre d’une boutique partagée, votre demande ne vous autorise pas à effacer les données des autres personnes. Les liens à votre identité et les éventuelles données à conserver doivent être examinés séparément.",
+            "Les catégories supprimées ou conservées, leurs motifs, leurs durées et le délai de traitement doivent encore être précisés avant publication. Aucun effacement automatique ni délai non vérifié n’est annoncé dans cette version préparatoire."
+          ]
+        },
+        {
+          "title": "Avant de quitter l’application",
+          "paragraphs": [
+            "Vérifiez les opérations en attente de synchronisation et récupérez les documents dont vous avez besoin et auxquels vous avez droit. Ne désinstallez pas l’application pour tenter de supprimer le compte : cela peut effacer les données locales sans supprimer les données du serveur."
+          ]
+        }
+      ]
+    }
+  ]
+}

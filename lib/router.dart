@@ -48,6 +48,7 @@ import 'features/commandes/presentation/screens/commande_nouvelle_screen.dart';
 import 'features/commandes/presentation/screens/commandes_screen.dart';
 import 'core/constants/app_colors.dart';
 import 'core/providers/current_shop_provider.dart';
+import 'features/legal/legal_screen.dart';
 
 // Clés nécessaires pour le ShellRoute
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -208,6 +209,10 @@ String? routeImposee({
 }) {
   final surAuth = _routesAuth.contains(emplacement);
 
+  // Information et exercice des droits accessibles même avant connexion ou
+  // changement du mot de passe provisoire. Aucun accès aux données métier.
+  if (publicLegalRoutes.contains(emplacement)) return null;
+
   if (!connecte) return surAuth ? null : '/login';
 
   // Avant tout le reste : un mot de passe provisoire n'ouvre rien d'autre que
@@ -244,6 +249,20 @@ final goRouter = GoRouter(
   ),
 
   routes: [
+    GoRoute(
+      path: '/legal',
+      builder: (context, state) => const LegalScreen(documentId: 'editeur'),
+    ),
+    GoRoute(
+      path: '/privacy',
+      builder: (context, state) =>
+          const LegalScreen(documentId: 'confidentialite'),
+    ),
+    GoRoute(
+      path: '/account-deletion',
+      builder: (context, state) =>
+          const LegalScreen(documentId: 'suppression-compte'),
+    ),
     // --- ROUTES SANS BARRE DE NAVIGATION (Plein écran) ---
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(

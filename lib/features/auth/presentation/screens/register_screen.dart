@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
 import '../providers/session_handover.dart';
+import '../../../legal/legal_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -163,7 +164,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Avant de créer votre compte, consultez les informations '
+                    'sur l’utilisation de vos données.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const LegalLinks(),
+                  const SizedBox(height: 16),
 
                   ElevatedButton(
                     onPressed: isLoading

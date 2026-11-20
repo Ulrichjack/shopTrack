@@ -793,6 +793,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 24),
 
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.privacy_tip_outlined),
+                    title: const Text('Confidentialité et mes données'),
+                    subtitle: const Text(
+                      'Informations, accès et rectification',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/privacy'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.person_remove_outlined),
+                    title: const Text('Supprimer mon compte'),
+                    subtitle: const Text('Préparer une demande par e-mail'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/account-deletion'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: const Text('Informations légales et licences'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/legal'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // --- BOUTON DÉCONNEXION ---
             ElevatedButton.icon(
               onPressed: _logout,

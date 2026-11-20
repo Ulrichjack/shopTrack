@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../../../../core/providers/employees_provider.dart';
 import '../providers/session_handover.dart';
 import '../../../../router.dart';
+import '../../../legal/legal_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -224,6 +225,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       style: TextStyle(color: AppColors.primary),
                     ),
                   ),
+                  const LegalLinks(),
                 ],
               ),
             ),
