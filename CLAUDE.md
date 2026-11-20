@@ -45,6 +45,10 @@ Une opération refusée par le serveur ne gèle plus la file : après 5 refus el
 
 **Migrations Supabase** : fichiers dans `supabase/migrations/`, appliquées **dans l'ordre du nom de fichier** (`supabase db push`). Toute nouvelle migration doit être ajoutée à la liste du `README.md`.
 
+**Base Supabase actuelle** : lecture seule par défaut. Ne jamais lancer de commande d'écriture dessus (notamment `db push`, `db reset --linked`, `link` suivi d'un push) sans demande explicite distincte ; vérifier l'identifiant du projet ciblé avant toute opération distante. Tester les changements sur un projet Supabase séparé avec données fictives.
+
+**Contexte / tokens Codex** : avant une tâche longue, consulter `/status` dans une session Codex CLI active si accessible (contexte et limites restantes) ; sinon, ne pas inventer de chiffres. Adapter l'effort à la tâche : lire les sections utiles, limiter les sorties et répétitions, sans réduire les vérifications nécessaires à la sécurité, aux données ou à la synchro.
+
 ## Commandes
 
 ```bash
@@ -53,7 +57,7 @@ flutter test
 flutter analyze --no-fatal-infos --no-fatal-warnings
 flutter run
 flutter build apk --release
-supabase db push          # applique les migrations, dans l'ordre
+supabase db push          # staging uniquement après vérification du projet lié ; jamais par défaut sur la base actuelle
 ```
 
 ## État du projet

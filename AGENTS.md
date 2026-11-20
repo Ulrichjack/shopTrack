@@ -40,6 +40,9 @@
   efface le champ silencieusement juste après son enregistrement.
 - Migrations Supabase appliquées dans l'ordre du nom de fichier
   (`supabase/migrations/`), et listées dans `README.md`.
+- Contexte/tokens Codex : avant une tâche longue, consulter `/status` dans la
+  CLI active si accessible ; sinon ne pas inventer de quota. Lire ciblé et
+  limiter les sorties sans sacrifier les vérifications (détail : `CLAUDE.md`).
 - **Module B (inventaire périodique) en cours** : il vit dans
   `lib/features/inventory/` et ne doit modifier **aucun** écran du mode simple
   ni du module A (`lib/features/cycles/`). Il réutilise les données
@@ -55,7 +58,7 @@ flutter test
 flutter analyze --no-fatal-infos --no-fatal-warnings
 flutter run
 flutter build apk --release
-supabase db push
+supabase db push  # staging uniquement après vérification du projet lié ; base actuelle en lecture seule par défaut (voir CLAUDE.md)
 ```
 
 ## Vérification avant livraison

@@ -676,6 +676,13 @@ journée, clôture, réouverture, détection de journée oubliée. Il grossit à
 chaque fonctionnalité. À découper **le jour où on y touche pour autre chose**,
 pas avant — un découpage pour lui-même ne rapporterait rien aujourd'hui.
 
+**`main.dart` orchestre directement la synchro liée au cycle de vie** : le
+widget racine possède l'observateur, le minuteur et l'appel au service. Cela
+fonctionne, mais couple le démarrage de l'interface à une responsabilité
+d'infrastructure et complique les tests isolés. Extraire un coordinateur dédié
+la prochaine fois que cette politique de synchronisation doit évoluer, pas
+dans un refactoring autonome.
+
 ---
 
 ## 13. Idées d'amélioration fonctionnelle
