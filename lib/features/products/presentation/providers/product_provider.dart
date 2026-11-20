@@ -239,6 +239,11 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     state = const AsyncValue.loading();
     try {
       final isOnline = ref.read(connectivityProvider).value ?? true;
+      if (imageFile != null && !isOnline) {
+        throw Exception(
+          'Connecte-toi à Internet pour enregistrer la photo du produit.',
+        );
+      }
       final db = ref.read(localDbProvider);
 
       // La boutique ACTIVE, via la source unique.
@@ -337,6 +342,11 @@ class ProductNotifier extends AsyncNotifier<List<ProductEntity>> {
     state = const AsyncValue.loading();
     try {
       final isOnline = ref.read(connectivityProvider).value ?? true;
+      if (newImageFile != null && !isOnline) {
+        throw Exception(
+          'Connecte-toi à Internet pour enregistrer la photo du produit.',
+        );
+      }
       final db = ref.read(localDbProvider);
 
       // Même source que la création. Déduire la boutique du premier produit

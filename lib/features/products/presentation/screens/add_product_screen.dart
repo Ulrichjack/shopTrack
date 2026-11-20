@@ -3,12 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/providers/shop_settings_provider.dart';
 import '../providers/product_provider.dart';
+import '../widgets/product_photo_picker.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
   const AddProductScreen({super.key});
@@ -29,19 +29,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   File? _imageFile;
 
-  Future<void> _takePhoto() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? photo = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 50,
-      maxWidth: 800,
-      maxHeight: 800,
-    );
-
-    if (photo != null) {
-      setState(() {
-        _imageFile = File(photo.path);
-      });
+  Future<void> _choosePhoto() async {
+    try {
+      final photo = await choisirPhotoProduit(context);
+      if (photo != null && mounted) {
+        setState(() => _imageFile = photo);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Impossible d'ouvrir la photo choisie.")),
+      );
     }
   }
 
@@ -379,7 +377,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
                 _buildFieldLabel("Photo de l'article"),
                 GestureDetector(
-                  onTap: _imageFile == null ? _takePhoto : null,
+                  onTap: _imageFile == null ? _choosePhoto : null,
                   child: Container(
                     height: 150,
                     width: double.infinity,
@@ -434,7 +432,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Prendre une photo du produit',
+                                'Prendre une photo ou choisir dans la galerie',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
                                   fontSize: 14,

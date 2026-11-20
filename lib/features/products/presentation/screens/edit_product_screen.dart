@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/entities/product_entity.dart';
 import '../../../../core/providers/app_mode_provider.dart';
 import '../../../../core/providers/shop_settings_provider.dart';
 import '../providers/product_provider.dart';
+import '../widgets/product_photo_picker.dart';
 
 class EditProductScreen extends ConsumerStatefulWidget {
   final ProductEntity product;
@@ -53,19 +53,17 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _unitController = TextEditingController(text: widget.product.unit ?? '');
   }
 
-  Future<void> _takePhoto() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? photo = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 50,
-      maxWidth: 800,
-      maxHeight: 800,
-    );
-
-    if (photo != null) {
-      setState(() {
-        _newImageFile = File(photo.path);
-      });
+  Future<void> _choosePhoto() async {
+    try {
+      final photo = await choisirPhotoProduit(context);
+      if (photo != null && mounted) {
+        setState(() => _newImageFile = photo);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Impossible d'ouvrir la photo choisie.")),
+      );
     }
   }
 
@@ -354,7 +352,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
                 _buildFieldLabel("Photo de l'article"),
                 GestureDetector(
-                  onTap: _takePhoto,
+                  onTap: _choosePhoto,
                   child: Container(
                     height: 150,
                     width: double.infinity,
