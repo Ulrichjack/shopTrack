@@ -1,11 +1,11 @@
 {
-    "name": "shoptrack",
-    "short_name": "shoptrack",
+    "name": "ShopTrack TEST",
+    "short_name": "ShopTrack",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F4F7F5",
+    "theme_color": "#142C31",
+    "description": "Catalogue et stock de boutique sur le web de test.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
