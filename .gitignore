@@ -43,6 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# `/build/` est ancré à la racine : Gradle écrit aussi ici.
+/android/build/
 
 .env
 # Supabase config
