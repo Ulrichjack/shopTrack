@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/pdf_theme.dart';
 import '../providers/inventory_report_provider.dart';
 
 const _couleurPrincipale = PdfColor.fromInt(0xFF1D9E75);
@@ -15,6 +16,7 @@ Future<Uint8List> buildInventoryReportPdf(
   String? shopName,
 }) async {
   final pdf = pw.Document();
+  final themePdf = await chargerThemePdf();
   final formatDate = DateFormat('dd/MM/yyyy');
   final result = report.result;
   final nomBoutique = shopName?.trim();
@@ -46,6 +48,7 @@ Future<Uint8List> buildInventoryReportPdf(
 
   pdf.addPage(
     pw.MultiPage(
+      theme: themePdf,
       // Sur chaque page : le document circule seul, souvent photographié ou
       // renvoyé. Il doit dire d'où il vient et de quand il date.
       footer: (context) => pw.Container(

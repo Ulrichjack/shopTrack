@@ -4,6 +4,8 @@ import 'package:shoptrack/features/inventory/presentation/providers/inventory_re
 import 'package:shoptrack/features/inventory/presentation/utils/inventory_report_pdf.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('le rapport de trois produits produit un PDF valide', () async {
     const produits = [
       InventoryProductResult(

@@ -9,6 +9,7 @@ import 'package:printing/printing.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/bouton_reglages.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/pdf_theme.dart';
 import '../../../dashboard/domain/entities/daily_closing_entity.dart';
 import '../../../../core/sync/sync_service.dart'; // 👈 AJOUT POUR LA SYNCHRO
 import '../../../commandes/presentation/providers/bilan_commandes_provider.dart';
@@ -161,10 +162,12 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     BilanCommandes? commandes,
   }) async {
     final pdf = pw.Document();
+    final themePdf = await chargerThemePdf();
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
+        theme: themePdf,
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -328,7 +331,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(
-                        'COMMANDES — ${commandes.nombreLivrees} livrée(s)',
+                        'COMMANDES : ${commandes.nombreLivrees} livrée(s)',
                         style: pw.TextStyle(
                           fontSize: 12,
                           fontWeight: pw.FontWeight.bold,
