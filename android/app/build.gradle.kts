@@ -43,6 +43,19 @@ android {
         versionName = flutter.versionName
     }
 
+    // Même téléphone, données séparées : Android isole SQLite et Auth par
+    // applicationId. La variante test ne peut pas remplacer l'app cliente.
+    flavorDimensions += "environment"
+    productFlavors {
+        create("production") {
+            dimension = "environment"
+        }
+        create("staging") {
+            dimension = "environment"
+            applicationIdSuffix = ".staging"
+        }
+    }
+
     signingConfigs {
         if (keystorePropertiesFile.exists()) {
             create("release") {

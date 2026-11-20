@@ -20,7 +20,8 @@ VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2)
 NOM=$(echo "$VERSION" | cut -d'+' -f1)
 
 echo "→ ShopTrack $VERSION"
-flutter build apk --release --split-per-abi --dart-define=VERSION_APP="$NOM"
+flutter build apk --release --flavor production --split-per-abi \
+  --dart-define=VERSION_APP="$NOM"
 
 BUREAU="$HOME/Bureau"
 mkdir -p "$BUREAU"
@@ -30,10 +31,19 @@ APKSIGNER=$(find "$HOME/Android/Sdk/build-tools" -name apksigner 2>/dev/null | s
 AAPT=$(find "$HOME/Android/Sdk/build-tools" -name aapt2 2>/dev/null | sort -V | tail -1)
 
 for abi in arm64-v8a armeabi-v7a; do
-  src="build/app/outputs/flutter-apk/app-$abi-release.apk"
+  src="build/app/outputs/flutter-apk/app-$abi-production-release.apk"
+  if [ ! -f "$src" ]; then
+    echo "  ❌ APK production introuvable : $src"
+    exit 1
+  fi
   court=$([ "$abi" = "arm64-v8a" ] && echo arm64 || echo armv7)
   dest="$BUREAU/ShopTrack-$NOM-$court.apk"
   cp "$src" "$dest"
+  package=$("$AAPT" dump badging "$dest" 2>/dev/null | sed -n "s/^package: name='\([^']*\)'.*/\1/p")
+  if [ "$package" != "cm.shoptrack.shoptrack" ]; then
+    echo "  ❌ Identifiant Android inattendu : $package"
+    exit 1
+  fi
   code=$("$AAPT" dump badging "$dest" 2>/dev/null | grep -oE "versionCode='[0-9]+'" | cut -d"'" -f2)
   sig=$("$APKSIGNER" verify --print-certs "$dest" 2>&1 | grep -oE "SHA-256 digest: [a-f0-9]+" | head -1 | cut -d' ' -f3)
   printf "  %-30s %9s octets  code=%s\n" "$(basename "$dest")" "$(stat -c%s "$dest")" "$code"
