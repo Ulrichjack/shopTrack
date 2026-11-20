@@ -1,10 +1,16 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/app_mode_provider.dart';
+import '../../../../core/providers/shop_settings_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../domain/catalogue_csv.dart';
 import '../../domain/entities/product_entity.dart';
 import '../providers/product_provider.dart';
 import '../widgets/archived_products_sheet.dart';
@@ -18,6 +24,7 @@ class ProductListScreen extends ConsumerStatefulWidget {
 }
 
 class _ProductListScreenState extends ConsumerState<ProductListScreen> {
+  bool _transfertCatalogueEnCours = false;
   String _searchQuery = '';
   String _selectedFilter =
       'Tous'; // Peut être 'Tous', 'Stock bas', ou 'Rupture'
@@ -59,6 +66,147 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     return morceaux.join(' · ');
   }
 
+  Future<bool> _stockInitialAutorise() async {
+    final settings = await ref.read(shopSettingsProvider.future);
+    return settings.saleCaptureMode != 'periodic' &&
+        settings.unitMode != 'hierarchical';
+  }
+
+  void _messageCatalogue(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _enregistrerCatalogueCsv({required bool modele}) async {
+    try {
+      final stockInitialAutorise = await _stockInitialAutorise();
+      final produits = modele
+          ? <ProductEntity>[]
+          : await ref.read(productProvider.future);
+      final contenu = ecrireCatalogueCsv(
+        produits,
+        stockInitialAutorise: stockInitialAutorise,
+      );
+      final nom = modele
+          ? 'modele_catalogue_shoptrack.csv'
+          : 'catalogue_shoptrack.csv';
+      final fichier = await FilePicker.saveFile(
+        fileName: nom,
+        bytes: Uint8List.fromList(utf8.encode(contenu)),
+        mimeType: 'text/csv',
+      );
+      if (fichier != null) _messageCatalogue('Fichier CSV enregistré.');
+    } catch (e) {
+      _messageCatalogue('Export impossible : $e');
+    }
+  }
+
+  Future<void> _importerCatalogueCsv() async {
+    if (_transfertCatalogueEnCours) return;
+    try {
+      final fichier = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
+      if (fichier == null) return;
+      final taille = await fichier.length();
+      if (taille != null && taille > 1024 * 1024) {
+        _messageCatalogue('Fichier trop grand : limite de 1 Mo.');
+        return;
+      }
+      final contenuBrut = await fichier.readAsBytes();
+      if (contenuBrut.length > 1024 * 1024) {
+        _messageCatalogue('Fichier trop grand : limite de 1 Mo.');
+        return;
+      }
+      final contenu = utf8.decode(contenuBrut);
+      final stockInitialAutorise = await _stockInitialAutorise();
+      final produitsExistants = ref.read(productProvider).value;
+      if (produitsExistants == null) {
+        _messageCatalogue('Attends le chargement du stock avant l’import.');
+        return;
+      }
+      final resultat = lireCatalogueCsv(
+        contenu,
+        stockInitialAutorise: stockInitialAutorise,
+        produitsExistants: produitsExistants,
+      );
+      if (!mounted) return;
+      if (!resultat.estValide) {
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Fichier à corriger'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Text(resultat.erreurs.take(15).join('\n')),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Fermer'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      final confirmer = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Importer le catalogue ?'),
+          content: Text(
+            '${resultat.lignes.length} produit(s) seront ajoutés. '
+            'Aucun produit existant ne sera modifié. '
+            '${stockInitialAutorise ? 'Le stock initial sera importé.' : 'Le stock sera initialisé dans son module.'}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Importer'),
+            ),
+          ],
+        ),
+      );
+      if (confirmer != true || !mounted) return;
+      setState(() => _transfertCatalogueEnCours = true);
+      var ajoutes = 0;
+      try {
+        for (final ligne in resultat.lignes) {
+          await ref
+              .read(productProvider.notifier)
+              .addProduct(
+                name: ligne.nom,
+                buyPrice: ligne.prixAchat.toDouble(),
+                sellPrice: ligne.prixVente.toDouble(),
+                quantity: ligne.quantite,
+                minQuantity: ligne.alerteStockBas,
+                barcode: ligne.codeBarres,
+                unit: ligne.unite,
+              );
+          ajoutes++;
+        }
+        _messageCatalogue(
+          '$ajoutes produit(s) ajoutés. Vérifie la synchronisation.',
+        );
+      } catch (e) {
+        _messageCatalogue('$ajoutes produit(s) ajoutés avant l’erreur : $e');
+      } finally {
+        if (mounted) setState(() => _transfertCatalogueEnCours = false);
+      }
+    } catch (e) {
+      _messageCatalogue('Import impossible : $e');
+    }
+  }
+
   /// « 20 sacs » plutôt que « 20 » : le nombre seul ne dit pas dans quoi il
   /// compte, et un carton n'est pas une bouteille.
   static String _unitSuffix(ProductEntity product) {
@@ -90,6 +238,39 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             snap: false,
             elevation: 0,
             actions: [
+              ValueListenableBuilder<bool>(
+                valueListenable: bossModeAccess,
+                builder: (context, estPatron, _) => estPatron
+                    ? PopupMenuButton<String>(
+                        tooltip: 'Importer ou exporter le catalogue',
+                        icon: const Icon(Icons.file_present_outlined),
+                        enabled: !_transfertCatalogueEnCours,
+                        onSelected: (action) {
+                          if (action == 'import') {
+                            _importerCatalogueCsv();
+                          } else if (action == 'export') {
+                            _enregistrerCatalogueCsv(modele: false);
+                          } else if (action == 'modele') {
+                            _enregistrerCatalogueCsv(modele: true);
+                          }
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: 'import',
+                            child: Text('Importer CSV'),
+                          ),
+                          PopupMenuItem(
+                            value: 'export',
+                            child: Text('Exporter CSV'),
+                          ),
+                          PopupMenuItem(
+                            value: 'modele',
+                            child: Text('Télécharger le modèle'),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
               // Réservé au patron : ressortir un produit change ce que le
               // vendeur peut vendre.
               ValueListenableBuilder<bool>(
