@@ -216,60 +216,89 @@ class _WebShopSettingsFormState extends State<WebShopSettingsForm> {
             Text(_erreur!, style: const TextStyle(color: WebPalette.danger)),
             const SizedBox(height: 12),
           ],
-          if (reglages != null) ...[
-            // Affiché seulement si déjà actif, comme sur Android : le module
-            // est masqué pour les nouvelles boutiques. On peut donc l'éteindre
-            // depuis le web, pas l'allumer.
-            if (reglages.venteParUnites)
-              _interrupteur(
-                titre: 'Vente par unités',
-                detail:
-                    'Vendre au plateau, au carton, au casier… avec suivi du '
-                    'coût réel de chaque arrivage.',
-                valeur: true,
-                onChanged: (actif) =>
-                    _appliquer(reglages.avec(venteParUnites: actif)),
-              ),
-            _interrupteur(
-              titre: 'Inventaire périodique',
-              detail: reglages.commandesEnabled
-                  ? 'Indisponible : les commandes avec acompte sont activées, '
-                        'et elles ont besoin d\'une caisse que ce mode ne tient pas.'
-                  : 'Ne plus saisir chaque vente : noter la recette du jour, '
-                        'compter le stock de temps en temps, et laisser l\'app '
-                        'déduire ce qui a été vendu.',
-              valeur: reglages.inventairePeriodique,
-              onChanged: reglages.commandesEnabled
-                  ? null
-                  : (actif) =>
-                        _appliquer(reglages.avec(inventairePeriodique: actif)),
+          if (reglages != null)
+            WebShopSettingsBody(
+              reglages: reglages,
+              enCoursEnregistrement: _enregistre,
+              onChanged: _appliquer,
             ),
-            _interrupteur(
-              titre: 'Commandes avec acompte',
-              detail: reglages.inventairePeriodique
-                  ? 'Indisponible en inventaire périodique : un acompte entre '
-                        'dans le tiroir, et ce mode ne tient pas de caisse — '
-                        'l\'argent encaissé n\'apparaîtrait nulle part.'
-                  : 'Prendre une commande, encaisser une avance, suivre ce qui '
-                        'reste dû : gâteaux, objets sur mesure, formations, '
-                        'décoration.',
-              valeur: reglages.commandesEnabled,
-              onChanged: reglages.inventairePeriodique
-                  ? null
-                  : (actif) => _appliquer(reglages.avec(commandes: actif)),
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Un changement de mode s\'applique aussi au téléphone après sa '
-              'prochaine synchronisation. Les ventes et recettes déjà '
-              'enregistrées restent dans l\'historique.',
-              style: TextStyle(color: WebPalette.muted, fontSize: 13),
-            ),
-          ],
         ],
       ),
     );
   }
+}
+
+/// Les trois interrupteurs, sans la lecture réseau ni l'état de chargement.
+///
+/// Séparé de l'écran pour être rendable dans un test : l'affichage
+/// conditionnel — « vente par unités » cachée quand elle est inactive, les
+/// deux modes qui se grisent l'un l'autre — est la partie qui peut se tromper,
+/// et elle n'avait aucun moyen d'être vérifiée tant qu'elle vivait derrière un
+/// appel à Supabase.
+class WebShopSettingsBody extends StatelessWidget {
+  const WebShopSettingsBody({
+    super.key,
+    required this.reglages,
+    required this.onChanged,
+    this.enCoursEnregistrement = false,
+  });
+
+  final WebShopSettings reglages;
+  final ValueChanged<WebShopSettings> onChanged;
+  final bool enCoursEnregistrement;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      // Affiché seulement si déjà actif, comme sur Android : le module est
+      // masqué pour les nouvelles boutiques. On peut donc l'éteindre depuis le
+      // web, pas l'allumer.
+      if (reglages.venteParUnites)
+        _interrupteur(
+          titre: 'Vente par unités',
+          detail:
+              'Vendre au plateau, au carton, au casier… avec suivi du coût '
+              'réel de chaque arrivage.',
+          valeur: true,
+          onChanged: (actif) => onChanged(reglages.avec(venteParUnites: actif)),
+        ),
+      _interrupteur(
+        titre: 'Inventaire périodique',
+        detail: reglages.commandesEnabled
+            ? 'Indisponible : les commandes avec acompte sont activées, et '
+                  'elles ont besoin d\'une caisse que ce mode ne tient pas.'
+            : 'Ne plus saisir chaque vente : noter la recette du jour, compter '
+                  'le stock de temps en temps, et laisser l\'app déduire ce qui '
+                  'a été vendu.',
+        valeur: reglages.inventairePeriodique,
+        onChanged: reglages.commandesEnabled
+            ? null
+            : (actif) => onChanged(reglages.avec(inventairePeriodique: actif)),
+      ),
+      _interrupteur(
+        titre: 'Commandes avec acompte',
+        detail: reglages.inventairePeriodique
+            ? 'Indisponible en inventaire périodique : un acompte entre dans le '
+                  'tiroir, et ce mode ne tient pas de caisse — l\'argent '
+                  'encaissé n\'apparaîtrait nulle part.'
+            : 'Prendre une commande, encaisser une avance, suivre ce qui reste '
+                  'dû : gâteaux, objets sur mesure, formations, décoration.',
+        valeur: reglages.commandesEnabled,
+        onChanged: reglages.inventairePeriodique
+            ? null
+            : (actif) => onChanged(reglages.avec(commandes: actif)),
+      ),
+      const SizedBox(height: 14),
+      const Text(
+        'Un changement de mode s\'applique aussi au téléphone après sa '
+        'prochaine synchronisation. Les ventes et recettes déjà enregistrées '
+        'restent dans l\'historique.',
+        style: TextStyle(color: WebPalette.muted, fontSize: 13),
+      ),
+    ],
+  );
 
   Widget _interrupteur({
     required String titre,
@@ -280,7 +309,7 @@ class _WebShopSettingsFormState extends State<WebShopSettingsForm> {
     margin: const EdgeInsets.only(bottom: 12),
     child: SwitchListTile(
       value: valeur,
-      onChanged: _enregistre ? null : onChanged,
+      onChanged: enCoursEnregistrement ? null : onChanged,
       title: Text(titre, style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(detail),
       isThreeLine: true,

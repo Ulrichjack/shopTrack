@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -12,7 +14,12 @@ import 'web_bilan_detail.dart';
 /// Même contenu que l'écran, et dans le même ordre : ce document circule seul,
 /// souvent photographié et renvoyé. S'il disait autre chose que l'écran, c'est
 /// lui qu'on croirait, parce que c'est lui qu'on garde.
-Future<void> imprimerBilanSimpleWeb({
+///
+/// La construction est séparée de l'impression pour être testable, comme
+/// `buildInventoryReportPdf` côté Android : une table PDF qui déborde lève à
+/// l'exécution, pas à la compilation, et personne ne le verrait avant qu'une
+/// cliente appuie sur « exporter ».
+Future<Uint8List> construireBilanSimpleWebPdf({
   required String nomBoutique,
   required DateTime mois,
   required WebBilanData bilan,
@@ -195,9 +202,23 @@ Future<void> imprimerBilanSimpleWeb({
       ],
     ),
   );
+  return document.save();
+}
+
+/// Ouvre l'aperçu d'impression du navigateur sur ce bilan.
+Future<void> imprimerBilanSimpleWeb({
+  required String nomBoutique,
+  required DateTime mois,
+  required WebBilanData bilan,
+}) async {
+  final octets = await construireBilanSimpleWebPdf(
+    nomBoutique: nomBoutique,
+    mois: mois,
+    bilan: bilan,
+  );
   await Printing.layoutPdf(
     name:
         'shoptrack-bilan-${mois.year}-${mois.month.toString().padLeft(2, '0')}.pdf',
-    onLayout: (_) => document.save(),
+    onLayout: (_) => octets,
   );
 }

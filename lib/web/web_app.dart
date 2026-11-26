@@ -15,7 +15,7 @@ import '../features/products/presentation/screens/barcode_scanner_screen.dart';
 import 'web_product_form.dart';
 import 'web_activity_log.dart';
 import 'web_bilan_data.dart';
-import 'web_bilan_detail.dart';
+import 'web_bilan_sections.dart';
 import 'web_cash_data.dart';
 import 'web_cash_form.dart';
 import 'web_cash_closing_form.dart';
@@ -2348,108 +2348,11 @@ class _WebAccueilState extends State<_WebAccueil> {
           if (caisse.cloturesRecentes.isEmpty)
             const Text('Aucune journée clôturée pour l’instant.'),
           for (final cloture in caisse.cloturesRecentes)
-            _carteCloture(cloture, fcfa),
+            CarteCloture(cloture: cloture, fcfa: fcfa),
         ],
       ],
     );
   }
-
-  /// Une journée clôturée, telle qu'elle a été enregistrée.
-  ///
-  /// Un écart nul et une absence de comptage ne s'affichent pas pareil : sans
-  /// comptage physique, personne n'a vérifié le tiroir ce jour-là, et « 0 FCFA
-  /// d'écart » le ferait croire.
-  Widget _carteCloture(
-    Map<String, dynamic> cloture,
-    String Function(num) fcfa,
-  ) {
-    final jour = jourDeCloture(cloture);
-    final ecart = cloture['cash_gap'] as num?;
-    final comptee = cloture['physical_cash'] as num?;
-    final note = cloture['note'] as String?;
-    final (libelleEcart, couleurEcart) = switch (ecart) {
-      null => ('Tiroir non compté', WebPalette.muted),
-      final valeur when valeur < 0 => (
-        'Manque ${fcfa(valeur.abs())}',
-        WebPalette.danger,
-      ),
-      final valeur when valeur > 0 => ('Surplus ${fcfa(valeur)}', WebPalette.pine),
-      _ => ('Caisse juste', WebPalette.pine),
-    };
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2EAE7)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  jour == null
-                      ? '${cloture['closing_date']}'
-                      : DateFormat('EEEE d MMMM yyyy', 'fr').format(jour),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              Text(
-                libelleEcart,
-                style: TextStyle(color: couleurEcart, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 18,
-            runSpacing: 4,
-            children: [
-              _ligneCloture('Ventes', fcfa((cloture['total_sales'] as num?) ?? 0)),
-              _ligneCloture(
-                'Sorties',
-                fcfa((cloture['total_withdrawals'] as num?) ?? 0),
-              ),
-              _ligneCloture(
-                'Calculée',
-                fcfa((cloture['calculated_cash'] as num?) ?? 0),
-              ),
-              _ligneCloture(
-                'Comptée',
-                comptee == null ? '—' : fcfa(comptee),
-              ),
-            ],
-          ),
-          if (note != null && note.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              note,
-              style: const TextStyle(color: WebPalette.muted, fontSize: 13),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _ligneCloture(String titre, String valeur) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        titre.toUpperCase(),
-        style: const TextStyle(
-          color: WebPalette.muted,
-          fontSize: 10,
-          letterSpacing: 1.1,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      Text(valeur, style: const TextStyle(fontWeight: FontWeight.w600)),
-    ],
-  );
 
   Widget _pageBilan(bool large) {
     final bilan = _bilan;
@@ -2457,7 +2360,7 @@ class _WebAccueilState extends State<_WebAccueil> {
     final moisCourant =
         _moisBilan.year == maintenant.year &&
         _moisBilan.month == maintenant.month;
-    String fcfa(int montant) =>
+    String fcfa(num montant) =>
         '${NumberFormat.decimalPattern('fr_FR').format(montant)} FCFA';
     return ListView(
       padding: EdgeInsets.fromLTRB(
@@ -2681,204 +2584,28 @@ class _WebAccueilState extends State<_WebAccueil> {
           if (_stockInitialAutorise && !_modeInventaire) ...[
             if (bilan.journeesNonCloturees > 0) ...[
               const SizedBox(height: 26),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF4E5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFF2D5A8)),
-                ),
-                child: Text(
-                  '${bilan.journeesNonCloturees} journée(s) avec des ventes '
-                  'n’ont jamais été clôturées. Leurs ventes sont comptées ici — '
-                  'l’argent est bien entré — mais le tiroir n’a pas été vérifié '
-                  'ces jours-là.',
-                  style: const TextStyle(fontSize: 13, height: 1.45),
-                ),
+              AvertissementJourneesOubliees(
+                nombre: bilan.journeesNonCloturees,
               ),
             ],
             const SizedBox(height: 30),
-            _titreSection('VENTES PAR SEMAINE'),
+            const TitreSection('VENTES PAR SEMAINE'),
             const SizedBox(height: 14),
-            ..._barresSemaines(bilan.clotures, fcfa),
+            BarresSemaines(clotures: bilan.clotures, fcfa: fcfa),
             const SizedBox(height: 30),
-            _titreSection('ÉCARTS DE CAISSE'),
+            const TitreSection('ÉCARTS DE CAISSE'),
             const SizedBox(height: 14),
-            _blocEcarts(ecartsDeCaisse(bilan.clotures), fcfa),
+            BlocEcartsDeCaisse(clotures: bilan.clotures, fcfa: fcfa),
             const SizedBox(height: 30),
-            _titreSection('DÉTAIL PAR JOUR'),
+            const TitreSection('DÉTAIL PAR JOUR'),
             const SizedBox(height: 12),
             if (bilan.clotures.isEmpty)
               const Text('Aucune journée clôturée ce mois-ci.')
             else
-              _tableauParJour(bilan.clotures, fcfa),
+              TableauParJour(clotures: bilan.clotures, fcfa: fcfa),
           ],
         ],
       ],
-    );
-  }
-
-  Widget _titreSection(String titre) => Text(
-    titre,
-    style: const TextStyle(
-      fontSize: 13,
-      fontWeight: FontWeight.bold,
-      color: WebPalette.muted,
-      letterSpacing: 1.2,
-    ),
-  );
-
-  /// Quatre tranches de jours, comme sur l'Android. La barre est relative au
-  /// meilleur de la semaine du mois, pas à un maximum absolu : c'est le rythme
-  /// du mois qu'on lit, pas une comparaison entre mois.
-  List<Widget> _barresSemaines(
-    List<Map<String, dynamic>> clotures,
-    String Function(int) fcfa,
-  ) {
-    final tranches = ventesParSemaine(clotures);
-    final maximum = tranches.fold<int>(0, (a, b) => b > a ? b : a);
-    return [
-      for (var i = 0; i < tranches.length; i++)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      libellesSemaines[i],
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                  Text(
-                    fcfa(tranches[i]),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: maximum == 0 ? 0 : tranches[i] / maximum,
-                  minHeight: 9,
-                  backgroundColor: const Color(0xFFE2EAE7),
-                  valueColor: const AlwaysStoppedAnimation(WebPalette.pine),
-                ),
-              ),
-            ],
-          ),
-        ),
-    ];
-  }
-
-  Widget _blocEcarts(EcartsDeCaisse ecarts, String Function(int) fcfa) =>
-      Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2EAE7)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _ligneCloture('Manques', fcfa(ecarts.manques)),
-                ),
-                Expanded(
-                  child: _ligneCloture('Surplus', fcfa(ecarts.surplus)),
-                ),
-                Expanded(
-                  child: _ligneCloture(
-                    'Solde des écarts',
-                    fcfa(ecarts.total),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              ecarts.journeesComptees == 0
-                  ? 'Aucun tiroir compté ce mois-ci : il n’y a donc aucun écart '
-                        'à constater, ce qui n’est pas la même chose qu’une caisse juste.'
-                  : '${ecarts.journeesComptees} journée(s) dont le tiroir a été '
-                        'réellement compté.',
-              style: const TextStyle(color: WebPalette.muted, fontSize: 13),
-            ),
-          ],
-        ),
-      );
-
-  Widget _tableauParJour(
-    List<Map<String, dynamic>> clotures,
-    String Function(int) fcfa,
-  ) {
-    int entier(Object? valeur) => (valeur as num?)?.round() ?? 0;
-    // Le tableau défile horizontalement : sur un téléphone étroit, cinq
-    // colonnes ne tiennent pas, et les tronquer rendrait les montants faux
-    // à la lecture.
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2EAE7)),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 22,
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFF2F6F4)),
-          columns: const [
-            DataColumn(label: Text('Jour')),
-            DataColumn(label: Text('Ventes')),
-            DataColumn(label: Text('Bénéfice')),
-            DataColumn(label: Text('Comptée')),
-            DataColumn(label: Text('Écart')),
-          ],
-          rows: [
-            for (final cloture in clotures)
-              DataRow(
-                cells: [
-                  DataCell(
-                    Text(() {
-                      final jour = jourDeCloture(cloture);
-                      return jour == null
-                          ? '${cloture['closing_date']}'
-                          : DateFormat('dd/MM').format(jour);
-                    }()),
-                  ),
-                  DataCell(Text(fcfa(entier(cloture['total_sales'])))),
-                  DataCell(Text(fcfa(entier(cloture['net_profit'])))),
-                  DataCell(
-                    Text(
-                      cloture['physical_cash'] == null
-                          ? '—'
-                          : fcfa(entier(cloture['physical_cash'])),
-                    ),
-                  ),
-                  DataCell(
-                    cloture['cash_gap'] == null
-                        ? const Text('—')
-                        : Text(
-                            fcfa(entier(cloture['cash_gap'])),
-                            style: TextStyle(
-                              color: entier(cloture['cash_gap']) < 0
-                                  ? WebPalette.danger
-                                  : WebPalette.pine,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
     );
   }
 
