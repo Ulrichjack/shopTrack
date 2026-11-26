@@ -10,6 +10,7 @@ class WebCashData {
     required this.aDesOperations,
     required this.clotureAujourdhui,
     required this.derniereCloture,
+    this.cloturesRecentes = const [],
   });
 
   final DailyCashTotals totaux;
@@ -17,6 +18,14 @@ class WebCashData {
   final bool aDesOperations;
   final bool clotureAujourdhui;
   final Map<String, dynamic>? derniereCloture;
+
+  /// Les journées déjà clôturées, de la plus récente à la plus ancienne.
+  ///
+  /// La page n'en montrait qu'une — la dernière, qui sert de point de départ
+  /// au solde continu. Mais c'est l'historique qu'on vient relire quand un
+  /// écart est contesté : « combien y avait-il mardi ? » n'a pas de réponse
+  /// avec une seule ligne.
+  final List<Map<String, dynamic>> cloturesRecentes;
 }
 
 Future<List<Map<String, dynamic>>> _chargerToutesLesLignes(
@@ -37,14 +46,17 @@ Future<WebCashData> chargerCaisseWeb(
   required String shopId,
   required bool estPatron,
 }) async {
-  final cloture = await client
+  // Une seule requête pour la borne ET l'historique : la plus récente est la
+  // première ligne. Deux requêtes auraient pu se contredire si une clôture
+  // tombait entre les deux.
+  final clotures = await client
       .from('daily_closings')
-      .select('closing_date,closed_at,physical_cash,calculated_cash,cash_gap,note')
+      .select('closing_date,closed_at,total_sales,total_withdrawals,physical_cash,calculated_cash,cash_gap,note')
       .eq('shop_id', shopId)
       .eq('is_closed', true)
       .order('closing_date', ascending: false)
-      .limit(1)
-      .maybeSingle();
+      .limit(30);
+  final cloture = clotures.isEmpty ? null : clotures.first;
   DateTime? debut;
   if (cloture != null) {
     final dateCloture = DateTime.parse(cloture['closing_date'] as String);
@@ -97,5 +109,6 @@ Future<WebCashData> chargerCaisseWeb(
           return '${cameroun.year}-${cameroun.month.toString().padLeft(2, '0')}-${cameroun.day.toString().padLeft(2, '0')}';
         })(),
     derniereCloture: cloture,
+    cloturesRecentes: clotures,
   );
 }

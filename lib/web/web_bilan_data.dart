@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/utils/daily_cash_calculator.dart';
+import 'web_bilan_detail.dart';
 import 'web_cameroun_time.dart';
 
 /// Bilan mensuel des données confirmées par le serveur de test.
@@ -20,6 +21,7 @@ class WebBilanData {
     this.depenses = 0,
     this.deplacements = 0,
     this.clotures = const [],
+    this.journeesNonCloturees = 0,
   });
 
   final int nombreVentes;
@@ -35,6 +37,10 @@ class WebBilanData {
   final int depenses;
   final int deplacements;
   final List<Map<String, dynamic>> clotures;
+
+  /// Journées à ventes dont le tiroir n'a jamais été compté. Voir
+  /// `journeesNonCloturees()` : le total du mois reste exact sur les entrées.
+  final int journeesNonCloturees;
 
   int? get beneficeNetVentes =>
       beneficeBrutVentes == null ? null : beneficeBrutVentes! - depenses;
@@ -77,7 +83,7 @@ Future<WebBilanData> chargerBilanWeb(
       : await _toutesLesLignes(
           (debut, fin) => client
               .from('sales')
-              .select('id,total_amount,total_profit')
+              .select('id,total_amount,total_profit,created_at')
               .eq('shop_id', shopId)
               .gte('created_at', debutUtc)
               .lt('created_at', finUtc)
@@ -174,5 +180,10 @@ Future<WebBilanData> chargerBilanWeb(
         .where((m) => categoriesSansImpactSurLeBenefice.contains(m['category']))
         .fold<int>(0, (total, m) => total + ((m['amount'] as num?)?.round() ?? 0)),
     clotures: clotures,
+    journeesNonCloturees: journeesNonCloturees(
+      ventes: ventes,
+      clotures: clotures,
+      aujourdhui: dateCamerounMaintenant(),
+    ),
   );
 }

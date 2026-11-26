@@ -67,8 +67,8 @@ Aucun déploiement Vercel n'est effectué par ce script.
 
 | Domaine | Opérations encore absentes du web |
 |---|---|
-| Commun | Paramètres de la boutique et validation photo/scan sur Safari iPhone |
-| Simple | Historique de clôture détaillé et rapport PDF complet identique à Android |
+| Commun | Validation photo/scan sur Safari iPhone |
+| Simple | Validation du parcours complet dans un navigateur connecté, puis sur un vrai téléphone |
 | Cycles | Gérer unités, arrivages, pertes, vente par unité et rapport |
 | Inventaire | Comptage à l'aveugle, pertes, transferts et rapport de période |
 | Commandes | Payer/rembourser, suivre la réalisation, livrer, bilan |
@@ -227,3 +227,68 @@ par l'API, photos publiques) doit être traitée avant une ouverture au public.
   dans une transaction annulée, avec conservation de la note précédente.
 - Archivage puis restauration d'un produit test validés avec le rôle
   propriétaire dans une transaction annulée sur staging.
+
+## Parité du mode simple au 26 novembre 2026
+
+Les quatre écarts qui restaient entre le web et le téléphone en mode simple
+sont comblés. Le périmètre s'arrête là : cycles, inventaire périodique et
+commandes restent des chantiers séparés.
+
+- **Réglages de la boutique** (`web_shop_settings.dart`), réservés au
+  propriétaire : vente par unités, inventaire périodique, commandes avec
+  acompte. L'exclusion inventaire/commandes est refusée à l'écriture, pas
+  seulement grisée dans l'interface. Les **quatre** réglages sont lus puis
+  réécrits ensemble : l'enregistrement est un upsert, et une colonne absente
+  du message reprend sa valeur par défaut côté serveur. La lecture existante
+  de `web_app.dart` n'en prenait que trois — réécrire sans lire
+  `multi_point_enabled` aurait éteint le multi-point d'une boutique qui
+  n'avait rien demandé. Le provider Android porte le même avertissement.
+- **Historique d'audit** (`web_activity_log.dart`), réservé au propriétaire :
+  ventes, caisse, stock et clôtures fusionnés et triés. Deux différences
+  assumées avec l'Android, qui lit la base locale : seul ce qui est
+  synchronisé apparaît, et chaque requête porte le `shop_id` actif.
+- **Historique des clôtures** dans la page Caisse. Elle n'en chargeait qu'une,
+  la dernière, qui sert de borne au solde continu — or c'est l'historique
+  qu'on vient relire quand un écart est contesté. Une seule requête sert
+  maintenant aux deux usages.
+- **Bilan** : ventes par semaine, écarts de caisse et détail par jour, aux
+  mêmes tranches que l'Android (1-7, 8-14, 15-21, 22-fin). Les calculs vivent
+  dans `web_bilan_detail.dart` en fonctions pures, partagées par l'écran et le
+  PDF : dupliqués, les deux auraient fini par afficher deux totaux pour le
+  même mois.
+
+Un trou de sécurité trouvé en vérifiant la parité, et comblé :
+
+- Le web **effaçait** le marqueur `must_change_password` quand on changeait son
+  mot de passe, mais ne le **vérifiait jamais**. Un vendeur pouvait donc
+  travailler indéfiniment avec le mot de passe provisoire que son patron lui a
+  attribué — donc que son patron connaît. Celui-ci pouvait ouvrir une session
+  à son nom, et l'historique d'audit attribuerait ces gestes « à la vendeuse ».
+  Le web impose maintenant le changement avant tout accès, comme
+  `routeImposee()` sur Android, et ne charge aucune donnée de boutique avant.
+  Le prédicat est sorti de l'écran pour être testable : c'est la seule
+  barrière du web. La déconnexion reste la seule autre sortie, sinon un
+  vendeur qui a oublié son mot de passe provisoire serait enfermé.
+
+Deux corrections d'honnêteté des chiffres, trouvées en écrivant ces écrans :
+
+- Le PDF imprimait « Espèces comptées : 0 FCFA, Écart : 0 FCFA » pour une
+  journée **dont le tiroir n'a jamais été compté** : `entier(null)` valait 0.
+  Ça se lit comme une caisse vérifiée et juste. C'est un tiret désormais, et
+  le document dit ce que le tiret signifie.
+- Le bilan annonce les journées qui ont des ventes mais aucune clôture, comme
+  l'Android. Leurs ventes sont réelles et comptées ; le tiroir, lui, n'a pas
+  été vérifié ces jours-là.
+
+Vérifications effectuées : **250 tests passés** (32 nouveaux sur les tranches
+hebdomadaires, les écarts de caisse, les journées non clôturées, la réécriture
+complète des quatre réglages, l'exclusion des modules, la fusion du journal
+d'audit et la garde du mot de passe provisoire) ; analyse sans erreur ni
+avertissement ; build web compilé.
+
+Ce qui n'est **pas** vérifié, et doit l'être avant d'annoncer la parité :
+le parcours cliqué dans un navigateur connecté à staging, et sur un vrai
+téléphone. Le build a été compilé avec une clé de remplacement — la CLI
+Supabase n'est pas installée sur ce poste, donc `construire_staging_web.sh`
+n'a pas pu récupérer la clé publique de staging. Aucune commande Supabase n'a
+été lancée, ni sur staging ni sur la production.

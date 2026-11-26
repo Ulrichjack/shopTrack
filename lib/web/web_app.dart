@@ -13,7 +13,9 @@ import '../features/products/domain/entities/product_entity.dart';
 import '../features/products/presentation/screens/barcode_scanner_screen.dart';
 
 import 'web_product_form.dart';
+import 'web_activity_log.dart';
 import 'web_bilan_data.dart';
+import 'web_bilan_detail.dart';
 import 'web_cash_data.dart';
 import 'web_cash_form.dart';
 import 'web_cash_closing_form.dart';
@@ -31,6 +33,7 @@ import 'web_order_form.dart';
 import 'web_order_price_form.dart';
 import 'web_order_detail.dart';
 import 'web_simple_sale_form.dart';
+import 'web_shop_settings.dart';
 import 'web_simple_report_pdf.dart';
 import 'web_stock_recharge_form.dart';
 import 'web_theme.dart';
@@ -626,6 +629,60 @@ class _WebAccueilState extends State<_WebAccueil> {
     }
     if (change == true && mounted) ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Mot de passe changé.')),
+    );
+  }
+
+  /// Enveloppe commune : feuille en bas sur téléphone, boîte au centre sur
+  /// ordinateur. Même choix que le formulaire de mot de passe.
+  Future<T?> _ouvrirPanneau<T>(Widget contenu, {double largeur = 520}) {
+    if (MediaQuery.sizeOf(context).width < 650) {
+      return showModalBottomSheet<T>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (_) => contenu,
+      );
+    }
+    return showDialog<T>(
+      context: context,
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: largeur, maxHeight: 640),
+          child: contenu,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _ouvrirReglagesBoutique() async {
+    final boutique = _boutique;
+    if (boutique == null || boutique.role != 'owner') return;
+    final modifie = await _ouvrirPanneau<bool>(
+      WebShopSettingsForm(shopId: boutique.id, nomBoutique: boutique.nom),
+    );
+    if (modifie != true || !mounted) return;
+    // Changer de mode change les onglets : il faut relire la boutique, pas
+    // seulement fermer la feuille.
+    await _chargerProduits(boutique);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Réglages enregistrés. Le téléphone les recevra à sa prochaine '
+            'synchronisation.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _ouvrirJournalAudit() async {
+    final boutique = _boutique;
+    if (boutique == null || boutique.role != 'owner') return;
+    await _ouvrirPanneau<void>(
+      WebActivityLogPage(shopId: boutique.id),
+      largeur: 640,
     );
   }
 
@@ -1623,6 +1680,20 @@ class _WebAccueilState extends State<_WebAccueil> {
           style: TextStyle(color: Color(0xFFA9C3BE), fontSize: 12, height: 1.5),
         ),
         const SizedBox(height: 14),
+        if (_boutique?.role == 'owner') ...[
+          TextButton.icon(
+            onPressed: _ouvrirReglagesBoutique,
+            icon: const Icon(Icons.tune_outlined, size: 18),
+            label: const Text('Réglages de la boutique'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white70),
+          ),
+          TextButton.icon(
+            onPressed: _ouvrirJournalAudit,
+            icon: const Icon(Icons.history_outlined, size: 18),
+            label: const Text('Historique d’audit'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white70),
+          ),
+        ],
         TextButton.icon(
           onPressed: _ouvrirMotDePasse,
           icon: const Icon(Icons.lock_reset_outlined, size: 18),
@@ -2198,10 +2269,121 @@ class _WebAccueilState extends State<_WebAccueil> {
                 heureCameroun(DateTime.parse(mouvement['created_at'] as String)))),
               trailing: Text(fcfa(mouvement['amount'] as num)),
             ),
+          const SizedBox(height: 28),
+          Text('Journées clôturées',
+              style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 4),
+          const Text(
+            'Ce que valait le tiroir à chaque clôture. C’est ici qu’on relit '
+            'un écart contesté.',
+            style: TextStyle(color: WebPalette.muted, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          if (caisse.cloturesRecentes.isEmpty)
+            const Text('Aucune journée clôturée pour l’instant.'),
+          for (final cloture in caisse.cloturesRecentes)
+            _carteCloture(cloture, fcfa),
         ],
       ],
     );
   }
+
+  /// Une journée clôturée, telle qu'elle a été enregistrée.
+  ///
+  /// Un écart nul et une absence de comptage ne s'affichent pas pareil : sans
+  /// comptage physique, personne n'a vérifié le tiroir ce jour-là, et « 0 FCFA
+  /// d'écart » le ferait croire.
+  Widget _carteCloture(
+    Map<String, dynamic> cloture,
+    String Function(num) fcfa,
+  ) {
+    final jour = jourDeCloture(cloture);
+    final ecart = cloture['cash_gap'] as num?;
+    final comptee = cloture['physical_cash'] as num?;
+    final note = cloture['note'] as String?;
+    final (libelleEcart, couleurEcart) = switch (ecart) {
+      null => ('Tiroir non compté', WebPalette.muted),
+      final valeur when valeur < 0 => (
+        'Manque ${fcfa(valeur.abs())}',
+        WebPalette.danger,
+      ),
+      final valeur when valeur > 0 => ('Surplus ${fcfa(valeur)}', WebPalette.pine),
+      _ => ('Caisse juste', WebPalette.pine),
+    };
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2EAE7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  jour == null
+                      ? '${cloture['closing_date']}'
+                      : DateFormat('EEEE d MMMM yyyy', 'fr').format(jour),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text(
+                libelleEcart,
+                style: TextStyle(color: couleurEcart, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 18,
+            runSpacing: 4,
+            children: [
+              _ligneCloture('Ventes', fcfa((cloture['total_sales'] as num?) ?? 0)),
+              _ligneCloture(
+                'Sorties',
+                fcfa((cloture['total_withdrawals'] as num?) ?? 0),
+              ),
+              _ligneCloture(
+                'Calculée',
+                fcfa((cloture['calculated_cash'] as num?) ?? 0),
+              ),
+              _ligneCloture(
+                'Comptée',
+                comptee == null ? '—' : fcfa(comptee),
+              ),
+            ],
+          ),
+          if (note != null && note.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              note,
+              style: const TextStyle(color: WebPalette.muted, fontSize: 13),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _ligneCloture(String titre, String valeur) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        titre.toUpperCase(),
+        style: const TextStyle(
+          color: WebPalette.muted,
+          fontSize: 10,
+          letterSpacing: 1.1,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      Text(valeur, style: const TextStyle(fontWeight: FontWeight.w600)),
+    ],
+  );
 
   Widget _pageBilan(bool large) {
     final bilan = _bilan;
@@ -2306,7 +2488,7 @@ class _WebAccueilState extends State<_WebAccueil> {
                   }
                 },
                 icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('Exporter le résumé PDF'),
+                label: const Text('Exporter le bilan PDF'),
               ),
             ),
             const SizedBox(height: 18),
@@ -2423,8 +2605,214 @@ class _WebAccueilState extends State<_WebAccueil> {
               ),
             ],
           ],
+          // Les trois lectures de l'écran Android : le rythme du mois, les
+          // écarts constatés, puis le jour par jour. Elles reposent toutes sur
+          // les clôtures de caisse, donc sur le seul mode qui en tient : même
+          // garde que le bouton PDF juste au-dessus. En inventaire périodique
+          // il n'y a pas de caisse clôturée, et en cycles l'onglet Caisse
+          // n'existe même pas — un bloc « écarts de caisse » y annoncerait
+          // des zéros pour une caisse que la boutique ne tient pas.
+          if (_stockInitialAutorise && !_modeInventaire) ...[
+            if (bilan.journeesNonCloturees > 0) ...[
+              const SizedBox(height: 26),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF4E5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFF2D5A8)),
+                ),
+                child: Text(
+                  '${bilan.journeesNonCloturees} journée(s) avec des ventes '
+                  'n’ont jamais été clôturées. Leurs ventes sont comptées ici — '
+                  'l’argent est bien entré — mais le tiroir n’a pas été vérifié '
+                  'ces jours-là.',
+                  style: const TextStyle(fontSize: 13, height: 1.45),
+                ),
+              ),
+            ],
+            const SizedBox(height: 30),
+            _titreSection('VENTES PAR SEMAINE'),
+            const SizedBox(height: 14),
+            ..._barresSemaines(bilan.clotures, fcfa),
+            const SizedBox(height: 30),
+            _titreSection('ÉCARTS DE CAISSE'),
+            const SizedBox(height: 14),
+            _blocEcarts(ecartsDeCaisse(bilan.clotures), fcfa),
+            const SizedBox(height: 30),
+            _titreSection('DÉTAIL PAR JOUR'),
+            const SizedBox(height: 12),
+            if (bilan.clotures.isEmpty)
+              const Text('Aucune journée clôturée ce mois-ci.')
+            else
+              _tableauParJour(bilan.clotures, fcfa),
+          ],
         ],
       ],
+    );
+  }
+
+  Widget _titreSection(String titre) => Text(
+    titre,
+    style: const TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.bold,
+      color: WebPalette.muted,
+      letterSpacing: 1.2,
+    ),
+  );
+
+  /// Quatre tranches de jours, comme sur l'Android. La barre est relative au
+  /// meilleur de la semaine du mois, pas à un maximum absolu : c'est le rythme
+  /// du mois qu'on lit, pas une comparaison entre mois.
+  List<Widget> _barresSemaines(
+    List<Map<String, dynamic>> clotures,
+    String Function(int) fcfa,
+  ) {
+    final tranches = ventesParSemaine(clotures);
+    final maximum = tranches.fold<int>(0, (a, b) => b > a ? b : a);
+    return [
+      for (var i = 0; i < tranches.length; i++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      libellesSemaines[i],
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  Text(
+                    fcfa(tranches[i]),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: maximum == 0 ? 0 : tranches[i] / maximum,
+                  minHeight: 9,
+                  backgroundColor: const Color(0xFFE2EAE7),
+                  valueColor: const AlwaysStoppedAnimation(WebPalette.pine),
+                ),
+              ),
+            ],
+          ),
+        ),
+    ];
+  }
+
+  Widget _blocEcarts(EcartsDeCaisse ecarts, String Function(int) fcfa) =>
+      Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2EAE7)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _ligneCloture('Manques', fcfa(ecarts.manques)),
+                ),
+                Expanded(
+                  child: _ligneCloture('Surplus', fcfa(ecarts.surplus)),
+                ),
+                Expanded(
+                  child: _ligneCloture(
+                    'Solde des écarts',
+                    fcfa(ecarts.total),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              ecarts.journeesComptees == 0
+                  ? 'Aucun tiroir compté ce mois-ci : il n’y a donc aucun écart '
+                        'à constater, ce qui n’est pas la même chose qu’une caisse juste.'
+                  : '${ecarts.journeesComptees} journée(s) dont le tiroir a été '
+                        'réellement compté.',
+              style: const TextStyle(color: WebPalette.muted, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+
+  Widget _tableauParJour(
+    List<Map<String, dynamic>> clotures,
+    String Function(int) fcfa,
+  ) {
+    int entier(Object? valeur) => (valeur as num?)?.round() ?? 0;
+    // Le tableau défile horizontalement : sur un téléphone étroit, cinq
+    // colonnes ne tiennent pas, et les tronquer rendrait les montants faux
+    // à la lecture.
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2EAE7)),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 22,
+          headingRowColor: WidgetStateProperty.all(const Color(0xFFF2F6F4)),
+          columns: const [
+            DataColumn(label: Text('Jour')),
+            DataColumn(label: Text('Ventes')),
+            DataColumn(label: Text('Bénéfice')),
+            DataColumn(label: Text('Comptée')),
+            DataColumn(label: Text('Écart')),
+          ],
+          rows: [
+            for (final cloture in clotures)
+              DataRow(
+                cells: [
+                  DataCell(
+                    Text(() {
+                      final jour = jourDeCloture(cloture);
+                      return jour == null
+                          ? '${cloture['closing_date']}'
+                          : DateFormat('dd/MM').format(jour);
+                    }()),
+                  ),
+                  DataCell(Text(fcfa(entier(cloture['total_sales'])))),
+                  DataCell(Text(fcfa(entier(cloture['net_profit'])))),
+                  DataCell(
+                    Text(
+                      cloture['physical_cash'] == null
+                          ? '—'
+                          : fcfa(entier(cloture['physical_cash'])),
+                    ),
+                  ),
+                  DataCell(
+                    cloture['cash_gap'] == null
+                        ? const Text('—')
+                        : Text(
+                            fcfa(entier(cloture['cash_gap'])),
+                            style: TextStyle(
+                              color: entier(cloture['cash_gap']) < 0
+                                  ? WebPalette.danger
+                                  : WebPalette.pine,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2911,13 +3299,25 @@ class _WebAccueilState extends State<_WebAccueil> {
                     onSelected: (value) {
                       if (value == 'logout') _client.auth.signOut();
                       if (value == 'password') _ouvrirMotDePasse();
+                      if (value == 'reglages') _ouvrirReglagesBoutique();
+                      if (value == 'audit') _ouvrirJournalAudit();
                     },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
+                    itemBuilder: (_) => [
+                      if (_boutique?.role == 'owner') ...[
+                        const PopupMenuItem(
+                          value: 'reglages',
+                          child: Text('Réglages de la boutique'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'audit',
+                          child: Text('Historique d’audit'),
+                        ),
+                      ],
+                      const PopupMenuItem(
                         value: 'password',
                         child: Text('Changer mon mot de passe'),
                       ),
-                      PopupMenuItem(
+                      const PopupMenuItem(
                         value: 'logout',
                         child: Text('Se déconnecter'),
                       ),
