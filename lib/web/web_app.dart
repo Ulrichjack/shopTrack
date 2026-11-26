@@ -122,11 +122,33 @@ class _WebAccueilState extends State<_WebAccueil> {
   @override
   void initState() {
     super.initState();
-    _auth = _client.auth.onAuthStateChange.listen((_) => _chargerBoutiques());
-    if (_client.auth.currentSession != null) {
+    _auth = _client.auth.onAuthStateChange.listen((_) {
+      if (_doitChangerMotDePasse) {
+        // Ne RIEN charger avant le changement. La garde seule suffirait à
+        // cacher l'écran, mais les requêtes partiraient quand même pour un
+        // compte qui n'entre pas encore. Le routeur Android porte la même
+        // remarque : l'accueil avait le temps de lancer ses chargements.
+        setState(() {});
+        return;
+      }
+      _chargerBoutiques();
+    });
+    if (_client.auth.currentSession != null && !_doitChangerMotDePasse) {
       _chargerBoutiques();
     }
   }
+
+  /// Un mot de passe provisoire n'ouvre rien d'autre que l'écran qui sert à le
+  /// remplacer — même règle que `routeImposee()` sur Android.
+  ///
+  /// Le web effaçait ce marqueur en changeant le mot de passe, mais ne le
+  /// vérifiait jamais : un vendeur pouvait travailler indéfiniment avec le mot
+  /// de passe que son patron lui a attribué, donc que son patron connaît. Ce
+  /// patron pouvait alors ouvrir une session à son nom, et l'historique
+  /// d'audit attribuerait ces gestes « à la vendeuse ».
+  bool get _doitChangerMotDePasse =>
+      _client.auth.currentSession != null &&
+      motDePasseProvisoireAChanger(_client.auth.currentUser?.userMetadata);
 
   @override
   void dispose() {
@@ -1203,10 +1225,54 @@ class _WebAccueilState extends State<_WebAccueil> {
     return Scaffold(
       backgroundColor: _fondWeb,
       body: SafeArea(
-        child: connecte ? _contenuConnecte() : _formulaireConnexion(),
+        child: !connecte
+            ? _formulaireConnexion()
+            : _doitChangerMotDePasse
+            ? _motDePasseImpose()
+            : _contenuConnecte(),
       ),
     );
   }
+
+  /// Seul écran atteignable tant que le mot de passe provisoire n'est pas
+  /// remplacé. La déconnexion est la seule autre sortie : sans elle, un vendeur
+  /// qui a oublié son mot de passe provisoire serait enfermé ici.
+  Widget _motDePasseImpose() => Center(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: Text(
+                    'Choisis ton mot de passe avant d’entrer. Celui qu’on t’a '
+                    'donné est connu de la personne qui a créé ton compte.',
+                    style: TextStyle(height: 1.45),
+                  ),
+                ),
+                const WebPasswordForm(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                  child: TextButton.icon(
+                    onPressed: () => _client.auth.signOut(),
+                    icon: const Icon(Icons.logout, size: 18),
+                    label: const Text('Se déconnecter'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _formulaireConnexion() => LayoutBuilder(
     builder: (context, contraintes) {

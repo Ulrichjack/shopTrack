@@ -3,6 +3,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'web_theme.dart';
 
+/// Le compte doit-il remplacer un mot de passe provisoire avant d'entrer ?
+///
+/// Sorti de l'écran pour être testable : c'est la seule barrière du web, et
+/// l'Android a extrait `routeImposee()` de son routeur pour la même raison.
+/// Un marqueur absent, nul ou d'un autre type vaut « non » — seule la valeur
+/// vraie bloque, pour qu'un compte normal ne se retrouve jamais enfermé.
+bool motDePasseProvisoireAChanger(Map<String, dynamic>? metadonnees) =>
+    metadonnees?['must_change_password'] == true;
+
 class WebPasswordForm extends StatefulWidget {
   const WebPasswordForm({super.key});
 
