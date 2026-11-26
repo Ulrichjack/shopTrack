@@ -292,3 +292,36 @@ téléphone. Le build a été compilé avec une clé de remplacement — la CLI
 Supabase n'est pas installée sur ce poste, donc `construire_staging_web.sh`
 n'a pas pu récupérer la clé publique de staging. Aucune commande Supabase n'a
 été lancée, ni sur staging ni sur la production.
+
+
+## Vérification à l'écran au 26 novembre 2026
+
+La parité écrite le 26/11 l'était sans qu'aucun écran soit rendu ni aucun PDF
+généré. Sans navigateur ni serveur (la CLI Supabase n'est pas installée sur ce
+poste, et aucun compte de test n'était à disposition), deux choses restaient
+néanmoins vérifiables en machine, et le sont désormais.
+
+- **Rendu sur petit écran.** Les sections chiffrées du bilan et les
+  interrupteurs des réglages sont sortis de `web_app.dart` en widgets purs
+  (`web_bilan_sections.dart`, `WebShopSettingsBody`) et rendus en test sur
+  360x640 avec texte grossi à 1,4 — le gabarit où ce projet a déjà caché du
+  contenu trois fois. Rien ne déborde ; montants à sept chiffres compris. Le
+  troisième interrupteur des réglages tombe sous le pli à cette taille et
+  reste atteignable en défilant : plus bas, pas masqué. `web_app.dart` perd
+  ~280 lignes au passage.
+- **Génération du PDF.** `construireBilanSimpleWebPdf` est séparé de
+  l'impression, et cinq cas sont générés comme vrais PDF (30 clôtures, aucune
+  clôture, aucun comptage, bénéfice inconnu, montants à sept chiffres) : une
+  table PDF qui déborde lève à l'exécution, pas à la compilation. Le rendu a
+  été inspecté visuellement — accents nets, et une journée non comptée affiche
+  un tiret, pas « 0 FCFA ».
+
+270 tests passés (21 nouveaux de rendu et de génération), analyse sans erreur
+ni avertissement, build web compilé.
+
+**Reste strictement le même trou qu'avant :** le parcours cliqué dans un
+navigateur réellement connecté à staging, l'écriture d'un réglage qui revient
+du serveur, l'aller-retour web ↔ Android, la photo et le scan sur Safari
+iPhone. Rendre un widget en test n'est pas le connecter. Il faut pour cela la
+clé publique de staging et un compte de test, ou que la checklist manuelle
+soit cochée sur un vrai navigateur. Aucune commande Supabase n'a été lancée.
